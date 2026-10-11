@@ -139,16 +139,25 @@ Les cookies peuvent donner accès à une session personnelle : **ne publiez jama
 
 ```text
 All-Download/
-├── yt_app.py                 # Application principale : interface et moteur
-├── All_Media_Download.spec   # Configuration PyInstaller
-├── logo.jpg                  # Visuel de l'application
-├── logo.ico                  # Icône Windows
+├── yt_app.py                   # Code principal et interface
+├── All_Media_Download.spec     # Configuration PyInstaller
+├── logo.jpg                    # Visuel de l'application
+├── logo.ico                    # Icône Windows
+├── .gitignore                  # Fichiers locaux et temporaires à exclure
+├── AUDIO/.gitkeep              # Dossier réservé aux fichiers audio
+├── AUTRES/.gitkeep             # Médias d'autres plateformes
+├── CHAÎNES/.gitkeep            # Vidéos regroupées par chaîne
+├── PLAYLIST/.gitkeep           # Téléchargements des playlists
+├── VIDÉOS/.gitkeep             # Vidéos individuelles
 ├── dist/
-│   └── All_Media_Download.exe  # Exécutable Windows
-└── build/                    # Fichiers générés par PyInstaller
+│   └── All_Media_Download.exe  # Exécutable historique conservé
+└── .github/workflows/
+    └── build-windows.yml       # Compilation Windows automatique
 ```
 
-Le dépôt contient également un fichier texte annexe. Les dossiers `build/` et `dist/` correspondent à des artefacts de compilation ; le point d'entrée du code est **`yt_app.py`**.
+Les fichiers `.gitkeep` permettent à GitHub de conserver ces dossiers même sans aucun média. **Sur Windows, l'application recrée automatiquement les cinq catégories dans son dossier de téléchargement** (par défaut `%USERPROFILE%\\Downloads\\MediaDownloader`) sans effacer les contenus existants.
+
+Les fichiers temporaires de compilation `build/` sont exclus de Git : ils seront recréés localement par PyInstaller si nécessaire. Les versions Windows recompilées sont disponibles dans les **[GitHub Actions](https://github.com/anderson76389/All-Download/actions/workflows/build-windows.yml)**.
 
 ## 🛠️ En cas de problème
 
