@@ -33,16 +33,13 @@ CRASH_LOG = os.path.join(APP_DIR, "crash_log.txt")
 os.makedirs(APP_DIR, exist_ok=True)
 os.makedirs(BIN_DIR, exist_ok=True)
 
-# 3. Neutralisation des flux console sous PyInstaller (--noconsole)
-class SafeNullWriter:
-    def write(self, text): pass
-    def flush(self): pass
-    def fileno(self): return -1
-
+# 3. Sous PyInstaller (--noconsole), stdout/stderr peuvent etre None.
+# Utiliser un vrai descripteur vers NUL plutot que fileno() = -1 :
+# certaines dependances .NET/WebView2 interrogent fileno() au demarrage.
 if sys.stdout is None or not hasattr(sys.stdout, "write"):
-    sys.stdout = SafeNullWriter()
+    sys.stdout = open(os.devnull, "w", encoding="utf-8")
 if sys.stderr is None or not hasattr(sys.stderr, "write"):
-    sys.stderr = SafeNullWriter()
+    sys.stderr = open(os.devnull, "w", encoding="utf-8")
 
 # 4. Diagnostic fiable : conserver l'historique des exceptions et
 # capturer aussi les erreurs fatales du processus Python si possible.
