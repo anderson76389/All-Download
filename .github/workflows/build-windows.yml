@@ -32,11 +32,32 @@ jobs:
         run: python -m py_compile yt_app.py
       - name: Tester les dossiers et les destinations des téléchargements
         run: python -m unittest discover -s tests -v
-      - name: Compiler le fichier EXE
+      - name: Compiler l'application en dossier, sans UPX
         run: python -m PyInstaller --clean --noconfirm All_Media_Download.spec
-      - name: Publier l'executable a tester
+      - name: Placer les logos a cote de l'executable
+        shell: pwsh
+        run: |
+          Copy-Item logo.ico dist/All_Media_Download/logo.ico
+          Copy-Item logo.jpg dist/All_Media_Download/logo.jpg
+      - name: Verifier la distribution Windows
+        shell: pwsh
+        run: |
+          $folder = "dist/All_Media_Download"
+          $needed = @(
+            "$folder/All_Media_Download.exe",
+            "$folder/logo.ico",
+            "$folder/logo.jpg",
+            "$folder/_internal"
+          )
+          foreach ($item in $needed) {
+            if (-not (Test-Path $item)) { throw "Element absent : $item" }
+          }
+          $exe = Get-Item "$folder/All_Media_Download.exe"
+          Write-Output "EXE : $($exe.Length) octets"
+          Write-Output "Lancer l'EXE depuis le dossier extrait, avec _internal."
+      - name: Publier le dossier complet a tester
         uses: actions/upload-artifact@v7
         with:
           name: All-Download-Windows
-          path: dist/All_Media_Download.exe
+          path: dist/All_Media_Download/
           if-no-files-found: error
