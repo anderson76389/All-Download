@@ -55,6 +55,43 @@ jobs:
           $exe = Get-Item "$folder/All_Media_Download.exe"
           Write-Output "EXE : $($exe.Length) octets"
           Write-Output "Lancer l'EXE depuis le dossier extrait, avec _internal."
+      - name: Tester le demarrage de la fenetre Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $folder = (Resolve-Path "dist/All_Media_Download").Path
+          $exe = Join-Path $folder "All_Media_Download.exe"
+          $appDataFolder = Join-Path $env:LOCALAPPDATA "AllMediaDownload"
+          $binFolder = Join-Path $appDataFolder "bin"
+          New-Item -ItemType Directory -Force -Path $binFolder | Out-Null
+          # Eviter les telechargements de binaires dans le test de demarrage.
+          New-Item -ItemType File -Force -Path (Join-Path $binFolder "yt-dlp.exe") | Out-Null
+          New-Item -ItemType File -Force -Path (Join-Path $binFolder "ffmpeg.exe") | Out-Null
+          $log = Join-Path $appDataFolder "crash_log.txt"
+          $proc = Start-Process -FilePath $exe -WorkingDirectory $folder -PassThru
+          $visible = $false
+          try {
+            for ($i = 0; $i -lt 30; $i++) {
+              Start-Sleep -Seconds 1
+              $proc.Refresh()
+              if ($proc.HasExited) {
+                if (Test-Path $log) { Get-Content $log -Tail 70 }
+                throw "Le programme a quitte au demarrage avec le code $($proc.ExitCode)"
+              }
+              if ($proc.MainWindowHandle -ne 0) {
+                Write-Output "Fenetre Windows detectee : $($proc.MainWindowTitle)"
+                $visible = $true
+                break
+              }
+            }
+            if (-not $visible) {
+              if (Test-Path $log) { Get-Content $log -Tail 70 }
+              throw "Le programme est actif, mais aucune fenetre n'est apparue apres 30 secondes."
+            }
+          } finally {
+            $proc.Refresh()
+            if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force }
+          }
       - name: Publier le dossier complet a tester
         uses: actions/upload-artifact@v7
         with:
