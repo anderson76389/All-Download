@@ -32,13 +32,15 @@ La compatibilité dépend des plateformes et des flux accessibles via yt-dlp. La
 
 ## ⬇️ Installation sur Windows
 
-1. Ouvrez les **[compilations Windows](https://github.com/anderson76389/All-Download/actions/workflows/build-windows.yml)**.
-2. Choisissez une exécution réussie, puis téléchargez **`All-Download-Windows`** sous **Artifacts** (connexion GitHub parfois nécessaire).
-3. Décompressez **toute l'archive ZIP**, puis lancez **`All_Media_Download.exe`** sans séparer l'exécutable de son dossier **`_internal/`**. Les fichiers **`logo.ico`** et **`logo.jpg`** sont fournis à côté du programme. L'application récupère yt-dlp et FFmpeg au premier lancement s'ils sont absents.
+1. Ouvrez les **[compilations Windows](https://github.com/anderson76389/All-Download/actions/workflows/build-windows.yml)** et sélectionnez la dernière exécution réussie.
+2. Sous **Artifacts**, téléchargez **`All-Download-Portable-Windows`** (édition recommandée, un seul EXE) puis décompressez le ZIP. Une connexion GitHub peut être nécessaire.
+3. Lancez **`All_Media_Download.exe`** depuis le dossier extrait. Les logos et les six dossiers de médias sont fournis à côté de l'EXE. Au premier lancement, l'application récupère yt-dlp et FFmpeg s'ils sont absents.
+
+**Alternative :** `All-Download-Dossier-Windows` comprend le dossier `_internal/` et évite l'extraction temporaire de l'application. Sur certaines installations Windows, les DLL de cette édition peuvent être bloquées par le marquage de sécurité hérité du ZIP téléchargé. Si cela arrive, utilisez plutôt l'édition Portable.
 
 **Prérequis :** Windows, WebView2, connexion Internet et espace disque.
 
-> **Important :** le fichier [`dist/All_Media_Download.exe`](./dist/All_Media_Download.exe) à la racine de `dist/` est une **ancienne version monofichier**. La version recommandée est désormais distribuée **en dossier**, sans compression UPX, dans le dernier artefact Windows.
+> **Important :** le fichier [`dist/All_Media_Download.exe`](./dist/All_Media_Download.exe) directement présent dans le dépôt est une **ancienne compilation**, et ne représente pas la version mise à jour. **SmartScreen peut toujours avertir** pour un EXE non signé : les corrections ne remplacent pas une signature de code reconnue.
 
 ## 🚀 Utilisation et dossiers
 
@@ -63,7 +65,7 @@ Ces **six dossiers** sont créés automatiquement. Le dossier historique `AUDIO/
 
 ## 🛠️ Code source
 
-Le dépôt contient le programme `yt_app.py`, les logos `logo.jpg` et `logo.ico`, la configuration de compilation `All_Media_Download.spec`, les tests dans `tests/test_download_folders.py` et le workflow GitHub Actions. Les dossiers multimédias sont conservés sur GitHub avec des fichiers `.gitkeep`.
+Le dépôt conserve le programme `yt_app.py`, les logos `logo.jpg` et `logo.ico`, les deux configurations de compilation `All_Media_Download.spec` et `All_Media_Download-Portable.spec`, les tests `tests/test_download_folders.py` et le workflow GitHub Actions. Les six dossiers multimédias sont présents sur GitHub et dans les ZIP grâce aux fichiers `.gitkeep` (petits fichiers marqueurs, sans effet sur les téléchargements).
 
 Pour lancer le logiciel depuis Python sous Windows :
 
@@ -79,7 +81,7 @@ python -m pip install pyinstaller pywebview
 python -m PyInstaller --clean --noconfirm All_Media_Download.spec
 ```
 
-Les tests automatisés sont exécutés avant chaque compilation Windows. Le programme est compilé en dossier (`onedir`) sans UPX pour éviter une extraction complète au démarrage. Conservez le dossier `_internal/` à côté de l'EXE.
+Les tests automatisés sont exécutés avant chaque compilation Windows, suivis d'une vérification de lancement de la véritable fenêtre sur les deux éditions. Les deux compilations sont effectuées **sans UPX**.
 
 ## 🔧 Problèmes courants
 
