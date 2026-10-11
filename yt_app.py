@@ -2624,10 +2624,16 @@ if __name__ == '__main__':
     except Exception as exc:
         handle_exception(type(exc), exc, exc.__traceback__)
         try:
+            # Afficher aussi l'erreur precise dans la boite Windows :
+            # l'utilisateur peut nous transmettre une capture sans chercher le journal.
+            error_detail = f"{type(exc).__name__} : {exc}"
+            if len(error_detail) > 900:
+                error_detail = error_detail[:900] + "..."
             ctypes.windll.user32.MessageBoxW(
                 0,
                 "All-Download n'a pas pu démarrer.\n\n"
-                "Un journal a été enregistré ici :\n" + CRASH_LOG,
+                "Cause signalée :\n" + error_detail + "\n\n"
+                "Journal complet :\n" + CRASH_LOG,
                 "All-Download - erreur de démarrage",
                 0x10
             )
