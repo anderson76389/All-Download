@@ -46,11 +46,15 @@ La compatibilité dépend des plateformes et des flux accessibles via yt-dlp. La
 
 Collez une URL → ajoutez le média à la liste → choisissez **Vidéo**, **Audio** ou **GIF**, et sa qualité → cliquez sur **Télécharger**.
 
-Dossier de destination par défaut :
+**Édition Portable :** les téléchargements sont rangés directement dans les six sous-dossiers placés à côté de `All_Media_Download.exe`, à condition que le dossier soit accessible en écriture. Si une destination est déjà enregistrée dans ta configuration, elle reste prioritaire.
+
+**Version exécutée depuis Python ou dossier non modifiable :** emplacement de repli :
 
 ```text
 %USERPROFILE%\Downloads\MediaDownloader
 ```
+
+Les anciens médias restent à leur emplacement : aucun fichier n'est supprimé ni déplacé vers le nouveau dossier portable.
 
 | Dossier | Contenu |
 | --- | --- |
