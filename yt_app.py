@@ -11,6 +11,8 @@ import zipfile
 import subprocess
 import threading
 import traceback
+import faulthandler
+from datetime import datetime
 import ctypes
 from ctypes import wintypes
 import multiprocessing
@@ -42,10 +44,20 @@ if sys.stdout is None or not hasattr(sys.stdout, "write"):
 if sys.stderr is None or not hasattr(sys.stderr, "write"):
     sys.stderr = SafeNullWriter()
 
-# 4. Interception globale de tous les crashs
+# 4. Diagnostic fiable : conserver l'historique des exceptions et
+# capturer aussi les erreurs fatales du processus Python si possible.
+# Le flux reste ouvert : faulthandler en a besoin pendant toute l'exécution.
+_CRASH_STREAM = None
+try:
+    _CRASH_STREAM = open(CRASH_LOG, "a", encoding="utf-8", buffering=1)
+    faulthandler.enable(file=_CRASH_STREAM, all_threads=True)
+except (OSError, RuntimeError):
+    _CRASH_STREAM = None
+
 def handle_exception(exc_type, exc_value, exc_traceback):
     try:
-        with open(CRASH_LOG, "w", encoding="utf-8") as f:
+        with open(CRASH_LOG, "a", encoding="utf-8") as f:
+            f.write(f"\n[{datetime.now():%Y-%m-%d %H:%M:%S}] Exception non gérée\n")
             traceback.print_exception(exc_type, exc_value, exc_traceback, file=f)
     except Exception:
         pass
@@ -54,10 +66,8 @@ sys.excepthook = handle_exception
 if hasattr(threading, 'excepthook'):
     threading.excepthook = lambda args: handle_exception(args.exc_type, args.exc_value, args.exc_traceback)
 
-# 5. Paramètres WebView2 optimisés (zéro freeze)
-os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGS"] = (
-    "--disable-background-networking --disable-features=TranslateUI --renderer-process-limit=1"
-)
+# 5. Ne pas forcer le nombre de processus WebView2.
+# La limitation Chromium à un renderer était susceptible de déstabiliser l'interface.
 
 # 6. Support HiDPI Windows
 try:
@@ -2534,21 +2544,34 @@ def setup_binaries():
         gc.collect()
 
 if __name__ == '__main__':
-    threading.Thread(target=setup_binaries, daemon=True).start()
-
-    api = DownloaderAPI()
-    window = webview.create_window(
-        'All Media Download',
-        html=HTML_PAGE,
-        js_api=api,
-        width=1080,
-        height=760,
-        min_size=(920, 620),
-        background_color='#f8fafc'
-    )
-    api.window = window
-    
     try:
+        threading.Thread(target=setup_binaries, daemon=True).start()
+
+        api = DownloaderAPI()
+        window = webview.create_window(
+            'All Media Download',
+            html=HTML_PAGE,
+            js_api=api,
+            width=1080,
+            height=760,
+            min_size=(920, 620),
+            background_color='#f8fafc'
+        )
+        api.window = window
+
+        # Laisser pywebview se fermer normalement et conserver
+        # les exceptions au lieu de les masquer lors du lancement.
         webview.start(debug=False)
-    finally:
-        os._exit(0)
+    except Exception as exc:
+        handle_exception(type(exc), exc, exc.__traceback__)
+        try:
+            ctypes.windll.user32.MessageBoxW(
+                0,
+                "All-Download n'a pas pu démarrer.\n\n"
+                "Un journal a été enregistré ici :\n" + CRASH_LOG,
+                "All-Download - erreur de démarrage",
+                0x10
+            )
+        except Exception:
+            pass
+        sys.exit(1)
