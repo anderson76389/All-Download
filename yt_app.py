@@ -86,6 +86,15 @@ FFMPEG_URL = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/f
 
 DEFAULT_DOWNLOAD_BASE = os.path.join(os.path.expanduser("~"), "Downloads", "MediaDownloader")
 
+# Ces catégories correspondent à la structure réelle utilisée par start_downloads.
+# Les créer dès le lancement garantit leur présence sans toucher aux fichiers existants.
+DOWNLOAD_CATEGORIES = ("AUTRES", "VIDÉOS", "CHAÎNES", "AUDIO", "PLAYLIST")
+
+def ensure_media_directories(root):
+    os.makedirs(root, exist_ok=True)
+    for category in DOWNLOAD_CATEGORIES:
+        os.makedirs(os.path.join(root, category), exist_ok=True)
+
 def sanitize_filename(name):
     clean = re.sub(r'[\\/*?:"<>|]', "_", str(name)).strip()
     return clean if clean else "Media_Folder"
@@ -1988,7 +1997,7 @@ class DownloaderAPI:
         self.window = None
         self.config = self._load_config()
         self.download_folder = self.config.get("download_folder", DEFAULT_DOWNLOAD_BASE)
-        os.makedirs(self.download_folder, exist_ok=True)
+        ensure_media_directories(self.download_folder)
         self.is_cancelled = False
         self.is_paused = False
 
@@ -2087,7 +2096,7 @@ class DownloaderAPI:
 
     def open_folder(self):
         try:
-            os.makedirs(self.download_folder, exist_ok=True)
+            ensure_media_directories(self.download_folder)
             os.startfile(self.download_folder)
         except Exception: pass
 
