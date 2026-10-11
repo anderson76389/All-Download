@@ -13,7 +13,7 @@
 [![yt--dlp](https://img.shields.io/badge/Moteur-yt--dlp-FF5A5F?style=for-the-badge)](https://github.com/yt-dlp/yt-dlp)
 [![FFmpeg](https://img.shields.io/badge/Média-FFmpeg-007808?style=for-the-badge&logo=ffmpeg&logoColor=white)](https://ffmpeg.org/)
 
-**[⬇ Télécharger l'application](./dist/All_Media_Download.exe)** · **[📖 Installation](#-installation)** · **[✨ Fonctionnalités](#-fonctionnalités)**
+**[⬇ Version Windows recompilée](https://github.com/anderson76389/All-Download/actions/workflows/build-windows.yml)** · **[📖 Installation](#-installation)** · **[✨ Fonctionnalités](#-fonctionnalités)**
 
 </div>
 
@@ -55,10 +55,13 @@ L'application s'appuie sur les extracteurs de [yt-dlp](https://github.com/yt-dlp
 
 ### Option 1 — Application Windows (simple)
 
-1. Ouvrez **[dist/All_Media_Download.exe](./dist/All_Media_Download.exe)** et téléchargez le fichier depuis GitHub.
-2. Lancez `All_Media_Download.exe` sur Windows.
-3. Au premier lancement, laissez l'application récupérer **yt-dlp** et **FFmpeg** si ces outils ne sont pas déjà présents dans son dossier de données.
-4. Collez un lien et commencez à télécharger.
+1. Ouvrez les **[compilations Windows](https://github.com/anderson76389/All-Download/actions/workflows/build-windows.yml)** et choisissez la dernière exécution **réussie** (coche verte).
+2. Dans la section **Artifacts**, téléchargez `All-Download-Windows`, puis extrayez l'archive ZIP (une connexion GitHub peut être nécessaire).
+3. Lancez `All_Media_Download.exe` sur Windows.
+4. Au premier lancement, laissez l'application récupérer **yt-dlp** et **FFmpeg** si ces outils ne sont pas déjà présents dans son dossier de données.
+5. Collez un lien et commencez à télécharger.
+
+> Le fichier [dist/All_Media_Download.exe](./dist/All_Media_Download.exe) présent dans le dépôt est une ancienne compilation : il ne reçoit pas automatiquement les corrections du code source.
 
 **Prérequis :** Windows, accès à Internet et espace disque adapté aux médias téléchargés. L'interface utilise **WebView2** via pywebview.
 
