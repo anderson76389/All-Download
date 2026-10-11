@@ -1833,7 +1833,7 @@ HTML_PAGE = """<!DOCTYPE html>
         }
 
         let is_yt = Boolean(item.url && (item.url.toLowerCase().indexOf("youtube.com") !== -1 || item.url.toLowerCase().indexOf("youtu.be") !== -1));
-        let is_direct_gif = item.is_direct_download && /\\.gif(?:[?#]|$)/i.test(item.url || '');
+        let is_direct_gif = item.is_direct_download && (item.url || '').toLowerCase().split(/[?#]/)[0].endsWith('.gif');
         let destInfo = 'Dossier: /AUTRES';
         if (item.mode === 'GIF' || is_direct_gif) {
           destInfo = 'Dossier: /GIFS';
