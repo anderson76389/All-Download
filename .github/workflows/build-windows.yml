@@ -19,9 +19,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Recuperer les sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Installer Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Installer les dependances
@@ -35,7 +35,7 @@ jobs:
       - name: Compiler le fichier EXE
         run: python -m PyInstaller --clean --noconfirm All_Media_Download.spec
       - name: Publier l'executable a tester
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: All-Download-Windows
           path: dist/All_Media_Download.exe
