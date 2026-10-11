@@ -66,8 +66,13 @@ sys.excepthook = handle_exception
 if hasattr(threading, 'excepthook'):
     threading.excepthook = lambda args: handle_exception(args.exc_type, args.exc_value, args.exc_traceback)
 
-# 5. Ne pas forcer le nombre de processus WebView2.
-# La limitation Chromium à un renderer était susceptible de déstabiliser l'interface.
+# 5. Reduire l'activite de fond de WebView2 sans forcer un seul processus
+# de rendu et sans desactiver l'acceleration GPU (qui evite du CPU).
+# Les arguments personnalisés fournis par l'utilisateur sont conservés.
+os.environ.setdefault(
+    "WEBVIEW2_ADDITIONAL_BROWSER_ARGS",
+    "--disable-background-networking --disable-features=TranslateUI"
+)
 
 # 6. Support HiDPI Windows
 try:
