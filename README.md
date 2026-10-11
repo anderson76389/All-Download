@@ -34,11 +34,11 @@ La compatibilité dépend des plateformes et des flux accessibles via yt-dlp. La
 
 1. Ouvrez les **[compilations Windows](https://github.com/anderson76389/All-Download/actions/workflows/build-windows.yml)**.
 2. Choisissez une exécution réussie, puis téléchargez **`All-Download-Windows`** sous **Artifacts** (connexion GitHub parfois nécessaire).
-3. Décompressez l'archive et lancez **`All_Media_Download.exe`**. L'application récupère yt-dlp et FFmpeg au premier lancement s'ils sont absents.
+3. Décompressez **toute l'archive ZIP**, puis lancez **`All_Media_Download.exe`** sans séparer l'exécutable de son dossier **`_internal/`**. Les fichiers **`logo.ico`** et **`logo.jpg`** sont fournis à côté du programme. L'application récupère yt-dlp et FFmpeg au premier lancement s'ils sont absents.
 
 **Prérequis :** Windows, WebView2, connexion Internet et espace disque.
 
-> Le fichier [`dist/All_Media_Download.exe`](./dist/All_Media_Download.exe) présent dans le dépôt est une **ancienne compilation**. Pour obtenir les dernières corrections, utilisez l'artefact de la dernière compilation réussie.
+> **Important :** le fichier [`dist/All_Media_Download.exe`](./dist/All_Media_Download.exe) à la racine de `dist/` est une **ancienne version monofichier**. La version recommandée est désormais distribuée **en dossier**, sans compression UPX, dans le dernier artefact Windows.
 
 ## 🚀 Utilisation et dossiers
 
@@ -79,7 +79,7 @@ python -m pip install pyinstaller pywebview
 python -m PyInstaller --clean --noconfirm All_Media_Download.spec
 ```
 
-Les tests automatisés sont exécutés avant chaque compilation Windows.
+Les tests automatisés sont exécutés avant chaque compilation Windows. Le programme est compilé en dossier (`onedir`) sans UPX pour éviter une extraction complète au démarrage. Conservez le dossier `_internal/` à côté de l'EXE.
 
 ## 🔧 Problèmes courants
 
@@ -87,6 +87,7 @@ Les tests automatisés sont exécutés avant chaque compilation Windows.
 - **Accès refusé :** vérifiez vos droits et, si nécessaire, les cookies.
 - **Conversion impossible :** vérifiez FFmpeg et l'espace disque.
 - **Plantage au lancement :** consultez `%LOCALAPPDATA%\AllMediaDownload\crash_log.txt` et ouvrez un [signalement](https://github.com/anderson76389/All-Download/issues).
+- **Alerte Windows :** l'exécutable téléchargé n'est pas signé numériquement. SmartScreen peut afficher un avertissement de réputation ; une **détection de menace Microsoft Defender** est différente. Ne désactivez pas votre antivirus et ne forcez pas l'exécution en cas de détection : notez le nom exact de la menace et signalez-la avant de lancer l'application.
 
 **Utilisation responsable :** téléchargez uniquement les contenus pour lesquels vous disposez des autorisations nécessaires. Les protections DRM ne sont pas contournées.
 
