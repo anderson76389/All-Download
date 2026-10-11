@@ -7,6 +7,7 @@ on:
       - yt_app.py
       - tests/**
       - All_Media_Download.spec
+      - All_Media_Download-Portable.spec
       - .github/workflows/build-windows.yml
   workflow_dispatch:
 
@@ -15,86 +16,137 @@ permissions:
 
 jobs:
   build:
-    name: Compiler l'application Windows
+    name: Tester et compiler All-Download sous Windows
     runs-on: windows-latest
     steps:
       - name: Recuperer les sources
         uses: actions/checkout@v7
+
       - name: Installer Python
         uses: actions/setup-python@v7
         with:
           python-version: '3.12'
+
       - name: Installer les dependances
         run: |
           python -m pip install --upgrade pip
           python -m pip install pywebview pyinstaller
-      - name: Verifier la syntaxe du programme
+
+      - name: Verifier la syntaxe
         run: python -m py_compile yt_app.py
-      - name: Tester les dossiers et les destinations des téléchargements
+
+      - name: Tester le routage et la preservation des medias
         run: python -m unittest discover -s tests -v
-      - name: Compiler l'application en dossier, sans UPX
+
+      - name: Construire la version en dossier sans UPX
         run: python -m PyInstaller --clean --noconfirm All_Media_Download.spec
-      - name: Placer les logos a cote de l'executable
-        shell: pwsh
-        run: |
-          Copy-Item logo.ico dist/All_Media_Download/logo.ico
-          Copy-Item logo.jpg dist/All_Media_Download/logo.jpg
-      - name: Verifier la distribution Windows
-        shell: pwsh
-        run: |
-          $folder = "dist/All_Media_Download"
-          $needed = @(
-            "$folder/All_Media_Download.exe",
-            "$folder/logo.ico",
-            "$folder/logo.jpg",
-            "$folder/_internal"
-          )
-          foreach ($item in $needed) {
-            if (-not (Test-Path $item)) { throw "Element absent : $item" }
-          }
-          $exe = Get-Item "$folder/All_Media_Download.exe"
-          Write-Output "EXE : $($exe.Length) octets"
-          Write-Output "Lancer l'EXE depuis le dossier extrait, avec _internal."
-      - name: Tester le demarrage de la fenetre Windows
+
+      - name: Construire la version autonome sans UPX
+        run: python -m PyInstaller --clean --noconfirm --workpath build/portable --distpath dist/portable-build All_Media_Download-Portable.spec
+
+      - name: Preparer les logos et les six dossiers dans les deux distributions
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          $folder = (Resolve-Path "dist/All_Media_Download").Path
-          $exe = Join-Path $folder "All_Media_Download.exe"
-          $appDataFolder = Join-Path $env:LOCALAPPDATA "AllMediaDownload"
-          $binFolder = Join-Path $appDataFolder "bin"
+          $folderEdition = "dist/All_Media_Download"
+          $portableEdition = "dist/All-Download-Portable"
+          New-Item -ItemType Directory -Force -Path $portableEdition | Out-Null
+          Copy-Item "dist/portable-build/All_Media_Download.exe" "$portableEdition/All_Media_Download.exe"
+          foreach ($root in @($folderEdition, $portableEdition)) {
+            Copy-Item "logo.ico" "$root/logo.ico"
+            Copy-Item "logo.jpg" "$root/logo.jpg"
+            foreach ($category in @("AUTRES", "VIDÉOS", "CHAÎNES", "AUDIOS", "PLAYLIST", "GIFS")) {
+              $targetDir = Join-Path $root $category
+              New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
+              Copy-Item "$category/.gitkeep" (Join-Path $targetDir ".gitkeep")
+            }
+          }
+
+      - name: Verifier le contenu et les icones des distributions
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          foreach ($root in @("dist/All_Media_Download", "dist/All-Download-Portable")) {
+            $items = @(
+              "$root/All_Media_Download.exe",
+              "$root/logo.ico",
+              "$root/logo.jpg"
+            )
+            foreach ($category in @("AUTRES", "VIDÉOS", "CHAÎNES", "AUDIOS", "PLAYLIST", "GIFS")) {
+              $items += "$root/$category/.gitkeep"
+            }
+            foreach ($item in $items) {
+              if (-not (Test-Path -LiteralPath $item)) { throw "Distribution incomplete : $item" }
+            }
+            Write-Output "Distribution verifiee : $root"
+          }
+          if (-not (Test-Path "dist/All_Media_Download/_internal")) {
+            throw "Dossier _internal manquant dans l'edition en dossier"
+          }
+          if (Test-Path "dist/All-Download-Portable/_internal") {
+            throw "L'edition portable ne doit pas dependre de _internal"
+          }
+
+      - name: Verifier le vrai demarrage des deux EXE
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $binFolder = Join-Path $env:LOCALAPPDATA "AllMediaDownload/bin"
           New-Item -ItemType Directory -Force -Path $binFolder | Out-Null
-          # Eviter les telechargements de binaires dans le test de demarrage.
+          # Ces fichiers factices evitent les telechargements reseau en test CI uniquement.
           New-Item -ItemType File -Force -Path (Join-Path $binFolder "yt-dlp.exe") | Out-Null
           New-Item -ItemType File -Force -Path (Join-Path $binFolder "ffmpeg.exe") | Out-Null
-          $log = Join-Path $appDataFolder "crash_log.txt"
-          $proc = Start-Process -FilePath $exe -WorkingDirectory $folder -PassThru
-          $visible = $false
-          try {
-            for ($i = 0; $i -lt 30; $i++) {
-              Start-Sleep -Seconds 1
-              $proc.Refresh()
-              if ($proc.HasExited) {
-                if (Test-Path $log) { Get-Content $log -Tail 70 }
-                throw "Le programme a quitte au demarrage avec le code $($proc.ExitCode)"
-              }
-              if ($proc.MainWindowHandle -ne 0) {
-                Write-Output "Fenetre Windows detectee : $($proc.MainWindowTitle)"
-                $visible = $true
-                break
+
+          foreach ($root in @("dist/All_Media_Download", "dist/All-Download-Portable")) {
+            $folder = (Resolve-Path $root).Path
+            $exe = Join-Path $folder "All_Media_Download.exe"
+            # Deux demarrages consecutifs pour detecter les plantages au redemarrage.
+            foreach ($attempt in 1..2) {
+              Write-Output "Test ouverture $attempt : $exe"
+              $proc = Start-Process -FilePath $exe -WorkingDirectory $folder -PassThru
+              $visible = $false
+              try {
+                for ($i = 0; $i -lt 45; $i++) {
+                  Start-Sleep -Seconds 1
+                  $proc.Refresh()
+                  if ($proc.HasExited) {
+                    throw "Programme ferme au lancement (code $($proc.ExitCode))"
+                  }
+                  $title = $proc.MainWindowTitle
+                  if ($title -like "*erreur de démarrage*") {
+                    throw "Une boite d'erreur a ete ouverte : $title"
+                  }
+                  if ($title -eq "All Media Download") {
+                    $visible = $true
+                    break
+                  }
+                }
+                if (-not $visible) {
+                  throw "La vraie fenetre All Media Download n'est pas apparue"
+                }
+                Start-Sleep -Seconds 2
+                $proc.Refresh()
+                if ($proc.HasExited) { throw "Fermeture inattendue apres affichage" }
+                Write-Output "Demarrage reel reussi, fenetre : $($proc.MainWindowTitle)"
+              } finally {
+                $proc.Refresh()
+                if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force }
               }
             }
-            if (-not $visible) {
-              if (Test-Path $log) { Get-Content $log -Tail 70 }
-              throw "Le programme est actif, mais aucune fenetre n'est apparue apres 30 secondes."
-            }
-          } finally {
-            $proc.Refresh()
-            if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force }
           }
-      - name: Publier le dossier complet a tester
+
+      - name: Publier l'edition portable recommandee
         uses: actions/upload-artifact@v7
         with:
-          name: All-Download-Windows
+          name: All-Download-Portable-Windows
+          path: dist/All-Download-Portable/
+          include-hidden-files: true
+          if-no-files-found: error
+
+      - name: Publier l'edition en dossier (alternative)
+        uses: actions/upload-artifact@v7
+        with:
+          name: All-Download-Dossier-Windows
           path: dist/All_Media_Download/
+          include-hidden-files: true
           if-no-files-found: error
