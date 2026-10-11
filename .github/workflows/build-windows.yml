@@ -112,25 +112,33 @@ jobs:
                   if ($proc.HasExited) {
                     throw "Programme ferme au lancement (code $($proc.ExitCode))"
                   }
-                  $title = $proc.MainWindowTitle
-                  if ($title -like "*erreur de démarrage*") {
-                    throw "Une boite d'erreur a ete ouverte : $title"
+                  # En mode --onefile, le bootloader PyInstaller lance un
+                  # processus enfant qui porte la fenetre. Le parent reste
+                  # volontairement sans MainWindowTitle.
+                  $copies = @(Get-Process -Name "All_Media_Download" -ErrorAction SilentlyContinue)
+                  if (@($copies | Where-Object { $_.MainWindowTitle -like "*erreur de démarrage*" }).Count -gt 0) {
+                    throw "Une fenetre d'erreur est apparue"
                   }
-                  if ($title -eq "All Media Download") {
+                  if (@($copies | Where-Object { $_.MainWindowTitle -eq "All Media Download" }).Count -gt 0) {
                     $visible = $true
                     break
                   }
                 }
                 if (-not $visible) {
+                  Get-Process -Name "All_Media_Download" -ErrorAction SilentlyContinue |
+                    Select-Object Id, ProcessName, MainWindowTitle, WorkingSet64 | Format-Table | Out-String | Write-Output
+                  $crashLog = Join-Path $env:LOCALAPPDATA "AllMediaDownload/crash_log.txt"
+                  if (Test-Path $crashLog) { Get-Content $crashLog -Tail 50 }
                   throw "La vraie fenetre All Media Download n'est pas apparue"
                 }
                 Start-Sleep -Seconds 2
                 $proc.Refresh()
                 if ($proc.HasExited) { throw "Fermeture inattendue apres affichage" }
-                Write-Output "Demarrage reel reussi, fenetre : $($proc.MainWindowTitle)"
+                Write-Output "Demarrage reel reussi : All Media Download"
               } finally {
-                $proc.Refresh()
-                if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force }
+                # Arreter aussi l'enfant de l'edition monofichier.
+                Get-Process -Name "All_Media_Download" -ErrorAction SilentlyContinue |
+                  Stop-Process -Force -ErrorAction SilentlyContinue
               }
             }
           }
