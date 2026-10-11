@@ -86,18 +86,65 @@ FFMPEG_URL = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/f
 
 DEFAULT_DOWNLOAD_BASE = os.path.join(os.path.expanduser("~"), "Downloads", "MediaDownloader")
 
-# Ces catégories correspondent à la structure réelle utilisée par start_downloads.
-# Les créer dès le lancement garantit leur présence sans toucher aux fichiers existants.
-DOWNLOAD_CATEGORIES = ("AUTRES", "VIDÉOS", "CHAÎNES", "AUDIO", "PLAYLIST")
+# Dossiers locaux, séparés du dépôt GitHub. Ne jamais écraser les anciens médias.
+DOWNLOAD_CATEGORIES = ("AUTRES", "VIDÉOS", "CHAÎNES", "AUDIOS", "PLAYLIST", "GIFS")
 
 def ensure_media_directories(root):
     os.makedirs(root, exist_ok=True)
+
+    # Mise à niveau AUDIO -> AUDIOS en conservant les téléchargements existants.
+    old_dir = os.path.join(root, "AUDIO")
+    audio_dir = os.path.join(root, "AUDIOS")
+    if os.path.isdir(old_dir):
+        if not os.path.exists(audio_dir):
+            try:
+                os.rename(old_dir, audio_dir)
+            except OSError:
+                pass
+        if os.path.isdir(old_dir):
+            # Si AUDIOS existe déjà, fusionner sans écraser les fichiers homonymes.
+            for current_dir, _subdirs, files in os.walk(old_dir, topdown=False):
+                relative_dir = os.path.relpath(current_dir, old_dir)
+                destination = audio_dir if relative_dir == "." else os.path.join(audio_dir, relative_dir)
+                for filename in files:
+                    source = os.path.join(current_dir, filename)
+                    target = os.path.join(destination, filename)
+                    if not os.path.exists(target):
+                        try:
+                            os.makedirs(destination, exist_ok=True)
+                            os.rename(source, target)
+                        except OSError:
+                            pass
+                try:
+                    os.rmdir(current_dir)  # Supprime uniquement les dossiers vides.
+                except OSError:
+                    pass
+
     for category in DOWNLOAD_CATEGORIES:
         os.makedirs(os.path.join(root, category), exist_ok=True)
 
 def sanitize_filename(name):
     clean = re.sub(r'[\\/*?:"<>|]', "_", str(name)).strip()
     return clean if clean else "Media_Folder"
+
+def get_media_download_dir(root, item):
+    """Destination unique pour l'interface et les téléchargements."""
+    url = str(item.get("url") or "")
+    mode = item.get("mode", "Vidéo")
+    is_yt = "youtube.com" in url.lower() or "youtu.be" in url.lower()
+    direct_gif = bool(item.get("is_direct_download")) and urllib.parse.urlparse(url).path.lower().endswith(".gif")
+
+    if mode == "GIF" or direct_gif:
+        return os.path.join(root, "GIFS")
+    if is_yt and item.get("is_channel") and item.get("channel_title"):
+        return os.path.join(root, "CHAÎNES", sanitize_filename(item["channel_title"]))
+    if is_yt and item.get("is_playlist") and item.get("playlist_title"):
+        return os.path.join(root, "PLAYLIST", sanitize_filename(item["playlist_title"]))
+    if mode == "Audio":
+        return os.path.join(root, "AUDIOS")
+    if is_yt:
+        return os.path.join(root, "VIDÉOS")
+    return os.path.join(root, "AUTRES")
 
 def kill_process_tree(pid):
     try:
@@ -1786,9 +1833,18 @@ HTML_PAGE = """<!DOCTYPE html>
         }
 
         let is_yt = Boolean(item.url && (item.url.toLowerCase().indexOf("youtube.com") !== -1 || item.url.toLowerCase().indexOf("youtu.be") !== -1));
+        let is_direct_gif = item.is_direct_download && /\\.gif(?:[?#]|$)/i.test(item.url || '');
         let destInfo = 'Dossier: /AUTRES';
-        if (is_yt) {
-          destInfo = (item.mode === 'Audio') ? 'Dossier: /AUDIO' : 'Dossier: /VIDÉOS';
+        if (item.mode === 'GIF' || is_direct_gif) {
+          destInfo = 'Dossier: /GIFS';
+        } else if (is_yt && item.is_channel && item.channel_title) {
+          destInfo = 'Dossier: /CHAÎNES';
+        } else if (is_yt && item.is_playlist && item.playlist_title) {
+          destInfo = 'Dossier: /PLAYLIST';
+        } else if (item.mode === 'Audio') {
+          destInfo = 'Dossier: /AUDIOS';
+        } else if (is_yt) {
+          destInfo = 'Dossier: /VIDÉOS';
         }
 
         card.innerHTML = `
@@ -2314,19 +2370,8 @@ class DownloaderAPI:
                 is_playlist = item.get("is_playlist", False)
                 playlist_title = item.get("playlist_title")
 
-                # Routage des dossiers
-                if not is_yt:
-                    target_dir = os.path.join(self.download_folder, "AUTRES")
-                else:
-                    if is_channel and channel_title:
-                        target_dir = os.path.join(self.download_folder, "CHAÎNES", sanitize_filename(channel_title))
-                    elif is_playlist and playlist_title:
-                        target_dir = os.path.join(self.download_folder, "PLAYLIST", sanitize_filename(playlist_title))
-                    elif mode == "Audio":
-                        target_dir = os.path.join(self.download_folder, "AUDIO")
-                    else:
-                        target_dir = os.path.join(self.download_folder, "VIDÉOS")
-
+                # Routage centralisé : GIFS, AUDIOS, CHAÎNES, PLAYLIST, VIDÉOS, AUTRES.
+                target_dir = get_media_download_dir(self.download_folder, item)
                 os.makedirs(target_dir, exist_ok=True)
 
                 # Téléchargement direct d'image / GIF Pinterest
