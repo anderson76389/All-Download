@@ -41,6 +41,32 @@ class DownloadFolderTests(unittest.TestCase):
             for category in ("AUTRES", "VIDÉOS", "CHAÎNES", "AUDIOS", "PLAYLIST", "GIFS")
         ))
 
+
+    def test_portable_exe_uses_six_folders_next_to_exe(self):
+        yt_app.ensure_media_directories(self.root)
+        with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
+            yt_app.sys, "executable", os.path.join(self.root, "All_Media_Download.exe")
+        ):
+            self.assertEqual(yt_app.choose_initial_download_folder({}), self.root)
+
+    def test_custom_destination_is_preserved(self):
+        yt_app.ensure_media_directories(self.root)
+        other = os.path.join(self.root, "Personnalise")
+        with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
+            yt_app.sys, "executable", os.path.join(self.root, "All_Media_Download.exe")
+        ):
+            self.assertEqual(
+                yt_app.choose_initial_download_folder({"download_folder": other}), other
+            )
+
+    def test_no_portable_folders_keeps_historical_destination(self):
+        with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
+            yt_app.sys, "executable", os.path.join(self.root, "All_Media_Download.exe")
+        ):
+            self.assertEqual(
+                yt_app.choose_initial_download_folder({}), yt_app.DEFAULT_DOWNLOAD_BASE
+            )
+
     def test_legacy_audio_migrates_without_losing_files(self):
         old_dir = os.path.join(self.root, "AUDIO")
         os.makedirs(os.path.join(old_dir, "album"))
