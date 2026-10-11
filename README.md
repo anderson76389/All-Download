@@ -4,9 +4,9 @@
 
 # ALL-DOWNLOAD
 
-**Vos vidéos, musiques, GIF et collections de médias. Une seule application.**
+**⚡ Tous vos médias, un seul endroit. La puissance du téléchargement, sans complexité.**
 
-Téléchargeur multimédia pour **Windows**, avec une interface graphique en français, basé sur **yt-dlp** et **FFmpeg**.
+**Vidéos haute définition, musique, GIF, playlists et chaînes :** collez votre lien, choisissez la qualité et récupérez les contenus compatibles depuis une interface en français. Propulsé par **yt-dlp** et **FFmpeg**, pour **Windows**.
 
 [![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/anderson76389/All-Download)
 [![Python](https://img.shields.io/badge/Python-Application-3776AB?style=for-the-badge&logo=python&logoColor=white)](./yt_app.py)
