@@ -24,7 +24,7 @@ Téléchargeur multimédia **Windows**, avec interface en français, propulsé p
 - **Audio** — extraction et conversion en FLAC, M4A ou MP3.
 - **GIF** — conversion de vidéos et récupération de GIF directs compatibles.
 - **Playlists et chaînes** — téléchargement groupé, avec sélection des éléments.
-- **File d'attente** — progression, pause, reprise, annulation et journaux.
+- **File d'attente** — plusieurs liens, suivi de la progression et journaux.
 - **Personnalisation** — miniatures, métadonnées, thèmes clair/sombre/OLED et normalisation audio.
 - **Options avancées** — SponsorBlock, cookies, proxy et paramètres d'extracteur.
 
