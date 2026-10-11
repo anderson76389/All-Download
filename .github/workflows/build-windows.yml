@@ -1,0 +1,39 @@
+name: Build All-Download (Windows)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - yt_app.py
+      - All_Media_Download.spec
+      - .github/workflows/build-windows.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Compiler l'application Windows
+    runs-on: windows-latest
+    steps:
+      - name: Recuperer les sources
+        uses: actions/checkout@v4
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Installer les dependances
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pywebview pyinstaller
+      - name: Verifier la syntaxe du programme
+        run: python -m py_compile yt_app.py
+      - name: Compiler le fichier EXE
+        run: python -m PyInstaller --clean --noconfirm All_Media_Download.spec
+      - name: Publier l'executable a tester
+        uses: actions/upload-artifact@v4
+        with:
+          name: All-Download-Windows
+          path: dist/All_Media_Download.exe
+          if-no-files-found: error
