@@ -1,0 +1,21 @@
+# Artefacts générés automatiquement : ne pas publier les intermédiaires
+/build/
+__pycache__/
+*.py[cod]
+*.tmp
+*.log
+
+# Environnements, configuration privée, cookies de connexion
+.venv/
+venv/
+.env
+.env.*
+config.json
+cookies.txt
+*.cookies
+
+# Outils récupérés automatiquement par l'application
+/yt-dlp.exe
+/ffmpeg.exe
+/ffprobe.exe
+/ffmpeg.zip
