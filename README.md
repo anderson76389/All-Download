@@ -155,7 +155,7 @@ All-Download/
     └── build-windows.yml       # Compilation Windows automatique
 ```
 
-Les fichiers `.gitkeep` permettent à GitHub de conserver ces dossiers même sans aucun média. **Sur Windows, l'application recrée automatiquement les cinq catégories dans son dossier de téléchargement** (par défaut `%USERPROFILE%\\Downloads\\MediaDownloader`) sans effacer les contenus existants.
+Les fichiers `.gitkeep` permettent à GitHub de conserver ces dossiers même sans aucun média. **Sur Windows, l'application recrée automatiquement les cinq catégories dans son dossier de téléchargement** (par défaut `%USERPROFILE%\Downloads\MediaDownloader`) sans effacer les contenus existants.
 
 Les fichiers temporaires de compilation `build/` sont exclus de Git : ils seront recréés localement par PyInstaller si nécessaire. Les versions Windows recompilées sont disponibles dans les **[GitHub Actions](https://github.com/anderson76389/All-Download/actions/workflows/build-windows.yml)**.
 
