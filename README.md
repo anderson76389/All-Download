@@ -101,7 +101,7 @@ Le dossier de destination par défaut est :
 %USERPROFILE%\Downloads\MediaDownloader
 ```
 
-Les téléchargements YouTube sont organisés suivant leur type dans des sous-dossiers tels que `VIDÉOS/`, `AUDIO/`, `PLAYLIST/` et `CHAÎNES/`. Les autres plateformes utilisent notamment `AUTRES/`. Le répertoire peut être adapté dans l'application.
+Les fichiers sont classés automatiquement dans **six dossiers** : `VIDÉOS/` (vidéos YouTube), `AUDIOS/` (audio individuel), `GIFS/` (GIF convertis ou téléchargés directement), `CHAÎNES/` et `PLAYLIST/` (ensembles YouTube) et `AUTRES/` (autres médias). **Les GIF sont toujours prioritaires**, puis les chaînes et playlists YouTube, puis les fichiers audio. Les téléchargements d'autres plateformes peuvent être rangés dans `AUDIOS/` ou `GIFS/` selon leur type. Le répertoire peut être adapté dans l'application.
 
 ## ⚙️ Réglages avancés
 
@@ -144,9 +144,10 @@ All-Download/
 ├── logo.jpg                    # Visuel de l'application
 ├── logo.ico                    # Icône Windows
 ├── .gitignore                  # Fichiers locaux et temporaires à exclure
-├── AUDIO/.gitkeep              # Dossier réservé aux fichiers audio
-├── AUTRES/.gitkeep             # Médias d'autres plateformes
+├── AUDIOS/.gitkeep             # Fichiers audio
+├── AUTRES/.gitkeep             # Autres médias
 ├── CHAÎNES/.gitkeep            # Vidéos regroupées par chaîne
+├── GIFS/.gitkeep               # GIF convertis et GIF directs
 ├── PLAYLIST/.gitkeep           # Téléchargements des playlists
 ├── VIDÉOS/.gitkeep             # Vidéos individuelles
 ├── dist/
@@ -155,7 +156,7 @@ All-Download/
     └── build-windows.yml       # Compilation Windows automatique
 ```
 
-Les fichiers `.gitkeep` permettent à GitHub de conserver ces dossiers même sans aucun média. **Sur Windows, l'application recrée automatiquement les cinq catégories dans son dossier de téléchargement** (par défaut `%USERPROFILE%\Downloads\MediaDownloader`) sans effacer les contenus existants.
+Les fichiers `.gitkeep` permettent à GitHub de conserver ces dossiers même sans aucun média. **Sur Windows, l'application crée automatiquement les six catégories dans son dossier de téléchargement** (par défaut `%USERPROFILE%\Downloads\MediaDownloader`). Au premier démarrage de la version mise à jour, les fichiers de l'ancien dossier `AUDIO/` sont déplacés vers `AUDIOS/` si possible, **sans écraser les doublons** ; en cas de conflit, les fichiers concernés restent dans `AUDIO/`.
 
 Les fichiers temporaires de compilation `build/` sont exclus de Git : ils seront recréés localement par PyInstaller si nécessaire. Les versions Windows recompilées sont disponibles dans les **[GitHub Actions](https://github.com/anderson76389/All-Download/actions/workflows/build-windows.yml)**.
 
