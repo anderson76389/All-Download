@@ -91,6 +91,29 @@ DEFAULT_DOWNLOAD_BASE = os.path.join(os.path.expanduser("~"), "Downloads", "Medi
 # Dossiers locaux, séparés du dépôt GitHub. Ne jamais écraser les anciens médias.
 DOWNLOAD_CATEGORIES = ("AUTRES", "VIDÉOS", "CHAÎNES", "AUDIOS", "PLAYLIST", "GIFS")
 
+def choose_initial_download_folder(config):
+    """Sur une edition portable, utiliser les six dossiers fournis a cote de l'EXE.
+
+    Respecter toujours le repertoire deja choisi dans la configuration.
+    Si le repertoire de l'application n'est pas accessible en ecriture,
+    conserver le comportement historique (Downloads/MediaDownloader).
+    """
+    saved = config.get("download_folder")
+    if isinstance(saved, str) and saved.strip():
+        return saved
+
+    if getattr(sys, "frozen", False):
+        executable_dir = os.path.dirname(os.path.abspath(sys.executable))
+        if all(os.path.isdir(os.path.join(executable_dir, d)) for d in DOWNLOAD_CATEGORIES):
+            try:
+                import tempfile
+                with tempfile.TemporaryFile(dir=executable_dir):
+                    pass
+                return executable_dir
+            except OSError:
+                pass
+    return DEFAULT_DOWNLOAD_BASE
+
 def ensure_media_directories(root):
     os.makedirs(root, exist_ok=True)
 
@@ -2054,7 +2077,7 @@ class DownloaderAPI:
     def __init__(self):
         self.window = None
         self.config = self._load_config()
-        self.download_folder = self.config.get("download_folder", DEFAULT_DOWNLOAD_BASE)
+        self.download_folder = choose_initial_download_folder(self.config)
         ensure_media_directories(self.download_folder)
         self.is_cancelled = False
         self.is_paused = False
