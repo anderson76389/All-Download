@@ -2624,8 +2624,9 @@ def setup_binaries():
 
 if __name__ == '__main__':
     try:
-        threading.Thread(target=setup_binaries, daemon=True).start()
-
+        # Afficher l'interface avant les verifications de yt-dlp et FFmpeg.
+        # webview.start(func=...) demarre la fonction dans un thread seulement
+        # une fois la boucle graphique initialisee (pas en concurrence avec CLR).
         api = DownloaderAPI()
         window = webview.create_window(
             'All Media Download',
@@ -2638,9 +2639,9 @@ if __name__ == '__main__':
         )
         api.window = window
 
-        # Laisser pywebview se fermer normalement et conserver
-        # les exceptions au lieu de les masquer lors du lancement.
-        webview.start(debug=False)
+        # Conserver le moteur Windows deja utilise et les reglages performants.
+        # L'initialisation des binaires se fait en arriere-plan apres le GUI.
+        webview.start(func=setup_binaries, debug=False)
     except Exception as exc:
         handle_exception(type(exc), exc, exc.__traceback__)
         try:
