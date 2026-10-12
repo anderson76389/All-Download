@@ -3,21 +3,22 @@ name: Build All-Download (Windows)
 on:
   push:
     branches: [main]
-    paths:
-      - yt_app.py
-      - tests/**
-      - All_Media_Download.spec
-      - All_Media_Download-Portable.spec
-      - .github/workflows/build-windows.yml
   workflow_dispatch:
 
+# Une seule publication a la fois : les boutons pointent toujours
+# vers la derniere Release ayant passe TOUS les tests.
+concurrency:
+  group: all-download-windows-release
+  cancel-in-progress: true
+
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
     name: Tester et compiler All-Download sous Windows
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - name: Recuperer les sources
         uses: actions/checkout@v7
@@ -145,7 +146,32 @@ jobs:
             }
           }
 
-      - name: Publier l'edition portable recommandee
+      - name: Fabriquer et verifier les deux ZIP complets avec les sources GitHub
+        run: python scripts/build_release_archives.py --output release-archives
+
+      - name: Publier la Release Windows et les liens permanents du README
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $tag = "build-$env:GITHUB_RUN_NUMBER"
+          $portable = "release-archives/All-Download-Portable-Windows.zip"
+          $classic = "release-archives/All-Download-Classique-Windows.zip"
+          $notes = @"
+          All-Download pour Windows.
+          - Portable recommande : un seul EXE, sans dossier _internal.
+          - Classique : EXE avec _internal (peut rencontrer un blocage Python.Runtime.dll sur certains PC).
+          - Les deux ZIP contiennent les logos, les six dossiers multimédias et l'ensemble des fichiers GitHub suivis dans Code-source/.
+          - Publication uniquement apres tests de demarrage Windows et tests Python.
+          - Executables non signes : SmartScreen peut afficher un avertissement de reputation.
+          "@
+          gh release create $tag $portable $classic --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title "All-Download Windows - Build $env:GITHUB_RUN_NUMBER" --notes "$notes" --latest
+          if ($LASTEXITCODE -ne 0) { throw "Publication de la Release impossible" }
+          Write-Output "ZIP Portable permanent : https://github.com/$env:GITHUB_REPOSITORY/releases/latest/download/All-Download-Portable-Windows.zip"
+          Write-Output "ZIP Classique permanent : https://github.com/$env:GITHUB_REPOSITORY/releases/latest/download/All-Download-Classique-Windows.zip"
+
+      - name: Conserver la distribution Portable comme artefact Actions
         uses: actions/upload-artifact@v7
         with:
           name: All-Download-Portable-Windows
@@ -153,7 +179,7 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
 
-      - name: Publier l'edition en dossier (alternative)
+      - name: Conserver la distribution Classique comme artefact Actions
         uses: actions/upload-artifact@v7
         with:
           name: All-Download-Dossier-Windows
