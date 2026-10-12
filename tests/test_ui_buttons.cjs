@@ -37,6 +37,10 @@ const playlist = {
 };
 const backend = {
   get_app_settings: () => ({ ...defaults }),
+  save_quick_selector_value: (kind,value) => {
+    events.push(['save_quick_selector_value',kind,value]);
+    return {success:true,value};
+  },
   get_download_folder: () => activeDownloadFolder,
   get_default_download_folder: () => defaultDownloadFolder,
   browse_download_folder: () => {events.push(['browse_download_folder']);return dialogSelection;},
@@ -132,13 +136,43 @@ async function run() {
   action('#btnSortieAudio');
   assert.equal(doc.getElementById('sortieAudioFields').style.display,'block');
   doc.getElementById('setTheme').value='dark_pure';
+  doc.getElementById('setExtraSelector').value='format';
+  doc.getElementById('setNotify').value='always';
   action('[onclick="saveSettings()"]');
   await flush();
   const saved=events.findLast(x=>x[0]==='save_app_settings');
   assert.equal(saved[1].sortie_type,'audio');
   assert.equal(saved[1].theme,'dark_pure');
+  assert.equal(saved[1].notify,'always');
+  assert.equal(saved[1].extra_selector,'format');
   assert.equal(saved[2],'D:\\Mes Médias\\All-Download');
   assert.equal(doc.getElementById('viewMain').style.display,'flex');
+  win.selectGlobalMode('Vidéo');
+  assert.equal(doc.getElementById('extraQuickWrap').style.display,'flex');
+  assert.equal(doc.getElementById('extraQuickValue').value,'MKV');
+  doc.getElementById('extraQuickValue').value='MP4';
+  doc.getElementById('extraQuickValue').dispatchEvent(new win.Event('change',{bubbles:true}));
+  await flush();
+  assert.deepEqual(events.findLast(x=>x[0]==='save_quick_selector_value'),
+    ['save_quick_selector_value','format','MP4']);
+
+  // Tester aussi le mode fréquence audio, réellement lié à la sauvegarde.
+  action('.btn-settings');
+  await flush();
+  action('#tabBtnAppli');
+  doc.getElementById('setExtraSelector').value='audio_rate';
+  action('[onclick="saveSettings()"]');
+  await flush();
+  win.selectGlobalMode('Audio');
+  assert.equal(doc.getElementById('extraQuickWrap').style.display,'flex');
+  doc.getElementById('extraQuickValue').value='48000';
+  doc.getElementById('extraQuickValue').dispatchEvent(new win.Event('change',{bubbles:true}));
+  await flush();
+  assert.deepEqual(events.findLast(x=>x[0]==='save_quick_selector_value'),
+    ['save_quick_selector_value','audio_rate','48000']);
+  win.showAppToast('Téléchargement terminé');
+  assert.match(doc.getElementById('appToast').textContent,/terminé/);
+  assert.ok(doc.getElementById('appToast').classList.contains('visible'));
 
   // Le champ doit permettre de revenir au chemin par défaut.
   action('.btn-settings');
@@ -199,7 +233,7 @@ async function run() {
   assert.equal(win.eval('queue.length'),1);
   assert.equal(doc.querySelectorAll('.media-card').length,1);
   win.setCardMode(0,'Audio');
-  assert.equal(win.eval('queue[0].selectedQuality'),'FLAC');
+  assert.equal(win.eval('queue[0].selectedQuality'),'M4A');
   assert.match(doc.querySelector('.media-card').textContent,/AUDIOS/);
   win.setCardQuality(0,'M4A','M4A (Format natif)');
   assert.equal(win.eval('queue[0].selectedQuality'),'M4A');
