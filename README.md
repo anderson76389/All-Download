@@ -21,9 +21,9 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 
 ### 📥 TÉLÉCHARGER ALL-DOWNLOAD
 
-<a href="https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Portable-Windows.zip"><img src="https://img.shields.io/badge/⬇_TÉLÉCHARGER-WINDOWS_PORTABLE-2563EB?style=for-the-badge&logo=windows11&logoColor=white" alt="Télécharger Windows Portable"></a>
+<a href="https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Portable-Windows.zip"><img src="https://img.shields.io/badge/T%C3%89L%C3%89CHARGER-WINDOWS%20PORTABLE-2563EB?style=for-the-badge&logo=windows11&logoColor=white" alt="Télécharger Windows Portable"></a>
 &nbsp;
-<a href="https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Classique-Windows.zip"><img src="https://img.shields.io/badge/⬇_TÉLÉCHARGER-WINDOWS_CLASSIQUE-374151?style=for-the-badge&logo=windows11&logoColor=white" alt="Télécharger Windows Classique"></a>
+<a href="https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Classique-Windows.zip"><img src="https://img.shields.io/badge/T%C3%89L%C3%89CHARGER-WINDOWS%20CLASSIQUE-374151?style=for-the-badge&logo=windows11&logoColor=white" alt="Télécharger Windows Classique"></a>
 
 **Deux téléchargements directs en ZIP, toujours à jour.**
 
@@ -49,41 +49,11 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 
 ## 💻 Deux versions Windows, le même All-Download
 
-<table>
-<tr>
-<td width="50%" valign="top">
-
-### 🧳 Portable
-
-**À emporter partout, sans installation.**
-
-- Téléchargez le ZIP **Windows Portable**.
-- Décompressez-le dans un dossier de votre choix.
-- Lancez `All_Media_Download.exe`.
-
-✅ Exécutable autonome  
-✅ Pas de dossier `_internal`  
-✅ Médias classés près du logiciel si le dossier est accessible en écriture
-
-</td>
-<td width="50%" valign="top">
-
-### 🖥️ Classique
-
-**Une véritable application installée sur Windows.**
-
-- Téléchargez le ZIP **Windows Classique**.
-- Décompressez-le et lancez `All-Download-Setup.exe`.
-- Retrouvez All-Download dans le **menu Démarrer**.
-
-✅ Installation par utilisateur  
-✅ Raccourci Bureau en option  
-✅ Désinstallation depuis Windows  
-✅ Médias conservés hors du dossier d'installation
-
-</td>
-</tr>
-</table>
+| 🧳 **PORTABLE** | 🖥️ **CLASSIQUE** |
+|---|---|
+| **Sans installation**, à emporter partout. | **Installateur Windows**, avec intégration au système. |
+| ① Téléchargez le ZIP Portable.<br>② Extrayez-le où vous voulez.<br>③ Lancez `All_Media_Download.exe`. | ① Téléchargez le ZIP Classique.<br>② Extrayez-le et lancez `All-Download-Setup.exe`.<br>③ Ouvrez l'application depuis le menu Démarrer. |
+| ✅ Exécutable autonome<br>✅ Aucun dossier `_internal`<br>✅ Médias à côté de l'EXE si le dossier est accessible en écriture | ✅ Installation sans droits administrateur<br>✅ Raccourci Bureau facultatif<br>✅ Désinstallation Windows<br>✅ Médias séparés de l'installation |
 
 **Important :** la version Classique actuelle utilise le même moteur autonome que la Portable. Elle **ne repose plus sur l'ancien dossier `_internal`** qui pouvait provoquer l'erreur `Python.Runtime.dll` sur certains PC.
 
