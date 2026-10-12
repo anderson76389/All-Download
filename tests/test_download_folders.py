@@ -50,6 +50,19 @@ class DownloadFolderTests(unittest.TestCase):
         ):
             self.assertEqual(yt_app.choose_initial_download_folder({}), self.root)
 
+    def test_installed_version_saves_downloads_outside_application_folder(self):
+        # Les six dossiers presents a cote de l'EXE installe ne doivent pas
+        # recevoir les medias : le desinstalleur pourrait les supprimer.
+        yt_app.ensure_media_directories(self.root)
+        with open(os.path.join(self.root, ".all-download-installed"), "w", encoding="utf-8") as f:
+            f.write("installed\n")
+        with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
+            yt_app.sys, "executable", os.path.join(self.root, "All_Media_Download.exe")
+        ):
+            self.assertEqual(
+                yt_app.choose_initial_download_folder({}), yt_app.DEFAULT_DOWNLOAD_BASE
+            )
+
     def test_custom_destination_is_preserved(self):
         yt_app.ensure_media_directories(self.root)
         other = os.path.join(self.root, "Personnalise")
