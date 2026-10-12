@@ -17,6 +17,9 @@ const defaults = {
 };
 
 const events = [];
+let activeDownloadFolder = 'C:\\Users\\Test\\Downloads\\All-Download-Medias';
+const defaultDownloadFolder = activeDownloadFolder;
+let dialogSelection = 'D:\\Mes Médias\\All-Download';
 const jsErrors = [];
 const vc = new VirtualConsole();
 vc.on('jsdomError', e => jsErrors.push(e.message));
@@ -34,7 +37,15 @@ const playlist = {
 };
 const backend = {
   get_app_settings: () => ({ ...defaults }),
-  save_app_settings: settings => { events.push(['save_app_settings', settings]); return true; },
+  get_download_folder: () => activeDownloadFolder,
+  get_default_download_folder: () => defaultDownloadFolder,
+  browse_download_folder: () => {events.push(['browse_download_folder']);return dialogSelection;},
+  save_app_settings: (settings,folder) => {
+    events.push(['save_app_settings', settings,folder]);
+    if(folder.includes('INACCESSIBLE')) return {success:false,error:'Dossier inaccessible'};
+    activeDownloadFolder = folder;
+    return {success:true,path:folder};
+  },
   get_auth_config: () => ({cookie_file:'',cookie_browser:'none'}),
   save_auth_config: (file, browser) => { events.push(['save_auth_config', file, browser]); return true; },
   select_cookie_file: () => 'C:\\test\\cookies.txt',
@@ -104,6 +115,15 @@ async function run() {
   assert.equal(doc.getElementById('viewSettings').style.display,'flex');
   assert.equal(doc.getElementById('setVideoFormat').value,'MKV');
   assert.equal(doc.getElementById('setAudioFormat').value,'M4A');
+  assert.equal(doc.getElementById('setDownloadFolder').value,defaultDownloadFolder);
+  action('[onclick="browseDownloadFolder()"]');
+  await flush();
+  assert.equal(doc.getElementById('setDownloadFolder').value,'D:\\Mes Médias\\All-Download');
+  // Annuler la boîte de dialogue ne change rien.
+  dialogSelection = null;
+  action('[onclick="browseDownloadFolder()"]');
+  await flush();
+  assert.equal(doc.getElementById('setDownloadFolder').value,'D:\\Mes Médias\\All-Download');
   action('#tabBtnAppli');
   assert.equal(doc.getElementById('setSectionAppli').style.display,'flex');
   action('#tabBtnReseau');
@@ -117,7 +137,29 @@ async function run() {
   const saved=events.findLast(x=>x[0]==='save_app_settings');
   assert.equal(saved[1].sortie_type,'audio');
   assert.equal(saved[1].theme,'dark_pure');
+  assert.equal(saved[2],'D:\\Mes Médias\\All-Download');
   assert.equal(doc.getElementById('viewMain').style.display,'flex');
+
+  // Le champ doit permettre de revenir au chemin par défaut.
+  action('.btn-settings');
+  await flush();
+  assert.equal(doc.getElementById('setDownloadFolder').value,activeDownloadFolder);
+  action('[onclick="resetDownloadFolder()"]');
+  await flush();
+  assert.equal(doc.getElementById('setDownloadFolder').value,defaultDownloadFolder);
+  action('[onclick="saveSettings()"]');
+  await flush();
+  assert.equal(events.findLast(x=>x[0]==='save_app_settings')[2],defaultDownloadFolder);
+
+  // En cas de dossier inaccessible, ne pas fermer les paramètres.
+  action('.btn-settings');
+  await flush();
+  doc.getElementById('setDownloadFolder').value='Z:\\INACCESSIBLE';
+  action('[onclick="saveSettings()"]');
+  await flush();
+  assert.equal(doc.getElementById('viewSettings').style.display,'flex');
+  assert.match(doc.getElementById('downloadFolderError').textContent,/inaccessible/i);
+  action('[onclick="cancelSettings()"]');
 
   // Menus auth et cookies, sélection d'un navigateur, sauvegarde.
   action('[title="Authentification / Cookies"]');
