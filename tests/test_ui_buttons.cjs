@@ -166,8 +166,12 @@ async function run() {
   action('.media-card [title="Télécharger"]');
   await flush();
   assert.equal(events.findLast(x=>x[0]==='start_downloads')[1][0].mode,'GIF');
+  // Vérifier aussi les URL qui contiennent une apostrophe.
+  const quotedUrl = "https://example.com/music?title=l'amour";
+  win.eval('queue[0]').url = quotedUrl;
+  win.renderCards();
   action('.media-card [title="Ouvrir dans le navigateur"]');
-  assert.equal(events.findLast(x=>x[0]==='open_external')[1],media.url);
+  assert.equal(events.findLast(x=>x[0]==='open_external')[1],quotedUrl);
   action('.media-card [title="Informations"]');
   assert.equal(doc.getElementById('viewLogs').style.display,'flex');
   action('[title="Ouvrir le dossier"]');
