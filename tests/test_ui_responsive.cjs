@@ -104,6 +104,84 @@ assert.ok(executablePath, 'Microsoft Edge x64 introuvable sur le runner Windows'
     }
     console.log('OK centrage et traits de separation verifies dans Edge (1334 px, 3 themes)');
 
+    // Audit des 3 themes en situation reelle, y compris toutes les lignes fines.
+    // Les elements restent dans le DOM quel que soit l'ecran affiché.
+    const themes = [
+      {id:'light',name:'theme-light',body:'rgb(248, 250, 252)',footer:'rgb(255, 255, 255)',
+       divider:'rgb(203, 213, 225)',accent:'rgb(124, 58, 237)',card:'rgb(255, 255, 255)'},
+      {id:'dark',name:'theme-dark',body:'rgb(20, 20, 20)',footer:'rgb(28, 28, 28)',
+       divider:'rgb(59, 59, 59)',accent:'rgb(0, 230, 118)',card:'rgb(33, 33, 33)'},
+      {id:'dark_pure',name:'theme-dark_pure',body:'rgb(0, 0, 0)',footer:'rgb(0, 0, 0)',
+       divider:'rgb(45, 45, 45)',accent:'rgb(0, 230, 118)',card:'rgb(0, 0, 0)'}
+    ];
+    for (const theme of themes) {
+      await page.evaluate(id => applyTheme(id), theme.id);
+      const colors = await page.evaluate(() => {
+        const rule = (selector,property) => getComputedStyle(document.querySelector(selector)).getPropertyValue(property).trim();
+        return {
+          theme:document.body.className,
+          body:rule('body','background-color'),
+          footer:rule('.footer','background-color'),
+          status:rule('.status-bar','background-color'),
+          card:rule('.media-card','background-color'),
+          form:rule('.setting-input','background-color'),
+          controls:rule('.center-cluster','background-color'),
+          tools:rule('.tools-cluster','background-color'),
+          popup:rule('.popover-menu','background-color'),
+          contextMenu:rule('.context-menu','background-color'),
+          log:rule('.terminal-box','background-color'),
+          secret:rule('.secret-box','background-color'),
+          headLine:rule('.header','border-bottom-color'),
+          footLine:rule('.footer','border-top-color'),
+          statusLine:rule('.status-bar','border-bottom-color'),
+          smallDivider:rule('.bottom-v-separator','background-color'),
+          cardDivider:rule('.v-separator','background-color'),
+          settingsLine:rule('.settings-header','border-bottom-color'),
+          authLine:rule('.auth-header','border-bottom-color'),
+          trashLine:rule('.trash-arrow','border-left-color'),
+          headerWidth:rule('.header','border-bottom-width'),
+          footerWidth:rule('.footer','border-top-width'),
+          statusWidth:rule('.status-bar','border-bottom-width'),
+          smallDividerWidth:rule('.bottom-v-separator','width'),
+          mainButton:rule('.btn-add','background-color'),
+          secondaryButton:rule('.btn-logs-card','background-color'),
+          secondaryColor:rule('.btn-logs-card','color')
+        };
+      });
+      assert.equal(colors.theme,theme.name,'Classe theme non synchronisee');
+      assert.equal(colors.body,theme.body,'Fond de la fenetre incorrect : '+theme.id);
+      assert.equal(colors.footer,theme.footer,'Bas de la fenetre incorrect : '+theme.id);
+      assert.equal(colors.card,theme.card,'Cartes de medias non harmonisees : '+theme.id);
+      for (const k of ['headLine','footLine','statusLine','smallDivider','cardDivider','settingsLine','authLine','trashLine'])
+        assert.equal(colors[k],theme.divider,'Trait gris incoherent ('+k+') : '+theme.id);
+      for (const k of ['headerWidth','footerWidth','statusWidth','smallDividerWidth'])
+        assert.equal(colors[k],'1px','Epaisseur de ligne differente de 1px ('+k+')');
+      assert.equal(colors.mainButton,theme.accent,'Accent du bouton Ajouter incorrect : '+theme.id);
+      assert.notEqual(colors.secondaryButton,colors.body === 'rgb(248, 250, 252)' ? 'rgb(56, 49, 51)' : 'rgb(56, 49, 51)',
+        'Bouton secondaire conserve un fond gris-rose hors theme : '+theme.id);
+      if (theme.id==='dark_pure') {
+        for (const k of ['status','form','controls','tools','popup','contextMenu','log','secret'])
+          assert.equal(colors[k],'rgb(0, 0, 0)','OLED pas completement noir ('+k+')');
+        assert.equal(colors.secondaryButton,'rgb(0, 0, 0)','Bouton secondaire non OLED');
+      }
+      // Le theme doit rester stable dans les paramètres et apres annulation.
+      await page.evaluate(() => {
+        openView('viewSettings');
+        switchSettingsTab('appli');
+        previewTheme('light');
+        cancelSettings();
+      });
+      const afterCancel = await page.evaluate(() => document.body.className);
+      assert.equal(afterCancel,theme.name,'Annuler les paramètres ne restaure pas le thème : '+theme.id);
+    }
+    // Alternances répétées : aucun style du theme precedent ne doit subsister.
+    for (const id of ['dark_pure','light','dark','dark_pure','light','dark_pure']) {
+      await page.evaluate(value => applyTheme(value),id);
+      const actual = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+      assert.equal(actual,themes.find(x=>x.id===id).body,'Changement de thème glitché : '+id);
+    }
+    console.log('OK audit des 3 themes dans Edge : vrai OLED #000, menus, 1px de séparateurs, boutons et transitions');
+
     console.log('OK interface responsive Edge : plein écran 1920, fenêtre 1050, 2 colonnes de cartes et paramètres');
     await page.close();
   } finally {
