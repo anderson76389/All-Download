@@ -1,6 +1,6 @@
 """Publier deux ZIP complets : Portable et Windows Classique (installateur).
 
-Les ZIP incluent les logos, les six dossiers et tous les fichiers suivis par Git
+Les ZIP incluent les logos, six dossiers vides et les fichiers suivis par Git
 dans Code-source/, sans aucun telechargement personnel ni donnee locale.
 """
 from __future__ import annotations
@@ -37,7 +37,9 @@ def check_zip(zip_path: Path, tracked: list[Path], executable: str) -> None:
             raise ValueError(f"ZIP corrompu : {broken}")
         names = set(archive.namelist())
         needed = {executable, "logo.ico", "logo.jpg"}
-        needed.update(f"{name}/.gitkeep" for name in MEDIA_DIRS)
+        needed.update(f"{name}/" for name in MEDIA_DIRS)
+        if any(path.endswith(".gitkeep") for path in names):
+            raise ValueError("Les ZIP ne doivent contenir aucun .gitkeep")
         needed.update(f"{SOURCES}/{path.as_posix()}" for path in tracked)
         missing = needed - names
         if missing:
@@ -52,6 +54,8 @@ def build_portable(root: Path, output: Path, tracked: list[Path]) -> None:
     if not (app / "All_Media_Download.exe").is_file():
         raise FileNotFoundError("L'EXE Portable est absent")
     with zipfile.ZipFile(output / PORTABLE_NAME, "w", zipfile.ZIP_DEFLATED, compresslevel=6, allowZip64=True) as zf:
+        for category in MEDIA_DIRS:
+            zf.writestr(f"{category}/", "")
         for path in sorted(app.rglob("*")):
             if path.is_file():
                 zf.write(path, path.relative_to(app).as_posix())
@@ -68,7 +72,7 @@ def build_classic(root: Path, output: Path, tracked: list[Path]) -> None:
         zf.write(root / "logo.ico", "logo.ico")
         zf.write(root / "logo.jpg", "logo.jpg")
         for category in MEDIA_DIRS:
-            zf.write(root / category / ".gitkeep", f"{category}/.gitkeep")
+            zf.writestr(f"{category}/", "")
         zf.writestr("INSTALLATION-WINDOWS.txt",
             "ALL-DOWNLOAD - WINDOWS CLASSIQUE\n\n"
             "1. Lancez All-Download-Setup.exe.\n"
