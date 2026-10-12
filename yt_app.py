@@ -462,7 +462,7 @@ HTML_PAGE = """<!DOCTYPE html>
   body.theme-dark_pure .card-title, body.theme-dark_pure .setting-sec-title, body.theme-dark_pure .setting-label, body.theme-dark_pure .section-title, body.theme-dark_pure .logs-title { color: #f3f4f6; }
   body.theme-dark_pure .pill-dropdown { background: #080808; border-color: #1f1f1f; color: #f3f4f6; }
   body.theme-dark_pure .pill-dropdown:hover, body.theme-dark_pure .pill-dropdown.active { border-color: #00e676; background: #141414; }
-  body.theme-dark_pure .dropdown-popover, body.theme-dark_popover-menu, body.theme-dark_pure .context-menu { background: #0d0d0d !important; border-color: #262626; color: #f3f4f6; box-shadow: 0 10px 25px rgba(0,0,0,0.85); }
+  body.theme-dark_pure .dropdown-popover, body.theme-dark_pure .popover-menu, body.theme-dark_pure .context-menu { background: #0d0d0d !important; border-color: #262626; color: #f3f4f6; box-shadow: 0 10px 25px rgba(0,0,0,0.85); }
   body.theme-dark_pure .dropdown-item, body.theme-dark_pure .popover-item, body.theme-dark_pure .ctx-item { color: #e5e7eb; }
   body.theme-dark_pure .dropdown-item:hover, body.theme-dark_pure .popover-item:hover, body.theme-dark_pure .ctx-item:hover { background: #1a1a1a; color: #ffffff; }
   body.theme-dark_pure .tools-cluster, body.theme-dark_pure .trash-group { background: #0d0d0d; border-color: #1f1f1f; }
@@ -814,6 +814,82 @@ HTML_PAGE = """<!DOCTYPE html>
     .actions-center { justify-self: center; }
     .actions-right { justify-self: end; }
   }
+
+  /* Cohérence des trois palettes, séparateurs de 1px, vrai OLED noir.
+     Les zones neutres sont noires en OLED; les contrôles restent lisibles
+     grâce aux traits gris, les états actifs/hover gardent le vert d'accent. */
+  body.theme-light .btn-logs-card { background: #eef2f7; color: #334155; border: 1px solid #cbd5e1; }
+  body.theme-light .btn-logs-card:hover { background: #e2e8f0; }
+  body.theme-light .secret-box { background: #f8fafc; color: #334155; border-color: #cbd5e1; }
+  body.theme-light .log-banner { border-color: #cbd5e1; }
+  body.theme-light .app-toast { background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; }
+  body.theme-light .setting-sec-desc { color: #64748b; }
+
+  body.theme-dark .btn-logs-card { background: #242424; color: #e5e7eb; border: 1px solid #3b3b3b; }
+  body.theme-dark .btn-logs-card:hover { background: #303030; }
+  body.theme-dark .secret-box { background: #1c1c1c; color: #e5e7eb; border-color: #3b3b3b; }
+  body.theme-dark .log-banner { border-color: #3b3b3b; }
+  body.theme-dark .app-toast { background: #212121; color: #f3f4f6; border: 1px solid #3b3b3b; }
+  body.theme-dark .setting-sec-desc { color: #9ca3af; }
+
+  body.theme-dark_pure,
+  body.theme-dark_pure .footer,
+  body.theme-dark_pure .status-bar,
+  body.theme-dark_pure .center-cluster,
+  body.theme-dark_pure .tools-cluster,
+  body.theme-dark_pure .trash-group,
+  body.theme-dark_pure .media-card,
+  body.theme-dark_pure .input-wrapper,
+  body.theme-dark_pure .btn-settings,
+  body.theme-dark_pure .card-adv,
+  body.theme-dark_pure .log-banner,
+  body.theme-dark_pure .setting-input,
+  body.theme-dark_pure .setting-textarea,
+  body.theme-dark_pure .range-input,
+  body.theme-dark_pure .pill-dropdown,
+  body.theme-dark_pure .terminal-box,
+  body.theme-dark_pure .skeleton-card,
+  body.theme-dark_pure .secret-box {
+    background: #000000;
+  }
+  body.theme-dark_pure .status-bar { color: #00e676; }
+  body.theme-dark_pure .media-card,
+  body.theme-dark_pure .input-wrapper,
+  body.theme-dark_pure .btn-settings,
+  body.theme-dark_pure .card-adv,
+  body.theme-dark_pure .log-banner,
+  body.theme-dark_pure .setting-input,
+  body.theme-dark_pure .setting-textarea,
+  body.theme-dark_pure .range-input,
+  body.theme-dark_pure .tools-cluster,
+  body.theme-dark_pure .trash-group,
+  body.theme-dark_pure .secret-box {
+    border-color: #303030;
+  }
+  body.theme-dark_pure .dropdown-popover,
+  body.theme-dark_pure .popover-menu,
+  body.theme-dark_pure .context-menu {
+    background: #000000 !important;
+    border-color: #303030;
+    color: #f3f4f6;
+  }
+  body.theme-dark_pure .btn-logs-card {
+    background: #000000;
+    color: #e5e7eb;
+    border: 1px solid #303030;
+  }
+  body.theme-dark_pure .btn-logs-card:hover { background: #151515; }
+  body.theme-dark_pure .app-toast {
+    background: #000000;
+    border: 1px solid #303030;
+    color: #f3f4f6;
+  }
+  body.theme-dark_pure .setting-sec-desc { color: #a1a1aa; }
+  body.theme-dark_pure .skeleton-thumb,
+  body.theme-dark_pure .skeleton-bar { background: #080808; }
+  body.theme-dark_pure .card-act-btn:hover { background: #151515; }
+  body.theme-dark_pure .empty-view { color: #a1a1aa; }
+  /* Sur OLED les traits restent neutres; pas de halo ni de bordures multicolores. */
 
   /* Responsive sans changer le theme ni la structure des boutons. */
   .header, .settings-header, .logs-header, .auth-header { min-width: 0; }
@@ -1349,7 +1425,8 @@ HTML_PAGE = """<!DOCTYPE html>
   let queue = [];
   let terminalLogs = [];
   let currentBrowser = 'none';
-  let activeSavedTheme = 'light';
+  let activeSavedTheme = document.body.classList.contains('theme-dark_pure') ? 'dark_pure'
+    : document.body.classList.contains('theme-dark') ? 'dark' : 'light';
   let currentGlobalMode = 'Vidéo';
   let currentGlobalQuality = 'Meilleure qualité (Auto)';
   let currentQuickSettings = {};
@@ -2342,7 +2419,6 @@ HTML_PAGE = """<!DOCTYPE html>
   }
 
   updateGlobalQualityDropdown();
-  applyTheme('light');
 
   function initApp() {
     callApi('get_app_settings').then(s => {
@@ -2359,6 +2435,23 @@ HTML_PAGE = """<!DOCTYPE html>
 </body>
 </html>
 """
+
+def configured_theme(config):
+    """Theme lu AVANT WebView2 : evite les fonds blancs a l'ouverture."""
+    settings = config.get("settings") if isinstance(config, dict) else None
+    value = settings.get("theme") if isinstance(settings, dict) else None
+    return value if value in ("light", "dark", "dark_pure") else "light"
+
+
+def html_for_config(config):
+    """Conserver la meme interface, avec le bon theme des le premier pixel."""
+    theme = configured_theme(config)
+    return HTML_PAGE.replace(
+        '<body class="theme-light" id="appBody">',
+        f'<body class="theme-{theme}" id="appBody">',
+        1,
+    )
+
 
 # -------------------------------------------------------------
 # BACKEND API PYTHON (UNIVERSAL EXTRACTOR + 4K / AUDIO HD)
@@ -3133,12 +3226,12 @@ if __name__ == '__main__':
         api = DownloaderAPI()
         window = webview.create_window(
             'All Media Download',
-            html=HTML_PAGE,
+            html=html_for_config(api.config),
             js_api=api,
             width=1080,
             height=760,
             min_size=(920, 620),
-            background_color='#f8fafc'
+            background_color={"light": "#f8fafc", "dark": "#141414", "dark_pure": "#000000"}[configured_theme(api.config)]
         )
         api.window = window
 
