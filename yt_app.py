@@ -2853,7 +2853,7 @@ class DownloaderAPI:
                     # Une qualité choisie sur une carte prime sur le défaut global.
                     selected_audio = quality if quality in ("FLAC", "M4A", "MP3_320") else audio_choice
                     if selected_audio in ("MP3", "MP3_320"):
-                        cmd.extend(["--audio-format", "mp3", "--audio-quality", "0"])
+                        cmd.extend(["--audio-format", "mp3", "--audio-quality", "320K"])
                     elif selected_audio == "M4A":
                         cmd.extend(["--audio-format", "m4a"])
                     else:
