@@ -142,6 +142,26 @@ class SettingsWorkflowTests(unittest.TestCase):
         self.assertFalse(self.api.save_quick_selector_value("audio_rate", "garbage")["success"])
         self.assertFalse(self.api.save_quick_selector_value("format", "AVI")["success"])
 
+    def test_initial_html_has_saved_theme_without_white_flash(self):
+        for value, expected in (
+            ("light", "theme-light"),
+            ("dark", "theme-dark"),
+            ("dark_pure", "theme-dark_pure"),
+            ("invalid", "theme-light"),
+        ):
+            with self.subTest(value=value):
+                config = {"settings": {"theme": value}}
+                page = yt_app.html_for_config(config)
+                self.assertIn(f'<body class="{expected}" id="appBody">', page)
+                self.assertEqual(yt_app.configured_theme(config),
+                                 value if value in ("light", "dark", "dark_pure") else "light")
+                self.assertNotIn("  applyTheme('light');", page)
+        # Une ancienne configuration incompletement remplie ne fait pas planter
+        # le démarrage de la fenêtre WebView.
+        self.assertEqual(yt_app.configured_theme({}), "light")
+        self.assertEqual(yt_app.configured_theme({"settings": None}), "light")
+        self.assertEqual(yt_app.configured_theme({"settings": []}), "light")
+
     def test_fullscreen_and_compact_layout_rules_exist(self):
         page = yt_app.HTML_PAGE
         for expected in ("max-width: 1800px", "max-width: 1480px",
