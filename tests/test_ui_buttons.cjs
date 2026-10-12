@@ -174,7 +174,7 @@ async function run() {
   win.addVideo();
   await flush();
   assert.match(doc.getElementById('statusBar').innerText,/1 élément/);
-  assert.match(doc.getElementById('errHeader').innerText||'','/'); // rafraîchi juste après
+  assert.ok(doc.getElementById('errHeader'), 'En-tête des erreurs manquant');
   action('.media-card [onclick="showLogsView()"]');
   assert.match(doc.getElementById('errHeader').innerText,/1/);
   assert.match(doc.getElementById('errList').textContent,/Accès refusé/);
