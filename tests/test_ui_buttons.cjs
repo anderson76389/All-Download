@@ -127,7 +127,11 @@ async function run() {
   assert.equal(doc.getElementById('cookieFile').value,'C:\\test\\cookies.txt');
   action('[onclick="clearCookieFile()"]');
   assert.equal(doc.getElementById('cookieFile').value,'');
-  action('[onclick*="selectBrowser(\'firefox\'"]');
+  const firefox = [...doc.querySelectorAll('[onclick]')].find(
+    e => e.getAttribute('onclick').includes("selectBrowser('firefox'")
+  );
+  assert.ok(firefox, 'Option Firefox du menu Cookies introuvable');
+  firefox.click();
   action('[onclick="saveAuth()"]');
   await flush();
   assert.deepEqual(events.findLast(x=>x[0]==='save_auth_config'),['save_auth_config','','firefox']);
