@@ -781,7 +781,9 @@ HTML_PAGE = """<!DOCTYPE html>
     text-align: center;
     padding: 0 18px clamp(18px, 3vh, 30px);
   }
-  .footer {
+  body.theme-light .footer,
+  body.theme-dark .footer,
+  body.theme-dark_pure .footer {
     border-top-color: var(--ui-divider);
   }
   .status-bar {
