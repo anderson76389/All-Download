@@ -64,6 +64,46 @@ assert.ok(executablePath, 'Microsoft Edge x64 introuvable sur le runner Windows'
     assert.equal(normal.footer,'wrap','Le pied de page ne se réorganise pas');
     assert.equal(normal.overflow,false,'Débordement horizontal en fenêtre normale');
 
+    // Finitions : centrage et bordures reels, verifies dans Edge a 1334 px.
+    await page.setViewportSize({width:1334,height:950});
+    const balance = await page.evaluate(() => {
+      queue = [];
+      updateView();
+      const mid = node => {
+        const box = node.getBoundingClientRect();
+        return box.x + box.width / 2;
+      };
+      return {
+        main: mid(document.querySelector('.empty-title')),
+        controls: mid(document.querySelector('.actions-center')),
+        viewport: innerWidth / 2,
+        headerLine: getComputedStyle(document.querySelector('.header')).borderBottomColor,
+        footerLine: getComputedStyle(document.querySelector('.footer')).borderTopColor,
+        statusLine: getComputedStyle(document.querySelector('.status-bar')).borderBottomColor,
+        verticalDivider: getComputedStyle(document.querySelector('.bottom-v-separator')).backgroundColor,
+        overflow: document.documentElement.scrollWidth > innerWidth
+      };
+    });
+    assert.ok(Math.abs(balance.main-balance.viewport)<2, 'L etat vide n est pas centre');
+    assert.ok(Math.abs(balance.controls-balance.viewport)<2, 'La barre de formats n est pas centree');
+    assert.equal(balance.headerLine,'rgb(203, 213, 225)','Separateur haut light pas assez visible');
+    assert.equal(balance.footerLine,'rgb(203, 213, 225)','Separateur bas light incorrect');
+    assert.equal(balance.statusLine,'rgb(203, 213, 225)','Separateur de statut manquant');
+    assert.equal(balance.verticalDivider,'rgb(203, 213, 225)','Trait entre formats incorrect');
+    assert.equal(balance.overflow,false,'Debordement horizontal dans l interface normale');
+    for (const [theme,color] of [['theme-dark','rgb(59, 59, 59)'],['theme-dark_pure','rgb(45, 45, 45)']]) {
+      await page.evaluate(t => { document.body.className = t; }, theme);
+      const themeLines = await page.evaluate(() => ({
+        head:getComputedStyle(document.querySelector('.header')).borderBottomColor,
+        footer:getComputedStyle(document.querySelector('.footer')).borderTopColor,
+        divider:getComputedStyle(document.querySelector('.bottom-v-separator')).backgroundColor
+      }));
+      assert.equal(themeLines.head,color,'Trait de separation haut incorrect : '+theme);
+      assert.equal(themeLines.footer,color,'Trait de separation bas incorrect : '+theme);
+      assert.equal(themeLines.divider,color,'Trait de separation des boutons incorrect : '+theme);
+    }
+    console.log('OK centrage et traits de separation verifies dans Edge (1334 px, 3 themes)');
+
     console.log('OK interface responsive Edge : plein écran 1920, fenêtre 1050, 2 colonnes de cartes et paramètres');
     await page.close();
   } finally {
