@@ -20,6 +20,7 @@ class FakeProcess:
     def __init__(self):
         self.stdout = io.StringIO("")
         self.pid = 99999
+        self.returncode = 0
 
     def communicate(self):
         return ("", "")
@@ -157,6 +158,41 @@ class DownloadFolderTests(unittest.TestCase):
             with self.subTest(destination=expected):
                 self.assertEqual(cmd[cmd.index("-P") + 1], os.path.join(self.root, expected))
                 self.assertTrue(os.path.isdir(os.path.join(self.root, expected)))
+
+    def test_cancel_stops_current_process(self):
+        api = self.create_api()
+        api._active_download_process = FakeProcess()
+        with patch.object(yt_app, "kill_process_tree") as stop:
+            self.assertTrue(api.cancel_downloads())
+        self.assertTrue(api.is_cancelled)
+        stop.assert_called_once_with(99999)
+
+    def test_success_is_reported_only_for_succeeded_downloads(self):
+        api = self.create_api()
+
+        class Recorder:
+            def __init__(self):
+                self.scripts = []
+
+            def evaluate_js(self, script):
+                self.scripts.append(script)
+
+        api.window = Recorder()
+        with patch.object(yt_app.threading, "Thread", ImmediateThread), patch.object(
+            yt_app.subprocess, "Popen", return_value=FakeProcess()
+        ):
+            api.start_downloads([self.item("https://youtube.com/watch?v=42")])
+        self.assertTrue(any("markDownloadSuccess(" in x for x in api.window.scripts))
+
+        api.window.scripts.clear()
+        failed = FakeProcess()
+        failed.returncode = 1
+        with patch.object(yt_app.threading, "Thread", ImmediateThread), patch.object(
+            yt_app.subprocess, "Popen", return_value=failed
+        ):
+            api.start_downloads([self.item("https://youtube.com/watch?v=43")])
+        self.assertFalse(any("markDownloadSuccess(" in x for x in api.window.scripts))
+        self.assertTrue(any("0/1" in x for x in api.window.scripts))
 
     def test_direct_pinterest_gif_saved_in_gifs(self):
         api = self.create_api()
