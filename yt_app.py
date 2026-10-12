@@ -769,9 +769,9 @@ HTML_PAGE = """<!DOCTYPE html>
 
   /* Finitions discretement plus lisibles sur les trois themes.
      Aucun changement de structure, de taille des boutons ou de logique. */
-  body.theme-light { --ui-divider: #cbd5e1; }
-  body.theme-dark { --ui-divider: #3b3b3b; }
-  body.theme-dark_pure { --ui-divider: #2d2d2d; }
+  body.theme-light { --ui-divider: #cbd5e1; color-scheme: light; }
+  body.theme-dark { --ui-divider: #3b3b3b; color-scheme: dark; }
+  body.theme-dark_pure { --ui-divider: #2d2d2d; color-scheme: dark; }
 
   .header {
     border-bottom: 1px solid var(--ui-divider);
@@ -889,6 +889,7 @@ HTML_PAGE = """<!DOCTYPE html>
   body.theme-dark_pure .skeleton-bar { background: #080808; }
   body.theme-dark_pure .card-act-btn:hover { background: #151515; }
   body.theme-dark_pure .empty-view { color: #a1a1aa; }
+  .mode-selector { border-color: var(--ui-divider); }
   /* Sur OLED les traits restent neutres; pas de halo ni de bordures multicolores. */
 
   /* Responsive sans changer le theme ni la structure des boutons. */
@@ -1216,7 +1217,7 @@ HTML_PAGE = """<!DOCTYPE html>
         </div>
       </div>
 
-      <div style="height:1px; background:inherit; border-top:1px solid rgba(125,125,125,0.2); margin:10px 0;"></div>
+      <div style="height:1px; background:inherit; border-top:1px solid var(--ui-divider); margin:10px 0;"></div>
 
       <div class="setting-section">
         <div class="setting-sec-title">SponsorBlock</div>
@@ -1288,7 +1289,7 @@ HTML_PAGE = """<!DOCTYPE html>
         </div>
       </div>
 
-      <div style="height:1px; background:inherit; border-top:1px solid rgba(125,125,125,0.2); margin:10px 0;"></div>
+      <div style="height:1px; background:inherit; border-top:1px solid var(--ui-divider); margin:10px 0;"></div>
 
       <div class="setting-section">
         <div class="setting-sec-title">Notifications</div>
