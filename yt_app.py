@@ -1304,6 +1304,58 @@ HTML_PAGE = """<!DOCTYPE html>
   let activeSavedTheme = 'light';
   let currentGlobalMode = 'Vidéo';
   let currentGlobalQuality = 'Meilleure qualité (Auto)';
+  let currentQuickSettings = {};
+  let toastHideTimer = null;
+
+  function showAppToast(message) {
+    const toast = document.getElementById('appToast');
+    if (!toast || !message) return;
+    toast.textContent = message;
+    toast.classList.add('visible');
+    if (toastHideTimer) clearTimeout(toastHideTimer);
+    toastHideTimer = setTimeout(() => toast.classList.remove('visible'), 5000);
+  }
+
+  function configureQuickSelector(settings) {
+    if (settings) currentQuickSettings = Object.assign({}, currentQuickSettings, settings);
+    const wrap = document.getElementById('extraQuickWrap');
+    const label = document.getElementById('extraQuickLabel');
+    const select = document.getElementById('extraQuickValue');
+    if (!wrap || !select) return;
+    const type = currentQuickSettings.extra_selector || 'none';
+    if (type === 'format' && currentGlobalMode === 'Vidéo') {
+      label.textContent = 'Conteneur';
+      select.innerHTML = '<option value="MP4">MP4</option><option value="MKV">MKV</option>';
+      select.value = currentQuickSettings.video_format === 'MKV' ? 'MKV' : 'MP4';
+      wrap.style.display = 'flex';
+    } else if (type === 'audio_rate' && currentGlobalMode === 'Audio') {
+      label.textContent = 'Fréquence';
+      select.innerHTML = '<option value="source">Source</option><option value="44100">44,1 kHz</option><option value="48000">48 kHz</option>';
+      select.value = ['44100', '48000'].includes(String(currentQuickSettings.audio_sample_rate))
+        ? String(currentQuickSettings.audio_sample_rate) : 'source';
+      wrap.style.display = 'flex';
+    } else {
+      wrap.style.display = 'none';
+    }
+  }
+
+  function selectExtraQuickValue(value) {
+    const type = currentQuickSettings.extra_selector;
+    if (!['format', 'audio_rate'].includes(type)) return;
+    callApi('save_quick_selector_value', type, value).then(result => {
+      if (result && result.success) {
+        if (type === 'format') currentQuickSettings.video_format = value;
+        else currentQuickSettings.audio_sample_rate = value;
+      } else {
+        configureQuickSelector();
+        showAppToast("Impossible d'enregistrer ce choix.");
+      }
+    }).catch(() => {
+      configureQuickSelector();
+      showAppToast("Impossible d'enregistrer ce choix.");
+    });
+  }
+
 
   function callApi(method, ...args) {
     if (window.pywebview && window.pywebview.api && typeof window.pywebview.api[method] === 'function') {
@@ -1508,6 +1560,7 @@ HTML_PAGE = """<!DOCTYPE html>
     }
 
     updateGlobalQualityDropdown();
+    configureQuickSelector();
     closeAllPopovers();
 
     queue.forEach(item => {
@@ -1533,6 +1586,7 @@ HTML_PAGE = """<!DOCTYPE html>
     currentGlobalQuality = val;
     document.getElementById('globalQualText').innerText = label;
     updateGlobalQualityDropdown();
+    configureQuickSelector();
     closeAllPopovers();
 
     queue.forEach(item => {
@@ -1614,6 +1668,7 @@ HTML_PAGE = """<!DOCTYPE html>
       // Appli & Réseau
       document.getElementById('setTheme').value = s.theme || 'light';
       document.getElementById('setExtraSelector').value = s.extra_selector || 'none';
+      currentQuickSettings = Object.assign({}, currentQuickSettings, s);
       document.getElementById('setNotify').value = s.notify || 'never';
       document.getElementById('setProxyToggle').checked = !!s.proxy_toggle;
       document.getElementById('setProxyUrl').value = s.proxy_url || '';
@@ -1666,6 +1721,7 @@ HTML_PAGE = """<!DOCTYPE html>
       exact_cut: document.getElementById('setExactCut').checked,
       theme: document.getElementById('setTheme').value,
       extra_selector: document.getElementById('setExtraSelector').value,
+      audio_sample_rate: currentQuickSettings.audio_sample_rate || 'source',
       notify: document.getElementById('setNotify').value,
       proxy_toggle: document.getElementById('setProxyToggle').checked,
       proxy_url: document.getElementById('setProxyUrl').value,
@@ -1682,6 +1738,7 @@ HTML_PAGE = """<!DOCTYPE html>
     callApi('save_app_settings', s, destination).then(result => {
       if (result && result.success === true) {
         applyTheme(s.theme);
+        configureQuickSelector(s);
         document.getElementById('setDownloadFolder').value = result.path;
         openView('viewMain');
       } else {
@@ -2234,7 +2291,10 @@ HTML_PAGE = """<!DOCTYPE html>
 
   function initApp() {
     callApi('get_app_settings').then(s => {
-      if (s && s.theme) applyTheme(s.theme);
+      if (!s) return;
+      if (s.theme) applyTheme(s.theme);
+      if (queue.length === 0) selectGlobalMode(s.sortie_type === 'audio' ? 'Audio' : 'Vidéo');
+      configureQuickSelector(s);
     });
   }
 
