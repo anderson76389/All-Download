@@ -585,7 +585,7 @@ HTML_PAGE = """<!DOCTYPE html>
     vertical-align: middle;
   }
 
-  .app-container { max-width: 860px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; flex: 1; min-height: 0; padding: 0 16px; }
+  .app-container { max-width: 1800px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; flex: 1; min-height: 0; padding: 0 clamp(16px, 2.5vw, 42px); }
 
   /* HEADER */
   .header { display: flex; padding: 18px 0; gap: 12px; align-items: center; width: 100%; flex-shrink: 0; }
@@ -698,7 +698,7 @@ HTML_PAGE = """<!DOCTYPE html>
   .status-bar { font-size: 12.5px; font-weight: 600; padding: 6px 20px; text-align: center; }
   .progress-line { height: 3px; background: transparent; width: 100%; position: relative; }
 
-  .actions-bar { display: flex; padding: 12px 24px; align-items: center; justify-content: space-between; gap: 14px; max-width: 860px; margin: 0 auto; width: 100%; }
+  .actions-bar { display: flex; padding: 12px 24px; align-items: center; justify-content: space-between; gap: 14px; max-width: 1800px; margin: 0 auto; width: 100%; }
   .actions-left, .actions-center, .actions-right { display: flex; align-items: center; gap: 10px; }
 
   .tools-cluster { display: flex; border-width: 1px; border-style: solid; border-radius: 999px; padding: 3px; }
@@ -727,7 +727,7 @@ HTML_PAGE = """<!DOCTYPE html>
   .settings-header { display: flex; padding: 16px 24px; justify-content: space-between; align-items: center; border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: inherit; }
   .settings-nav { display: flex; gap: 8px; align-items: center; }
   .tab-btn { background: transparent; border: none; color: #888; font-weight: 600; font-size: 13px; padding: 7px 18px; border-radius: 999px; cursor: pointer; transition: all 0.15s; }
-  .settings-content { flex: 1; overflow-y: auto; padding: 24px 32px; display: flex; flex-direction: column; gap: 20px; max-width: 840px; margin: 0 auto; width: 100%; }
+  .settings-content { flex: 1; overflow-y: auto; padding: 24px 32px; display: flex; flex-direction: column; gap: 20px; max-width: 1480px; margin: 0 auto; width: 100%; }
   
   .setting-section { display: flex; flex-direction: column; gap: 12px; margin-bottom: 10px; }
   .setting-sec-title { font-size: 15px; font-weight: 700; }
@@ -756,7 +756,7 @@ HTML_PAGE = """<!DOCTYPE html>
 
   /* AUTH */
   .auth-header { display: flex; padding: 16px 24px; justify-content: space-between; align-items: center; border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: inherit; }
-  .auth-content { flex: 1; overflow-y: auto; padding: 24px 32px; display: flex; flex-direction: column; gap: 18px; max-width: 800px; margin: 0 auto; width: 100%; }
+  .auth-content { flex: 1; overflow-y: auto; padding: 24px 32px; display: flex; flex-direction: column; gap: 18px; max-width: 1320px; margin: 0 auto; width: 100%; }
   .badge-rec { background: #0284c7; color: #fff; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-left: 8px; }
   .card-adv { border-radius: 14px; overflow: hidden; transition: all 0.2s; border-width: 1px; border-style: solid; }
   .card-adv-header { padding: 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
@@ -766,6 +766,63 @@ HTML_PAGE = """<!DOCTYPE html>
   .arrow-adv { transition: transform 0.2s; }
   .secret-box { background: #181b22; border: 1px solid #262d3d; border-radius: 12px; padding: 14px; display: flex; align-items: center; gap: 14px; margin-top: 10px; }
   .btn-secret-activate { background: #0284c7; border: none; color: #fff; font-weight: 700; font-size: 13px; padding: 8px 20px; border-radius: 999px; cursor: pointer; }
+
+  /* Responsive sans changer le theme ni la structure des boutons. */
+  .header, .settings-header, .logs-header, .auth-header { min-width: 0; }
+  .settings-header, .logs-header, .auth-header { gap: 14px; flex-wrap: wrap; }
+  .settings-nav { flex-wrap: wrap; justify-content: center; }
+  .url-input, .input-wrapper, .card-body, .setting-field, .settings-content { min-width: 0; }
+  @media (min-width: 1400px) {
+    .header { padding-block: 22px; }
+    .url-input { font-size: 15px; }
+    .card-title { font-size: 16px; max-height: 50px; }
+    .card-meta, .playlist-label { font-size: 13px; }
+    .setting-sec-title { font-size: 18px; }
+    .setting-label, .setting-input, .setting-textarea { font-size: 14px; }
+    .setting-subtext, .switch-desc { font-size: 12px; }
+    .empty-title { font-size: 22px; }
+    .empty-sub { font-size: 14px; text-align: center; }
+  }
+  @media (min-width: 1580px) {
+    #cardList[style*="display: flex"] {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-content: start; gap: 18px;
+    }
+    .media-card { min-width: 0; }
+    .thumb-container, .skeleton-thumb { width: clamp(160px, 11vw, 210px); height: clamp(100px, 7vw, 130px); }
+    .settings-content { max-width: 1580px; }
+    #setSectionTelech[style*="display: flex"],
+    #setSectionAppli[style*="display: flex"],
+    #setSectionReseau[style*="display: flex"] {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-content: start; align-items: start; column-gap: clamp(30px, 4vw, 70px); row-gap: 18px;
+    }
+    .settings-content > .setting-section { min-width: 0; }
+    .settings-content > div[style*="height:1px"] { display: none; }
+  }
+  @media (max-width: 1150px) {
+    .actions-bar { flex-wrap: wrap; justify-content: center; row-gap: 10px; }
+    .actions-center { order: -1; width: 100%; justify-content: center; }
+    .actions-left, .actions-right { flex: 1 1 auto; }
+    .actions-right { justify-content: flex-end; }
+    .settings-header { padding: 12px 16px; }
+  }
+  @media (max-width: 760px) {
+    .header { flex-wrap: wrap; gap: 8px; }
+    .input-wrapper { flex-basis: 100%; }
+    .media-card { flex-wrap: wrap; padding: 12px; }
+    .card-body { flex: 1 1 270px; }
+    .media-card .v-separator { display: none; }
+    .card-actions { flex-direction: row; flex-wrap: wrap; margin-left: auto; }
+    .card-bottom-row { align-items: flex-start; }
+    .card-controls { flex-wrap: wrap; min-width: 0; }
+    .empty-sub { padding: 0 12px; text-align: center; }
+    .settings-content { padding: 18px 16px; }
+    .settings-nav { order: 3; flex-basis: 100%; }
+    .tab-btn { padding: 8px 12px; }
+  }
 </style>
 </head>
 <body class="theme-light" id="appBody">
