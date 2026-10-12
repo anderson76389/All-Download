@@ -76,6 +76,9 @@ jobs:
             # Le dossier vide est créé directement, sans .gitkeep.
           }
           if (Test-Path "$root/_internal") { throw "L'EXE Portable ne doit pas avoir _internal" }
+          if (Get-ChildItem $root -File -Recurse -Filter ".gitkeep" -ErrorAction SilentlyContinue) {
+            throw "Les nouvelles distributions ne doivent contenir aucun .gitkeep"
+          }
 
       - name: Installer Inno Setup pour l'edition Windows classique
         shell: pwsh
@@ -189,6 +192,43 @@ jobs:
                   Stop-Process -Force -ErrorAction SilentlyContinue
               }
             }
+          }
+
+      - name: Simuler le crash CLR et verifier la relance automatique sans popup
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $exe = (Resolve-Path "dist/All-Download-Portable/All_Media_Download.exe").Path
+          $env:ALL_DOWNLOAD_TEST_CLR_FAILURE_ONCE = "1"
+          try {
+            $initial = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe -Parent) -PassThru
+          } finally {
+            Remove-Item Env:ALL_DOWNLOAD_TEST_CLR_FAILURE_ONCE -ErrorAction SilentlyContinue
+          }
+          $started = $false
+          try {
+            for ($i=0; $i -lt 65; $i++) {
+              Start-Sleep -Seconds 1
+              $apps = @(Get-Process -Name "All_Media_Download" -ErrorAction SilentlyContinue)
+              if (@($apps | Where-Object { $_.MainWindowTitle -like "*erreur de démarrage*" }).Count -gt 0) {
+                throw "Fenetre de crash Windows visible : la relance ne fonctionne pas"
+              }
+              if (@($apps | Where-Object { $_.MainWindowTitle -eq "All Media Download" }).Count -gt 0) {
+                $started = $true
+                break
+              }
+            }
+            if (-not $started) { throw "Le processus relance ne presente pas son interface" }
+            $logFile = Join-Path $env:LOCALAPPDATA "AllMediaDownload/crash_log.txt"
+            if (-not (Test-Path $logFile)) { throw "Journal de relance CLR absent" }
+            $contents = Get-Content -Raw -Encoding UTF8 $logFile
+            if (-not $contents.Contains("Erreur CLR transitoire")) {
+              throw "Aucune trace de relance CLR : le test injecte ne s'est pas execute"
+            }
+            Write-Output "OK : echec CLR simule, relance PyInstaller autonome et GUI fonctionnelle"
+          } finally {
+            Get-Process -Name "All_Media_Download" -ErrorAction SilentlyContinue |
+              Stop-Process -Force -ErrorAction SilentlyContinue
           }
 
       - name: Verifier la desinstallation de Windows Classique
