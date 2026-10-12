@@ -176,6 +176,12 @@ async function run() {
   assert.equal(doc.getElementById('viewLogs').style.display,'flex');
   action('[title="Ouvrir le dossier"]');
 
+  // "Supprimer terminés" retire réellement l'entrée confirmée par yt-dlp.
+  win.markDownloadSuccess(quotedUrl);
+  assert.equal(win.eval('queue[0].status'),'success');
+  action('[onclick="clearSuccess();"]');
+  assert.equal(win.eval('queue.length'),0);
+
   // Erreur d'extraction : boutons Cookies, Logs et Réessayer.
   win.clearQueue();
   input.value='https://example.com/denied';
