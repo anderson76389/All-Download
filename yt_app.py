@@ -8,6 +8,7 @@ import random
 import urllib.request
 import urllib.parse
 import zipfile
+import shutil
 import subprocess
 import threading
 import traceback
@@ -2588,37 +2589,74 @@ class DownloaderAPI:
 
         threading.Thread(target=_worker, daemon=True).start()
 
+def _log_binary_setup_error(error):
+    """Ne plus cacher silencieusement les erreurs du premier lancement."""
+    try:
+        with open(CRASH_LOG, "a", encoding="utf-8") as f:
+            f.write(f"\n[{datetime.now():%Y-%m-%d %H:%M:%S}] Installation des outils : {type(error).__name__}: {error}\n")
+    except OSError:
+        pass
+
+
 def safe_download_file(url, target_path):
+    """Téléchargement progressif et atomique : pas de fichier EXE incomplet."""
     tmp_path = target_path + ".tmp"
     try:
-        urllib.request.urlretrieve(url, tmp_path)
-        if os.path.exists(target_path):
-            try: os.remove(target_path)
-            except Exception: pass
+        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+        with urllib.request.urlopen(url, timeout=45) as response, open(tmp_path, "wb") as output:
+            shutil.copyfileobj(response, output, length=1024 * 1024)
+        if os.path.getsize(tmp_path) == 0:
+            raise ValueError("Fichier téléchargé vide")
         os.replace(tmp_path, target_path)
-    except Exception:
+        return True
+    except Exception as exc:
+        _log_binary_setup_error(exc)
+        return False
+    finally:
         if os.path.exists(tmp_path):
-            try: os.remove(tmp_path)
-            except Exception: pass
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+
 
 def setup_binaries():
+    """Premier lancement : ne pas charger FFmpeg intégralement dans la RAM."""
     try:
-        if not os.path.exists(YTDLP_PATH):
+        if not os.path.isfile(YTDLP_PATH) or os.path.getsize(YTDLP_PATH) == 0:
             safe_download_file(YTDLP_URL, YTDLP_PATH)
 
-        if not os.path.exists(FFMPEG_PATH):
+        if not os.path.isfile(FFMPEG_PATH) or os.path.getsize(FFMPEG_PATH) == 0:
             zip_p = os.path.join(APP_DIR, "ffmpeg.zip")
-            safe_download_file(FFMPEG_URL, zip_p)
-            if os.path.exists(zip_p):
-                with zipfile.ZipFile(zip_p, 'r') as zf:
-                    for m in zf.namelist():
-                        if m.endswith("ffmpeg.exe") or m.endswith("ffprobe.exe"):
-                            target_file = os.path.join(BIN_DIR, os.path.basename(m))
-                            with open(target_file, "wb") as f:
-                                f.write(zf.read(m))
-                try: os.remove(zip_p)
-                except Exception: pass
-    except Exception: pass
+            if not safe_download_file(FFMPEG_URL, zip_p):
+                return
+            try:
+                with zipfile.ZipFile(zip_p, "r") as zf:
+                    for member in zf.infolist():
+                        if os.path.basename(member.filename).lower() not in ("ffmpeg.exe", "ffprobe.exe"):
+                            continue
+                        target_file = os.path.join(BIN_DIR, os.path.basename(member.filename))
+                        temp_file = target_file + ".tmp"
+                        try:
+                            with zf.open(member, "r") as source, open(temp_file, "wb") as output:
+                                shutil.copyfileobj(source, output, length=1024 * 1024)
+                            if os.path.getsize(temp_file) == 0:
+                                raise ValueError("Exécutable FFmpeg vide")
+                            os.replace(temp_file, target_file)
+                        finally:
+                            if os.path.exists(temp_file):
+                                try:
+                                    os.remove(temp_file)
+                                except OSError:
+                                    pass
+            finally:
+                if os.path.exists(zip_p):
+                    try:
+                        os.remove(zip_p)
+                    except OSError:
+                        pass
+    except Exception as exc:
+        _log_binary_setup_error(exc)
     finally:
         gc.collect()
 
