@@ -797,7 +797,7 @@ HTML_PAGE = """<!DOCTYPE html>
     .media-card { min-width: 0; }
     .thumb-container, .skeleton-thumb { width: clamp(160px, 11vw, 210px); height: clamp(100px, 7vw, 130px); }
     .settings-content { max-width: 1580px; }
-    #setSectionTelech[style*="display: flex"],
+    #setSectionTelech:not([style*="display: none"]),
     #setSectionAppli[style*="display: flex"],
     #setSectionReseau[style*="display: flex"] {
       display: grid !important;
