@@ -114,6 +114,16 @@ assert.ok(executablePath, 'Microsoft Edge x64 introuvable sur le runner Windows'
       {id:'dark_pure',name:'theme-dark_pure',body:'rgb(0, 0, 0)',footer:'rgb(0, 0, 0)',
        divider:'rgb(45, 45, 45)',accent:'rgb(0, 230, 118)',card:'rgb(0, 0, 0)'}
     ];
+    // La carte de configuration avancee est creee dynamiquement ;
+    // le controle visuel garde un echantillon neutre dans le DOM.
+    await page.evaluate(() => {
+      if (!document.querySelector('.secret-box')) {
+        const probe = document.createElement('div');
+        probe.className = 'secret-box';
+        probe.style.display = 'none';
+        document.body.appendChild(probe);
+      }
+    });
     for (const theme of themes) {
       await page.evaluate(id => applyTheme(id), theme.id);
       const colors = await page.evaluate(() => {
@@ -157,7 +167,7 @@ assert.ok(executablePath, 'Microsoft Edge x64 introuvable sur le runner Windows'
       for (const k of ['headerWidth','footerWidth','statusWidth','smallDividerWidth'])
         assert.equal(colors[k],'1px','Epaisseur de ligne differente de 1px ('+k+')');
       assert.equal(colors.mainButton,theme.accent,'Accent du bouton Ajouter incorrect : '+theme.id);
-      assert.notEqual(colors.secondaryButton,colors.body === 'rgb(248, 250, 252)' ? 'rgb(56, 49, 51)' : 'rgb(56, 49, 51)',
+      assert.notEqual(colors.secondaryButton,'rgb(56, 49, 51)',
         'Bouton secondaire conserve un fond gris-rose hors theme : '+theme.id);
       if (theme.id==='dark_pure') {
         for (const k of ['status','form','controls','tools','popup','contextMenu','log','secret'])
