@@ -57,7 +57,7 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 
 **Important :** la version Classique actuelle utilise le même moteur autonome que la Portable. Elle **ne repose plus sur l'ancien dossier `_internal`** qui pouvait provoquer l'erreur `Python.Runtime.dll` sur certains PC.
 
-**Configuration requise :** Windows 10/11 64 bits et WebView2. Une connexion Internet est nécessaire pour récupérer les contenus et, au besoin, yt-dlp et FFmpeg au premier lancement.
+**Configuration requise :** Windows 10/11 **x64 (64 bits)** et WebView2. La compilation utilise Python et un EXE x64 ; **x86 (32 bits) n'est pas pris en charge**. Une connexion Internet est nécessaire pour récupérer les contenus et, au besoin, yt-dlp et FFmpeg au premier lancement.
 
 ## 🚀 Télécharger en quelques clics
 
@@ -82,10 +82,18 @@ Les **six catégories sont créées automatiquement**, sans effacer vos médias 
 
 | Édition | Emplacement initial des téléchargements |
 |---|---|
-| **Portable** | Sous-dossiers voisins de l'EXE, si le dossier est accessible en écriture |
-| **Classique** | `%USERPROFILE%\Downloads\All-Download-Medias` |
+| **Portable x64** | Sous-dossiers voisins de l'EXE, si le dossier est accessible en écriture |
+| **Classique x64** | `%USERPROFILE%\Downloads\All-Download-Medias` |
 
-Une destination personnalisée déjà enregistrée dans les paramètres reste prioritaire. **Exception : l'ancien emplacement automatique `Téléchargements/MediaDownloader` est remplacé par le nouveau dossier propre**, pour ne plus mélanger les médias avec les fichiers du projet de test. Les anciens fichiers ne sont ni supprimés ni déplacés.
+### 📂 Choisir librement son dossier
+
+Dans **Paramètres → Téléchargement → Dossier des téléchargements**, cliquez sur **Parcourir…** pour sélectionner un dossier Windows, y compris sur un autre disque (D:, E:, etc.), ou collez son chemin complet. Cliquez sur **Enregistrer** pour appliquer le changement. **Par défaut** rétablit l'emplacement automatique correspondant à l'édition utilisée.
+
+Les six catégories sont créées dans le dossier choisi. L'application vérifie l'accès en écriture et conserve l'ancien emplacement en cas d'erreur. **Les fichiers existants ne sont pas déplacés ni supprimés.**
+
+Les éditions Portable et Classique utilisent la même configuration pour un **dossier personnalisé** ; si vous choisissez le mode automatique, **chacune conserve son propre emplacement par défaut**.
+
+L'ancien emplacement automatique `Téléchargements/MediaDownloader` est migré vers le dossier propre `All-Download-Medias` pour éviter de mélanger les médias avec les fichiers de l'ancien projet de test. Vous pouvez néanmoins sélectionner manuellement n'importe quel emplacement auquel votre compte a accès.
 
 **Désinstaller l'édition Classique ne doit pas nécessiter la suppression de vos médias**, stockés à part.
 
