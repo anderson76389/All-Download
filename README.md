@@ -12,7 +12,15 @@ Téléchargeur multimédia **Windows**, avec interface en français, propulsé p
 [![Python](https://img.shields.io/badge/Python-3-3776AB?style=flat-square&logo=python&logoColor=white)](./yt_app.py)
 [![Build Windows](https://github.com/anderson76389/All-Download/actions/workflows/build-windows.yml/badge.svg)](https://github.com/anderson76389/All-Download/actions/workflows/build-windows.yml)
 
-**[⬇ Télécharger pour Windows](https://github.com/anderson76389/All-Download/actions/workflows/build-windows.yml)** · **[📂 Code source](./yt_app.py)**
+### ⬇️ Téléchargements Windows
+
+[![Télécharger Portable Windows](https://img.shields.io/badge/T%C3%89L%C3%89CHARGER-WINDOWS%20PORTABLE-2563EB?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Portable-Windows.zip)
+
+[![Télécharger Windows classique](https://img.shields.io/badge/T%C3%89L%C3%89CHARGER-WINDOWS%20CLASSIQUE-4B5563?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Classique-Windows.zip)
+
+**Liens permanents et fixes** : ils pointent automatiquement vers les fichiers ZIP de la dernière [version publiée](https://github.com/anderson76389/All-Download/releases/latest).
+
+Chaque ZIP contient **l'application complète**, les logos, les six dossiers multimédias et **tous les fichiers suivis du dépôt** dans `Code-source/`.
 
 </div>
 
@@ -30,17 +38,17 @@ Téléchargeur multimédia **Windows**, avec interface en français, propulsé p
 
 La compatibilité dépend des plateformes et des flux accessibles via yt-dlp. La conversion en FLAC n'améliore pas la qualité d'une source déjà compressée.
 
-## ⬇️ Installation sur Windows
+## ⬇️ Installer All-Download
 
-1. Ouvrez les **[compilations Windows](https://github.com/anderson76389/All-Download/actions/workflows/build-windows.yml)** et sélectionnez la dernière exécution réussie.
-2. Sous **Artifacts**, téléchargez **`All-Download-Portable-Windows`** (édition recommandée, un seul EXE) puis décompressez le ZIP. Une connexion GitHub peut être nécessaire.
-3. Lancez **`All_Media_Download.exe`** depuis le dossier extrait. Les logos et les six dossiers de médias sont fournis à côté de l'EXE. Au premier lancement, l'application récupère yt-dlp et FFmpeg s'ils sont absents.
+1. Cliquez sur le bouton **Windows Portable** ci-dessus (recommandé).
+2. Décompressez le ZIP dans un nouveau dossier.
+3. Lancez **`All_Media_Download.exe`**. Les logos et les six dossiers multimédias sont déjà fournis.
 
-**Alternative :** `All-Download-Dossier-Windows` comprend le dossier `_internal/` et évite l'extraction temporaire de l'application. Sur certaines installations Windows, les DLL de cette édition peuvent être bloquées par le marquage de sécurité hérité du ZIP téléchargé. Si cela arrive, utilisez plutôt l'édition Portable.
+**Portable :** un seul exécutable, sans dossier `_internal/`. **Windows classique :** une distribution avec `_internal/`. Cette dernière a provoqué sur certains PC l'erreur `Python.Runtime.dll` : **choisissez Portable si vous rencontrez cette erreur**. Les deux archives comprennent le même code source complet dans `Code-source/`.
 
 **Prérequis :** Windows, WebView2, connexion Internet et espace disque.
 
-> **Important :** le fichier [`dist/All_Media_Download.exe`](./dist/All_Media_Download.exe) directement présent dans le dépôt est une **ancienne compilation**, et ne représente pas la version mise à jour. **SmartScreen peut toujours avertir** pour un EXE non signé : les corrections ne remplacent pas une signature de code reconnue.
+> **Important :** le fichier [`dist/All_Media_Download.exe`](./dist/All_Media_Download.exe) déjà suivi dans le dépôt est une **ancienne compilation**. Les ZIP des boutons ci-dessus sont mis à jour automatiquement lors des compilations validées. SmartScreen peut encore avertir pour un EXE non signé ; ne désactivez pas les protections de Windows.
 
 ## 🚀 Utilisation et dossiers
 
