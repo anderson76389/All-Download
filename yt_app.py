@@ -3094,6 +3094,11 @@ if __name__ == '__main__':
         )
         api.window = window
 
+        # Injection réservée au test d'intégration Windows du workflow :
+        # le marqueur est retiré AVANT la relance, afin que le nouvel EXE démarre.
+        if os.environ.pop("ALL_DOWNLOAD_TEST_CLR_FAILURE_ONCE", None) == "1":
+            raise RuntimeError("Failed to resolve Python.Runtime.Loader.Initialize [test]")
+
         # Conserver le moteur Windows deja utilise et les reglages performants.
         # L'initialisation des binaires se fait en arriere-plan apres le GUI.
         webview.start(func=setup_binaries, debug=False)
