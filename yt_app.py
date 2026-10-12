@@ -1746,7 +1746,7 @@ HTML_PAGE = """<!DOCTYPE html>
           <div class="v-separator"></div>
           <div class="card-actions">
             <button class="card-act-btn close" onclick="removeItem(${index})" title="Fermer">✕</button>
-            <button class="card-act-btn" onclick="openExternal('${item.url}')" title="Ouvrir dans le navigateur">
+            <button class="card-act-btn" onclick="openItemExternal(${index})" title="Ouvrir dans le navigateur">
               <svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
             </button>
             <button class="card-act-btn" onclick="retryItem(${index})" title="Réessayer">
@@ -1823,7 +1823,7 @@ HTML_PAGE = """<!DOCTYPE html>
           <div class="v-separator"></div>
           <div class="card-actions">
             <button class="card-act-btn close" onclick="removeItem(${index})" title="Fermer">✕</button>
-            <button class="card-act-btn" onclick="openExternal('${item.url}')" title="Ouvrir dans le navigateur">
+            <button class="card-act-btn" onclick="openItemExternal(${index})" title="Ouvrir dans le navigateur">
               <svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
             </button>
             <button class="card-act-btn" onclick="downloadSingle(${index})" title="Télécharger">
@@ -1905,7 +1905,7 @@ HTML_PAGE = """<!DOCTYPE html>
           <div class="v-separator"></div>
           <div class="card-actions">
             <button class="card-act-btn close" onclick="removeItem(${index})" title="Fermer">✕</button>
-            <button class="card-act-btn" onclick="openExternal('${item.url}')" title="Ouvrir dans le navigateur">
+            <button class="card-act-btn" onclick="openItemExternal(${index})" title="Ouvrir dans le navigateur">
               <svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
             </button>
             <button class="card-act-btn" onclick="downloadSingle(${index})" title="Télécharger">
@@ -2035,6 +2035,13 @@ HTML_PAGE = """<!DOCTYPE html>
 
   function openExternal(url) {
     callApi('open_external', url);
+  }
+
+  // Garder l'URL en donnees et non dans le code HTML du bouton.
+  // Les apostrophes et autres caractères d'URL ne cassent plus le clic.
+  function openItemExternal(index) {
+    const item = queue[index];
+    if (item && item.url) openExternal(item.url);
   }
 
   function updateDownloadProgress(pct, statusText) {
