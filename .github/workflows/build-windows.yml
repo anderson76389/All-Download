@@ -30,7 +30,7 @@ jobs:
       - name: Installer les dependances
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pywebview pyinstaller
+          python -m pip install pywebview==6.2.1 pythonnet==3.2.1 pyinstaller==6.22.3
 
       - name: Verifier la syntaxe
         run: python -m py_compile yt_app.py
@@ -100,8 +100,10 @@ jobs:
           foreach ($root in @("dist/All_Media_Download", "dist/All-Download-Portable")) {
             $folder = (Resolve-Path $root).Path
             $exe = Join-Path $folder "All_Media_Download.exe"
-            # Deux demarrages consecutifs pour detecter les plantages au redemarrage.
-            foreach ($attempt in 1..2) {
+            # Plusieurs redemarrages verifies : edition portable 8x,
+            # edition en dossier 4x. Sans modifier les fonctions de l'app.
+            $maxAttempts = if ($root -like "*Portable*") { 8 } else { 4 }
+            foreach ($attempt in 1..$maxAttempts) {
               Write-Output "Test ouverture $attempt : $exe"
               $proc = Start-Process -FilePath $exe -WorkingDirectory $folder -PassThru
               $visible = $false
