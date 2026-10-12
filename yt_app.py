@@ -792,6 +792,9 @@ HTML_PAGE = """<!DOCTYPE html>
   .settings-header, .logs-header, .auth-header {
     border-bottom-color: var(--ui-divider);
   }
+  /* Un changement de thème ne doit PAS animer les traits gris :
+     les transitions all rendaient visibles les anciennes couleurs pendant 150 ms. */
+  .trash-arrow { transition: color 0.15s, background-color 0.15s; }
   body.theme-light .trash-arrow { border-left-color: #cbd5e1; }
   body.theme-dark .trash-arrow { border-left-color: #3b3b3b; }
   body.theme-dark_pure .trash-arrow { border-left-color: #2d2d2d; }
