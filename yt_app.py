@@ -767,6 +767,11 @@ HTML_PAGE = """<!DOCTYPE html>
   .secret-box { background: #181b22; border: 1px solid #262d3d; border-radius: 12px; padding: 14px; display: flex; align-items: center; gap: 14px; margin-top: 10px; }
   .btn-secret-activate { background: #0284c7; border: none; color: #fff; font-weight: 700; font-size: 13px; padding: 8px 20px; border-radius: 999px; cursor: pointer; }
 
+  /* Pas d'animation entre deux themes : le hover reste anime normalement,
+     mais aucun trait/bouton ne garde la couleur du theme precedent. */
+  html.theme-switching *, html.theme-switching *::before,
+  html.theme-switching *::after { transition: none !important; }
+
   /* Finitions discretement plus lisibles sur les trois themes.
      Aucun changement de structure, de taille des boutons ou de logique. */
   body.theme-light { --ui-divider: #cbd5e1; color-scheme: light; }
@@ -1628,21 +1633,26 @@ HTML_PAGE = """<!DOCTYPE html>
     }
   }
 
-  function applyTheme(themeVal) {
-    activeSavedTheme = themeVal;
+  function setVisualTheme(themeVal) {
+    const root = document.documentElement;
     const body = document.getElementById('appBody');
-    body.className = '';
-    if (themeVal === 'dark') body.classList.add('theme-dark');
-    else if (themeVal === 'dark_pure') body.classList.add('theme-dark_pure');
-    else body.classList.add('theme-light');
+    // Neutraliser momentanément les transitions pour éviter qu'un ancien
+    // fond violet ou une ancienne bordure grise reste visible pendant 150 ms.
+    root.classList.add('theme-switching');
+    body.className = themeVal === 'dark_pure' ? 'theme-dark_pure'
+      : themeVal === 'dark' ? 'theme-dark' : 'theme-light';
+    // Calculer la nouvelle palette avant de réactiver les animations de survol.
+    void body.offsetWidth;
+    root.classList.remove('theme-switching');
+  }
+
+  function applyTheme(themeVal) {
+    activeSavedTheme = ['light', 'dark', 'dark_pure'].includes(themeVal) ? themeVal : 'light';
+    setVisualTheme(activeSavedTheme);
   }
 
   function previewTheme(themeVal) {
-    const body = document.getElementById('appBody');
-    body.className = '';
-    if (themeVal === 'dark') body.classList.add('theme-dark');
-    else if (themeVal === 'dark_pure') body.classList.add('theme-dark_pure');
-    else body.classList.add('theme-light');
+    setVisualTheme(themeVal);
   }
 
   function updateGlobalQualityDropdown() {
