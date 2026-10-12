@@ -73,7 +73,7 @@ jobs:
           Copy-Item "logo.jpg" "$root/logo.jpg"
           foreach ($dir in @("AUDIOS", "AUTRES", "CHAÎNES", "GIFS", "PLAYLIST", "VIDÉOS")) {
             New-Item -ItemType Directory -Force -Path "$root/$dir" | Out-Null
-            Copy-Item "$dir/.gitkeep" "$root/$dir/.gitkeep"
+            # Le dossier vide est créé directement, sans .gitkeep.
           }
           if (Test-Path "$root/_internal") { throw "L'EXE Portable ne doit pas avoir _internal" }
 
@@ -108,7 +108,8 @@ jobs:
             if (-not (Test-Path $f)) { throw "Portable incomplet : $f" }
           }
           foreach ($d in @("AUDIOS", "AUTRES", "CHAÎNES", "GIFS", "PLAYLIST", "VIDÉOS")) {
-            if (-not (Test-Path "$root/$d/.gitkeep")) { throw "Dossier $d absent" }
+            if (-not (Test-Path "$root/$d" -PathType Container)) { throw "Dossier $d absent" }
+            if (Test-Path "$root/$d/.gitkeep") { throw "Marqueur .gitkeep interdit dans $d" }
           }
           if (-not (Test-Path "dist/All-Download-Installer/All-Download-Setup.exe")) {
             throw "Installateur Classique absent"
@@ -135,7 +136,7 @@ jobs:
             throw "Version classique incompatible : _internal encore present"
           }
           foreach ($d in @("AUDIOS", "AUTRES", "CHAÎNES", "GIFS", "PLAYLIST", "VIDÉOS")) {
-            if (-not (Test-Path "$installed/$d/.gitkeep")) {
+            if (-not (Test-Path "$installed/$d" -PathType Container)) {
               throw "Dossier installe absent : $d"
             }
           }
