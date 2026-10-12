@@ -38,7 +38,7 @@ assert.ok(executablePath, 'Microsoft Edge x64 introuvable sur le runner Windows'
         firstX:cards[0].x,secondX:cards[1].x,
         hasHorizontalOverflow:document.documentElement.scrollWidth>innerWidth};
     });
-    assert.ok(large.width>=1500, 'La page ne s'étend pas en plein écran : ' + large.width);
+    assert.ok(large.width>=1500, "La page ne s'étend pas en plein écran : " + large.width);
     assert.equal(large.display,'grid','Les cartes ne passent pas en grille en plein écran');
     assert.ok(large.secondX>large.firstX+200,'Les cartes ne sont pas disposées côte à côte');
     assert.equal(large.hasHorizontalOverflow,false,'Débordement horizontal en plein écran');
