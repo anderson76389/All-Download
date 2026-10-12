@@ -792,9 +792,9 @@ HTML_PAGE = """<!DOCTYPE html>
   .settings-header, .logs-header, .auth-header {
     border-bottom-color: var(--ui-divider);
   }
-  .trash-arrow {
-    border-left-color: var(--ui-divider);
-  }
+  body.theme-light .trash-arrow { border-left-color: #cbd5e1; }
+  body.theme-dark .trash-arrow { border-left-color: #3b3b3b; }
+  body.theme-dark_pure .trash-arrow { border-left-color: #2d2d2d; }
   body.theme-light .v-separator,
   body.theme-light .bottom-v-separator,
   body.theme-dark .v-separator,
