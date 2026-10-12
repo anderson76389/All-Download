@@ -115,7 +115,17 @@ def choose_initial_download_folder(config):
     MediaDownloader : celui-ci etait utilise comme dossier de test.
     """
     saved = config.get("download_folder")
-    if isinstance(saved, str) and saved.strip() and not is_legacy_download_folder(saved):
+    # Les deux éditions partagent config.json, mais pas leur destination
+    # automatique : Portable près de l'EXE, Classique dans Téléchargements.
+    # Seul un chemin choisi volontairement doit suivre les deux éditions.
+    custom = config.get("download_folder_custom")
+    if isinstance(saved, str) and saved.strip() and (
+        custom is True or (
+            custom is not False
+            and not is_legacy_download_folder(saved)
+            and os.path.normcase(os.path.abspath(saved)) != os.path.normcase(os.path.abspath(DEFAULT_DOWNLOAD_BASE))
+        )
+    ):
         return saved
 
     if getattr(sys, "frozen", False):
@@ -892,6 +902,20 @@ HTML_PAGE = """<!DOCTYPE html>
     <!-- ONGLET 1 : TÉLÉCHARGEMENT -->
     <div class="settings-content" id="setSectionTelech">
       <div class="setting-section">
+        <div class="setting-sec-title">📂 Dossier des téléchargements</div>
+        <div class="setting-sec-desc">Choisissez où enregistrer les médias. Les dossiers AUDIOS, VIDÉOS, GIFS, CHAÎNES, PLAYLIST et AUTRES seront créés automatiquement.</div>
+        <div class="setting-field">
+          <label class="setting-label" for="setDownloadFolder">Emplacement actuel :</label>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <input id="setDownloadFolder" type="text" class="setting-input" spellcheck="false" autocomplete="off" placeholder="C:\\Users\\...\\Téléchargements" style="flex:1 1 300px; min-width:220px;">
+            <button type="button" class="btn-logs-card" onclick="browseDownloadFolder()" style="padding:10px 16px; white-space:nowrap;">Parcourir…</button>
+            <button type="button" class="btn-logs-card" onclick="resetDownloadFolder()" style="padding:10px 16px; white-space:nowrap;">Par défaut</button>
+          </div>
+          <div class="setting-subtext">Vous pouvez choisir un dossier sur un autre disque (D:, E:, etc.) ou coller un chemin complet. Aucun fichier existant ne sera déplacé ni supprimé.</div>
+          <div id="downloadFolderError" role="alert" aria-live="polite" style="display:none; color:#e35f5f; margin-top:8px; font-size:12px;"></div>
+        </div>
+      </div>
+      <div class="setting-section">
         <div class="setting-sec-title">Sortie</div>
         <div class="setting-sec-desc">Configurer le type de fichiers téléchargés.</div>
 
@@ -1467,8 +1491,32 @@ HTML_PAGE = """<!DOCTYPE html>
     }
   }
 
+  function setDownloadFolderError(message) {
+    const el = document.getElementById('downloadFolderError');
+    el.textContent = message || '';
+    el.style.display = message ? 'block' : 'none';
+  }
+
+  function browseDownloadFolder() {
+    setDownloadFolderError('');
+    callApi('browse_download_folder').then(path => {
+      if (path) document.getElementById('setDownloadFolder').value = path;
+    }).catch(() => setDownloadFolderError("Impossible d'ouvrir le sélecteur de dossiers Windows."));
+  }
+
+  function resetDownloadFolder() {
+    setDownloadFolderError('');
+    callApi('get_default_download_folder').then(path => {
+      if (path) document.getElementById('setDownloadFolder').value = path;
+    }).catch(() => setDownloadFolderError("Impossible de retrouver le dossier par défaut."));
+  }
+
   function showSettingsView() {
     openView('viewSettings');
+    setDownloadFolderError('');
+    callApi('get_download_folder').then(path => {
+      if (path) document.getElementById('setDownloadFolder').value = path;
+    });
     callApi('get_app_settings').then(s => {
       if (!s) return;
       setSortieMode(s.sortie_type || 'video');
@@ -1556,9 +1604,25 @@ HTML_PAGE = """<!DOCTYPE html>
       impersonation: document.getElementById('setImpersonation').value,
       extractor_args: document.getElementById('setExtractorArgs').value
     };
-    applyTheme(s.theme);
-    callApi('save_app_settings', s).then(() => {
-      openView('viewMain');
+    const destination = document.getElementById('setDownloadFolder').value.trim();
+    if (!destination) {
+      switchSettingsTab('telech');
+      setDownloadFolderError('Choisissez un dossier de téléchargement.');
+      return;
+    }
+    setDownloadFolderError('');
+    callApi('save_app_settings', s, destination).then(result => {
+      if (result && result.success === true) {
+        applyTheme(s.theme);
+        document.getElementById('setDownloadFolder').value = result.path;
+        openView('viewMain');
+      } else {
+        switchSettingsTab('telech');
+        setDownloadFolderError(result && result.error ? result.error : "Impossible d'enregistrer ce dossier.");
+      }
+    }).catch(() => {
+      switchSettingsTab('telech');
+      setDownloadFolderError("Impossible d'enregistrer les paramètres.");
     });
   }
 
@@ -2120,6 +2184,14 @@ class DownloaderAPI:
     def __init__(self):
         self.window = None
         self.config = self._load_config()
+        if "download_folder_custom" not in self.config:
+            saved = self.config.get("download_folder")
+            self.config["download_folder_custom"] = bool(
+                isinstance(saved, str) and saved.strip()
+                and not is_legacy_download_folder(saved)
+                and os.path.normcase(os.path.abspath(saved))
+                    != os.path.normcase(os.path.abspath(DEFAULT_DOWNLOAD_BASE))
+            )
         self.download_folder = choose_initial_download_folder(self.config)
         ensure_media_directories(self.download_folder)
         # Corriger aussi le chemin déjà enregistré sur les anciennes versions,
@@ -2142,8 +2214,30 @@ class DownloaderAPI:
         self.config["download_folder"] = self.download_folder
         try:
             with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-                json.dump(self.config, f, indent=4)
-        except Exception: pass
+                json.dump(self.config, f, indent=4, ensure_ascii=False)
+            return True
+        except (OSError, TypeError, ValueError):
+            return False
+
+    def get_download_folder(self):
+        return self.download_folder
+
+    def get_default_download_folder(self):
+        return choose_initial_download_folder({"download_folder_custom": False})
+
+    def browse_download_folder(self):
+        if self.window is None:
+            return None
+        try:
+            initial = self.download_folder if os.path.isdir(self.download_folder) else os.path.expanduser("~")
+            result = self.window.create_file_dialog(
+                webview.FileDialog.FOLDER, directory=initial
+            )
+            if result:
+                return os.path.normpath(result[0])
+        except Exception as exc:
+            handle_exception(type(exc), exc, exc.__traceback__)
+        return None
 
     def get_app_settings(self):
         return self.config.get("settings", {
@@ -2173,10 +2267,38 @@ class DownloaderAPI:
             "extractor_args": ""
         })
 
-    def save_app_settings(self, settings_dict):
+    def save_app_settings(self, settings_dict, download_folder=None):
+        if not isinstance(settings_dict, dict):
+            return {"success": False, "error": "Paramètres invalides."}
+        requested = download_folder if download_folder is not None else self.download_folder
+        if not isinstance(requested, str) or not requested.strip():
+            return {"success": False, "error": "Choisissez un dossier de téléchargement."}
+        requested = os.path.expanduser(os.path.expandvars(requested.strip().strip('"')))
+        if not os.path.isabs(requested):
+            return {"success": False, "error": "Indiquez un chemin absolu (C:\\..., D:\\... ou un dossier réseau)."}
+        requested = os.path.normpath(requested)
+        try:
+            ensure_media_directories(requested)
+            import tempfile
+            with tempfile.TemporaryFile(dir=requested):
+                pass
+        except (OSError, ValueError) as exc:
+            return {"success": False, "error": f"Dossier inaccessible ou non modifiable : {exc}"}
+
+        old_config = dict(self.config)
+        old_folder = self.download_folder
+        automatic = self.get_default_download_folder()
+        self.download_folder = requested
+        self.config["download_folder_custom"] = (
+            os.path.normcase(os.path.abspath(requested))
+            != os.path.normcase(os.path.abspath(automatic))
+        )
         self.config["settings"] = settings_dict
-        self._save_config()
-        return True
+        if not self._save_config():
+            self.config = old_config
+            self.download_folder = old_folder
+            return {"success": False, "error": "Impossible d'enregistrer la configuration Windows."}
+        return {"success": True, "path": self.download_folder}
 
     def get_clipboard_text(self):
         try:
