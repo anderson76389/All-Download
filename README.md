@@ -83,9 +83,11 @@ Les **six catégories sont créées automatiquement**, sans effacer vos médias 
 | Édition | Emplacement initial des téléchargements |
 |---|---|
 | **Portable** | Sous-dossiers voisins de l'EXE, si le dossier est accessible en écriture |
-| **Classique** | `%USERPROFILE%\Downloads\MediaDownloader` |
+| **Classique** | `%USERPROFILE%\Downloads\All-Download-Medias` |
 
-Une destination déjà enregistrée dans les paramètres reste prioritaire. **Désinstaller l'édition Classique ne doit pas nécessiter la suppression de vos médias**, stockés à part.
+Une destination personnalisée déjà enregistrée dans les paramètres reste prioritaire. **Exception : l'ancien emplacement automatique `Téléchargements/MediaDownloader` est remplacé par le nouveau dossier propre**, pour ne plus mélanger les médias avec les fichiers du projet de test. Les anciens fichiers ne sont ni supprimés ni déplacés.
+
+**Désinstaller l'édition Classique ne doit pas nécessiter la suppression de vos médias**, stockés à part.
 
 ## 🔒 Versions officielles et mises à jour
 
