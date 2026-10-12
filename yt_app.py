@@ -767,6 +767,52 @@ HTML_PAGE = """<!DOCTYPE html>
   .secret-box { background: #181b22; border: 1px solid #262d3d; border-radius: 12px; padding: 14px; display: flex; align-items: center; gap: 14px; margin-top: 10px; }
   .btn-secret-activate { background: #0284c7; border: none; color: #fff; font-weight: 700; font-size: 13px; padding: 8px 20px; border-radius: 999px; cursor: pointer; }
 
+  /* Finitions discretement plus lisibles sur les trois themes.
+     Aucun changement de structure, de taille des boutons ou de logique. */
+  body.theme-light { --ui-divider: #cbd5e1; }
+  body.theme-dark { --ui-divider: #3b3b3b; }
+  body.theme-dark_pure { --ui-divider: #2d2d2d; }
+
+  .header {
+    border-bottom: 1px solid var(--ui-divider);
+    margin-bottom: 6px;
+  }
+  .empty-view {
+    text-align: center;
+    padding: 0 18px clamp(18px, 3vh, 30px);
+  }
+  .footer {
+    border-top-color: var(--ui-divider);
+  }
+  .status-bar {
+    border-bottom: 1px solid var(--ui-divider);
+  }
+  .settings-header, .logs-header, .auth-header {
+    border-bottom-color: var(--ui-divider);
+  }
+  .trash-arrow {
+    border-left-color: var(--ui-divider);
+  }
+  body.theme-light .v-separator,
+  body.theme-light .bottom-v-separator,
+  body.theme-dark .v-separator,
+  body.theme-dark .bottom-v-separator,
+  body.theme-dark_pure .v-separator,
+  body.theme-dark_pure .bottom-v-separator {
+    background: var(--ui-divider);
+  }
+  /* Le bloc de formats reste precisement centre, meme si la droite
+     contient davantage de boutons que la gauche. */
+  @media (min-width: 1151px) {
+    .actions-bar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    }
+    .actions-left { justify-self: start; }
+    .actions-center { justify-self: center; }
+    .actions-right { justify-self: end; }
+  }
+
   /* Responsive sans changer le theme ni la structure des boutons. */
   .header, .settings-header, .logs-header, .auth-header { min-width: 0; }
   .settings-header, .logs-header, .auth-header { gap: 14px; flex-wrap: wrap; }
