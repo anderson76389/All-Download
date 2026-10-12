@@ -1,100 +1,96 @@
-"""Construire les ZIP Windows complets pour les GitHub Releases.
+"""Publier deux ZIP complets : Portable et Windows Classique (installateur).
 
-Chaque ZIP contient l'application prête à exécuter à la racine, les six dossiers
-de médias, les logos et une copie de TOUS les fichiers suivis par Git
-(dans Code-source/). Aucun fichier non suivi ou personnel n'est inclus.
+Les ZIP incluent les logos, les six dossiers et tous les fichiers suivis par Git
+dans Code-source/, sans aucun telechargement personnel ni donnee locale.
 """
 from __future__ import annotations
 
 import argparse
-import os
 from pathlib import Path
 import subprocess
-import sys
 import zipfile
 
-
 MEDIA_DIRS = ("AUDIOS", "AUTRES", "CHAÎNES", "GIFS", "PLAYLIST", "VIDÉOS")
-SOURCE_NAME = "Code-source"
+SOURCES = "Code-source"
+PORTABLE_NAME = "All-Download-Portable-Windows.zip"
+CLASSIC_NAME = "All-Download-Classique-Windows.zip"
 
 
-def repository_files(repository: Path) -> list[Path]:
-    raw = subprocess.check_output(
-        ["git", "-C", str(repository), "ls-files", "-z", "--cached"]
-    )
-    paths = [Path(p) for p in raw.decode("utf-8").split("\0") if p]
-    for path in paths:
-        if not (repository / path).is_file():
-            raise FileNotFoundError(f"Fichier suivi introuvable : {path}")
-    return paths
+def repository_files(root: Path) -> list[Path]:
+    output = subprocess.check_output(["git", "-C", str(root), "ls-files", "-z", "--cached"])
+    tracked = [Path(path) for path in output.decode("utf-8").split("\0") if path]
+    for relative in tracked:
+        if not (root / relative).is_file():
+            raise FileNotFoundError(f"Fichier Git absent : {relative}")
+    return tracked
 
 
-def build_archive(
-    repository: Path, runtime: Path, output: Path, tracked: list[Path]
-) -> None:
-    if not (runtime / "All_Media_Download.exe").is_file():
-        raise FileNotFoundError(f"EXE absent : {runtime}")
-    if not (runtime / "logo.ico").is_file() or not (runtime / "logo.jpg").is_file():
-        raise FileNotFoundError("Un logo manque dans la distribution")
-    for name in MEDIA_DIRS:
-        if not (runtime / name).is_dir():
-            raise FileNotFoundError(f"Dossier de téléchargement absent : {name}")
+def add_source(archive: zipfile.ZipFile, root: Path, tracked: list[Path]) -> None:
+    for relative in tracked:
+        archive.write(root / relative, f"{SOURCES}/{relative.as_posix()}")
 
-    output.parent.mkdir(parents=True, exist_ok=True)
-    # Zip64 permet aussi de conserver les distributions Windows importantes.
-    with zipfile.ZipFile(
-        output, "w", compression=zipfile.ZIP_DEFLATED,
-        compresslevel=6, allowZip64=True
-    ) as archive:
-        files = sorted(
-            (p for p in runtime.rglob("*") if p.is_file()),
-            key=lambda p: p.relative_to(runtime).as_posix()
-        )
-        for path in files:
-            archive.write(path, path.relative_to(runtime).as_posix())
-        for tracked_path in tracked:
-            archive.write(
-                repository / tracked_path,
-                f"{SOURCE_NAME}/{tracked_path.as_posix()}"
-            )
 
-    with zipfile.ZipFile(output, "r") as archive:
-        corrupted = archive.testzip()
-        if corrupted:
-            raise ValueError(f"Fichier ZIP corrompu : {corrupted}")
+def check_zip(zip_path: Path, tracked: list[Path], executable: str) -> None:
+    with zipfile.ZipFile(zip_path, "r") as archive:
+        broken = archive.testzip()
+        if broken:
+            raise ValueError(f"ZIP corrompu : {broken}")
         names = set(archive.namelist())
-        expected = {
-            "All_Media_Download.exe",
-            "logo.ico", "logo.jpg",
-            "Code-source/yt_app.py",
-            "Code-source/README.md",
-            "Code-source/.github/workflows/build-windows.yml",
-            "Code-source/All_Media_Download.spec",
-            "Code-source/All_Media_Download-Portable.spec",
-        }
-        expected.update(f"{d}/.gitkeep" for d in MEDIA_DIRS)
-        expected.update(f"{SOURCE_NAME}/{p.as_posix()}" for p in tracked)
-        missing = expected - names
+        needed = {executable, "logo.ico", "logo.jpg"}
+        needed.update(f"{name}/.gitkeep" for name in MEDIA_DIRS)
+        needed.update(f"{SOURCES}/{path.as_posix()}" for path in tracked)
+        missing = needed - names
         if missing:
-            raise ValueError(f"Fichiers manquants dans {output}: {sorted(missing)}")
-    print(f"ZIP vérifié : {output.name} ({output.stat().st_size:,} octets)")
+            raise ValueError(f"ZIP incomplet : {sorted(missing)}")
+        if zip_path.name == CLASSIC_NAME and "_internal/pythonnet/runtime/Python.Runtime.dll" in names:
+            raise ValueError("La version classique ne doit plus inclure pythonnet en dossier !")
+    print(f"ZIP valide : {zip_path} ({zip_path.stat().st_size:,} octets)")
+
+
+def build_portable(root: Path, output: Path, tracked: list[Path]) -> None:
+    app = root / "dist" / "All-Download-Portable"
+    if not (app / "All_Media_Download.exe").is_file():
+        raise FileNotFoundError("L'EXE Portable est absent")
+    with zipfile.ZipFile(output / PORTABLE_NAME, "w", zipfile.ZIP_DEFLATED, compresslevel=6, allowZip64=True) as zf:
+        for path in sorted(app.rglob("*")):
+            if path.is_file():
+                zf.write(path, path.relative_to(app).as_posix())
+        add_source(zf, root, tracked)
+    check_zip(output / PORTABLE_NAME, tracked, "All_Media_Download.exe")
+
+
+def build_classic(root: Path, output: Path, tracked: list[Path]) -> None:
+    setup = root / "dist" / "All-Download-Installer" / "All-Download-Setup.exe"
+    if not setup.is_file():
+        raise FileNotFoundError(f"Installateur Windows absent : {setup}")
+    with zipfile.ZipFile(output / CLASSIC_NAME, "w", zipfile.ZIP_DEFLATED, compresslevel=6, allowZip64=True) as zf:
+        zf.write(setup, setup.name)
+        zf.write(root / "logo.ico", "logo.ico")
+        zf.write(root / "logo.jpg", "logo.jpg")
+        for category in MEDIA_DIRS:
+            zf.write(root / category / ".gitkeep", f"{category}/.gitkeep")
+        zf.writestr("INSTALLATION-WINDOWS.txt",
+            "ALL-DOWNLOAD - WINDOWS CLASSIQUE\n\n"
+            "1. Lancez All-Download-Setup.exe.\n"
+            "2. Choisissez vos raccourcis et terminez l'installation.\n"
+            "3. Les medias sont conserves dans votre dossier de telechargement,\n"
+            "   et NON dans le dossier du programme.\n"
+            "4. L'application peut etre desinstallee depuis Windows.\n\n"
+            "L'avertissement de reputation SmartScreen peut subsister tant que\n"
+            "le programme n'est pas signe par un editeur reconnu.\n")
+        add_source(zf, root, tracked)
+    check_zip(output / CLASSIC_NAME, tracked, "All-Download-Setup.exe")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-
     root = Path(__file__).resolve().parents[1]
+    args.output.mkdir(parents=True, exist_ok=True)
     tracked = repository_files(root)
-    build_archive(
-        root, root / "dist/All-Download-Portable",
-        args.output / "All-Download-Portable-Windows.zip", tracked
-    )
-    build_archive(
-        root, root / "dist/All_Media_Download",
-        args.output / "All-Download-Classique-Windows.zip", tracked
-    )
+    build_portable(root, args.output, tracked)
+    build_classic(root, args.output, tracked)
 
 
 if __name__ == "__main__":
