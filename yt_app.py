@@ -1973,6 +1973,15 @@ HTML_PAGE = """<!DOCTYPE html>
     updateView();
   }
 
+  function markDownloadSuccess(url) {
+    // Le moteur nous confirme une réussite réelle (code de sortie yt-dlp 0).
+    const item = queue.find(x => !x.isError && x.url === url && x.status !== 'success');
+    if (item) {
+      item.status = 'success';
+      renderCards();
+    }
+  }
+
   function clearSuccess() {
     queue = queue.filter(item => item.status !== 'success');
     closeAllPopovers();
@@ -2093,6 +2102,7 @@ class DownloaderAPI:
         ensure_media_directories(self.download_folder)
         self.is_cancelled = False
         self.is_paused = False
+        self._active_download_process = None
 
     def _load_config(self):
         if os.path.exists(CONFIG_FILE):
@@ -2220,6 +2230,14 @@ class DownloaderAPI:
 
     def cancel_downloads(self):
         self.is_cancelled = True
+        # Annuler aussi le transfert yt-dlp en cours, pas seulement la file.
+        proc = getattr(self, "_active_download_process", None)
+        if proc is not None:
+            try:
+                kill_process_tree(proc.pid)
+            except Exception:
+                pass
+        return True
 
     def pause_downloads(self):
         self.is_paused = True
@@ -2391,8 +2409,9 @@ class DownloaderAPI:
 
         def _worker():
             total = len(items)
+            completed = 0
             for idx, item in enumerate(items, 1):
-                while self.is_paused:
+                while self.is_paused and not self.is_cancelled:
                     time.sleep(0.3)
 
                 if self.is_cancelled: break
@@ -2427,8 +2446,13 @@ class DownloaderAPI:
                         with urllib.request.urlopen(req, timeout=20) as resp, open(out_path, "wb") as f_out:
                             f_out.write(resp.read())
                         
+                        completed += 1
                         if self.window:
-                            self.window.evaluate_js(f"updateDownloadProgress(100, 'Téléchargement terminé – {out_name}')")
+                            try:
+                                self.window.evaluate_js(f"markDownloadSuccess({json.dumps(url)})")
+                                self.window.evaluate_js(f"updateDownloadProgress(100, {json.dumps('Téléchargement terminé – ' + out_name)})")
+                            except Exception:
+                                pass
                         continue
                     except Exception:
                         pass
@@ -2572,6 +2596,10 @@ class DownloaderAPI:
                     creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
                 )
 
+                self._active_download_process = proc
+                if self.is_cancelled:
+                    kill_process_tree(proc.pid)
+
                 last_pct = -1
                 last_time = 0
                 for line in iter(proc.stdout.readline, ""):
@@ -2591,11 +2619,26 @@ class DownloaderAPI:
                                 except Exception: pass
 
                 proc.communicate()
+                self._active_download_process = None
 
+                if not self.is_cancelled and getattr(proc, "returncode", None) == 0:
+                    completed += 1
+                    try:
+                        if self.window:
+                            self.window.evaluate_js(f"markDownloadSuccess({json.dumps(url)})")
+                    except Exception:
+                        pass
+
+            self._active_download_process = None
             try:
                 if self.window:
-                    self.window.evaluate_js("updateDownloadProgress(100, 'Téléchargement terminé – 1 élément téléchargé.')")
-            except Exception: pass
+                    if self.is_cancelled:
+                        status = f"Annulé – {completed}/{total} élément(s) téléchargé(s)."
+                    else:
+                        status = f"Traitement terminé – {completed}/{total} élément(s) téléchargé(s)."
+                    self.window.evaluate_js(f"updateDownloadProgress(100, {json.dumps(status)})")
+            except Exception:
+                pass
             gc.collect()
 
         threading.Thread(target=_worker, daemon=True).start()
