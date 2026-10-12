@@ -772,6 +772,11 @@ HTML_PAGE = """<!DOCTYPE html>
   .settings-header, .logs-header, .auth-header { gap: 14px; flex-wrap: wrap; }
   .settings-nav { flex-wrap: wrap; justify-content: center; }
   .url-input, .input-wrapper, .card-body, .setting-field, .settings-content { min-width: 0; }
+  .extra-quick-wrap { display: none; align-items: center; gap: 8px; min-width: 0; }
+  .extra-quick-wrap label { font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .extra-quick-wrap select { max-width: 168px; padding: 7px 10px; }
+  .app-toast { position: fixed; z-index: 120000; right: clamp(18px, 3vw, 44px); top: 18px; max-width: min(410px, calc(100vw - 36px)); padding: 13px 18px; border-radius: 12px; background: #242b38; color: #fff; font-size: 13px; box-shadow: 0 8px 30px rgba(0,0,0,0.25); display: none; overflow-wrap: anywhere; }
+  .app-toast.visible { display: block; }
   @media (min-width: 1400px) {
     .header { padding-block: 22px; }
     .url-input { font-size: 15px; }
@@ -835,6 +840,7 @@ HTML_PAGE = """<!DOCTYPE html>
     <button class="ctx-item" onmousedown="clearUrlInput(event)">✕ Effacer</button>
   </div>
 
+  <div id="appToast" class="app-toast" role="status" aria-live="polite"></div>
   <!-- VUE 1 : PRINCIPALE -->
   <div class="page-view" id="viewMain">
     <div class="app-container">
@@ -898,6 +904,10 @@ HTML_PAGE = """<!DOCTYPE html>
               <svg class="svg-icon" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
               <div class="dropdown-popover upward" id="globalQualPopover"></div>
             </div>
+          </div>
+          <div class="extra-quick-wrap" id="extraQuickWrap">
+            <label for="extraQuickValue" id="extraQuickLabel">Conteneur</label>
+            <select id="extraQuickValue" class="setting-input" onchange="selectExtraQuickValue(this.value)"></select>
           </div>
         </div>
 
@@ -1150,6 +1160,7 @@ HTML_PAGE = """<!DOCTYPE html>
             <option value="format">Format de conteneur</option>
             <option value="audio_rate">Échantillonnage audio</option>
           </select>
+          <div class="setting-subtext">Affiche un choix rapide dans la barre du bas : MP4/MKV en mode Vidéo, ou 44,1/48 kHz en mode Audio. La fréquence ne restaure pas la qualité de la source.</div>
         </div>
       </div>
 
@@ -1157,7 +1168,7 @@ HTML_PAGE = """<!DOCTYPE html>
 
       <div class="setting-section">
         <div class="setting-sec-title">Notifications</div>
-        <div class="setting-sec-desc">Configurer quand les notifications sont envoyées.</div>
+        <div class="setting-sec-desc">Affiche un message discret dans All-Download à la fin des téléchargements, sans processus supplémentaire.</div>
 
         <div class="setting-field">
           <div class="setting-label">Afficher les notifications :</div>
