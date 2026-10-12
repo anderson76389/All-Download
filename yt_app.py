@@ -93,7 +93,7 @@ DEFAULT_DOWNLOAD_BASE = os.path.join(os.path.expanduser("~"), "Downloads", "Medi
 DOWNLOAD_CATEGORIES = ("AUTRES", "VIDÉOS", "CHAÎNES", "AUDIOS", "PLAYLIST", "GIFS")
 
 def choose_initial_download_folder(config):
-    """Sur une edition portable, utiliser les six dossiers fournis a cote de l'EXE.
+    """Choisir les dossiers portables ou le dossier de donnees de l'installation.
 
     Respecter toujours le repertoire deja choisi dans la configuration.
     Si le repertoire de l'application n'est pas accessible en ecriture,
@@ -105,6 +105,11 @@ def choose_initial_download_folder(config):
 
     if getattr(sys, "frozen", False):
         executable_dir = os.path.dirname(os.path.abspath(sys.executable))
+        # La version Windows installee est un EXE monofichier dans
+        # %LOCALAPPDATA%/Programs. Elle doit conserver les medias dans Downloads,
+        # jamais dans le dossier qui peut etre remplace/desinstalle.
+        if os.path.isfile(os.path.join(executable_dir, ".all-download-installed")):
+            return DEFAULT_DOWNLOAD_BASE
         if all(os.path.isdir(os.path.join(executable_dir, d)) for d in DOWNLOAD_CATEGORIES):
             try:
                 import tempfile
