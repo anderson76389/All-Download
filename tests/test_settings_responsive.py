@@ -94,6 +94,7 @@ class SettingsWorkflowTests(unittest.TestCase):
         self.assertEqual(cmd[cmd.index("--audio-format") + 1], "m4a")
         cmd = self.download("Audio", "MP3_320", audio_format="FLAC")
         self.assertEqual(cmd[cmd.index("--audio-format") + 1], "mp3")
+        self.assertEqual(cmd[cmd.index("--audio-quality") + 1], "320K")
         cmd = self.download("Audio", "FLAC", audio_sample_rate="48000", extra_selector="none")
         self.assertNotIn("--postprocessor-args", cmd)
 
