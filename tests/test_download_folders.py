@@ -137,6 +137,106 @@ class DownloadFolderTests(unittest.TestCase):
                 yt_app.choose_initial_download_folder({"download_folder": custom}), custom
             )
 
+    def test_user_can_select_new_destination_and_keep_old_media(self):
+        import json
+        old_path = os.path.join(self.root, "OldMedia")
+        new_path = os.path.join(self.root, "Nouveau dossier médias")
+        os.makedirs(os.path.join(old_path, "VIDÉOS"))
+        with open(os.path.join(old_path, "VIDÉOS", "ancien.mp4"), "wb") as f:
+            f.write(b"ancien-media")
+
+        config_file = os.path.join(self.root, "config_new.json")
+        api = self.create_api()
+        api.download_folder = old_path
+        api.config = {"download_folder_custom": False, "cookie_browser": "firefox"}
+        with patch.object(yt_app, "CONFIG_FILE", config_file), patch.object(
+            yt_app, "DEFAULT_DOWNLOAD_BASE", old_path
+        ), patch.object(yt_app.sys, "frozen", False, create=True):
+            result = api.save_app_settings({"theme": "dark"}, new_path)
+            self.assertTrue(result["success"], result)
+            self.assertEqual(result["path"], new_path)
+            self.assertEqual(api.get_download_folder(), new_path)
+            self.assertTrue(os.path.isdir(os.path.join(new_path, "GIFS")))
+            with open(config_file, encoding="utf-8") as f:
+                saved = json.load(f)
+            self.assertTrue(saved["download_folder_custom"])
+            self.assertEqual(saved["download_folder"], new_path)
+            self.assertEqual(saved["cookie_browser"], "firefox")
+            self.assertEqual(saved["settings"]["theme"], "dark")
+            self.assertEqual(
+                yt_app.choose_initial_download_folder(saved), new_path
+            )
+
+        with open(os.path.join(old_path, "VIDÉOS", "ancien.mp4"), "rb") as f:
+            self.assertEqual(f.read(), b"ancien-media")
+
+    def test_reject_invalid_path_without_losing_old_settings(self):
+        api = self.create_api()
+        api.config = {"settings": {"theme": "light"}, "download_folder_custom": False}
+        with patch.object(yt_app, "ensure_media_directories", side_effect=PermissionError("Accès refusé")):
+            result = api.save_app_settings({"theme": "dark"}, os.path.join(self.root, "Protected"))
+        self.assertFalse(result["success"])
+        self.assertEqual(api.download_folder, self.root)
+        self.assertEqual(api.config["settings"]["theme"], "light")
+        relative = api.save_app_settings({"theme": "dark"}, "mes-fichiers")
+        self.assertFalse(relative["success"])
+        self.assertEqual(api.download_folder, self.root)
+
+    def test_two_editions_have_separate_automatic_destinations(self):
+        portable = os.path.join(self.root, "portable")
+        classic = os.path.join(self.root, "installed")
+        destination = os.path.join(self.root, "All-Download-Medias")
+        yt_app.ensure_media_directories(portable)
+        yt_app.ensure_media_directories(classic)
+        with open(os.path.join(classic, ".all-download-installed"), "w") as f:
+            f.write("installed")
+        saved_auto = {"download_folder": destination, "download_folder_custom": False}
+        with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
+            yt_app, "DEFAULT_DOWNLOAD_BASE", destination
+        ), patch.object(yt_app.sys, "executable", os.path.join(portable, "All_Media_Download.exe")):
+            self.assertEqual(yt_app.choose_initial_download_folder(saved_auto), portable)
+        with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
+            yt_app, "DEFAULT_DOWNLOAD_BASE", destination
+        ), patch.object(yt_app.sys, "executable", os.path.join(classic, "All_Media_Download.exe")):
+            self.assertEqual(yt_app.choose_initial_download_folder(saved_auto), destination)
+
+    def test_browse_folder_uses_native_windows_dialog_and_cancel_preserves_folder(self):
+        api = self.create_api()
+        chosen = os.path.join(self.root, "Choix Windows")
+
+        class FakeWindow:
+            def __init__(self):
+                self.result = [chosen]
+                self.arguments = None
+            def create_file_dialog(self, kind, directory):
+                self.arguments = (kind, directory)
+                return self.result
+
+        api.window = FakeWindow()
+        result = api.browse_download_folder()
+        self.assertEqual(result, chosen)
+        self.assertEqual(api.window.arguments[0], yt_app.webview.FileDialog.FOLDER)
+        self.assertEqual(api.download_folder, self.root)
+        api.window.result = None
+        self.assertIsNone(api.browse_download_folder())
+        self.assertEqual(api.download_folder, self.root)
+
+    def test_reset_to_default_unshares_auto_destinations(self):
+        api = self.create_api()
+        automatic = os.path.join(self.root, "Default")
+        custom = os.path.join(self.root, "Chosen")
+        config = os.path.join(self.root, "config_reset.json")
+        with patch.object(yt_app, "DEFAULT_DOWNLOAD_BASE", automatic), patch.object(
+            yt_app, "CONFIG_FILE", config
+        ), patch.object(yt_app.sys, "frozen", False, create=True):
+            self.assertEqual(api.get_default_download_folder(), automatic)
+            first = api.save_app_settings({"theme": "light"}, custom)
+            self.assertTrue(first["success"])
+            self.assertTrue(api.config["download_folder_custom"])
+            again = api.save_app_settings({"theme": "light"}, automatic)
+            self.assertTrue(again["success"])
+            self.assertFalse(api.config["download_folder_custom"])
+
     def test_legacy_audio_migrates_without_losing_files(self):
         old_dir = os.path.join(self.root, "AUDIO")
         os.makedirs(os.path.join(old_dir, "album"))
