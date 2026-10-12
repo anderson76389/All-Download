@@ -39,6 +39,17 @@ jobs:
       - name: Tester le routage et la preservation des medias
         run: python -m unittest discover -s tests -v
 
+      - name: Tester les boutons de l'interface (DOM JavaScript)
+        shell: pwsh
+        run: |
+          node --version
+          npm install --no-save --no-package-lock --ignore-scripts jsdom@26.1.0
+          if ($LASTEXITCODE -ne 0) { throw "Impossible d'installer l'environnement de test UI" }
+          python -c 'import yt_app; from pathlib import Path; Path("tests/ui-test.html").write_text(yt_app.HTML_PAGE, encoding="utf-8")'
+          if ($LASTEXITCODE -ne 0) { throw "Impossible d'extraire l'interface pour les tests" }
+          node tests/test_ui_buttons.cjs
+          if ($LASTEXITCODE -ne 0) { throw "Un bouton ou un workflow de l'interface a echoue" }
+
       - name: Construire la version en dossier sans UPX
         run: python -m PyInstaller --clean --noconfirm All_Media_Download.spec
 
