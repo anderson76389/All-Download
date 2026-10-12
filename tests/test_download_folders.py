@@ -73,12 +73,68 @@ class DownloadFolderTests(unittest.TestCase):
                 yt_app.choose_initial_download_folder({"download_folder": other}), other
             )
 
-    def test_no_portable_folders_keeps_historical_destination(self):
+    def test_no_portable_folders_uses_clean_new_destination(self):
         with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
             yt_app.sys, "executable", os.path.join(self.root, "All_Media_Download.exe")
         ):
             self.assertEqual(
                 yt_app.choose_initial_download_folder({}), yt_app.DEFAULT_DOWNLOAD_BASE
+            )
+
+    def test_legacy_saved_folder_is_not_reused(self):
+        legacy_dir = os.path.join(self.root, "MediaDownloader")
+        new_dir = os.path.join(self.root, "All-Download-Medias")
+        os.makedirs(legacy_dir)
+        # Le projet de test et les medias anciens ne doivent pas etre deplaces.
+        with open(os.path.join(legacy_dir, "yt_app.py"), "w", encoding="utf-8") as file:
+            file.write("ancien projet")
+        yt_app.ensure_media_directories(legacy_dir)
+
+        with patch.object(yt_app, "LEGACY_DOWNLOAD_BASE", legacy_dir), patch.object(
+            yt_app, "DEFAULT_DOWNLOAD_BASE", new_dir
+        ), patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
+            yt_app.sys, "executable", os.path.join(legacy_dir, "All_Media_Download.exe")
+        ):
+            selected = yt_app.choose_initial_download_folder({"download_folder": legacy_dir})
+            self.assertEqual(selected, new_dir)
+            yt_app.ensure_media_directories(selected)
+            self.assertTrue(os.path.isfile(os.path.join(legacy_dir, "yt_app.py")))
+            self.assertTrue(os.path.isdir(os.path.join(legacy_dir, "VIDÉOS")))
+            self.assertTrue(os.path.isdir(os.path.join(new_dir, "VIDÉOS")))
+
+    def test_legacy_config_is_rewritten_without_losing_preferences(self):
+        import json
+        old_dir = os.path.join(self.root, "MediaDownloader")
+        new_dir = os.path.join(self.root, "All-Download-Medias")
+        config_file = os.path.join(self.root, "config.json")
+        original = {
+            "download_folder": old_dir,
+            "settings": {"theme": "dark_pure", "video_format": "MKV"},
+            "cookie_browser": "firefox"
+        }
+        with open(config_file, "w", encoding="utf-8") as f:
+            json.dump(original, f)
+
+        with patch.object(yt_app, "CONFIG_FILE", config_file), patch.object(
+            yt_app, "LEGACY_DOWNLOAD_BASE", old_dir
+        ), patch.object(yt_app, "DEFAULT_DOWNLOAD_BASE", new_dir), patch.object(
+            yt_app.sys, "frozen", True, create=True
+        ), patch.object(
+            yt_app.sys, "executable", os.path.join(self.root, "installed", "All_Media_Download.exe")
+        ):
+            api = yt_app.DownloaderAPI()
+            self.assertEqual(api.download_folder, new_dir)
+            with open(config_file, encoding="utf-8") as f:
+                migrated = json.load(f)
+            self.assertEqual(migrated["download_folder"], new_dir)
+            self.assertEqual(migrated["settings"], original["settings"])
+            self.assertEqual(migrated["cookie_browser"], "firefox")
+
+    def test_current_custom_location_remains_unchanged(self):
+        with patch.object(yt_app, "LEGACY_DOWNLOAD_BASE", os.path.join(self.root, "MediaDownloader")):
+            custom = os.path.join(self.root, "My-Other-Downloads")
+            self.assertEqual(
+                yt_app.choose_initial_download_folder({"download_folder": custom}), custom
             )
 
     def test_legacy_audio_migrates_without_losing_files(self):
