@@ -1549,8 +1549,10 @@ HTML_PAGE = """<!DOCTYPE html>
     document.getElementById('globalModeText').innerText = mode;
     
     if (mode === 'Audio') {
-      currentGlobalQuality = 'FLAC';
-      document.getElementById('globalQualText').innerText = 'FLAC (Studio Master)';
+      const preferred = currentQuickSettings.audio_format || 'FLAC';
+      currentGlobalQuality = preferred === 'MP3' ? 'MP3_320' : preferred === 'M4A' ? 'M4A' : 'FLAC';
+      const labels = { FLAC: 'FLAC (Studio Master)', M4A: 'M4A (Format natif)', MP3_320: 'MP3 (320 kbps)' };
+      document.getElementById('globalQualText').innerText = labels[currentGlobalQuality];
     } else if (mode === 'GIF') {
       currentGlobalQuality = 'GIF';
       document.getElementById('globalQualText').innerText = 'GIF (Haute Qualité)';
@@ -1567,8 +1569,8 @@ HTML_PAGE = """<!DOCTYPE html>
       if (!item.isError) {
         item.mode = mode;
         if (mode === 'Audio') {
-          item.selectedQuality = 'FLAC';
-          item.selectedQualityLabel = 'FLAC (Studio Master)';
+          item.selectedQuality = currentGlobalQuality;
+          item.selectedQualityLabel = document.getElementById('globalQualText').innerText;
         } else if (mode === 'GIF') {
           item.selectedQuality = 'GIF';
           item.selectedQualityLabel = 'GIF (Haute Qualité)';
@@ -1739,6 +1741,9 @@ HTML_PAGE = """<!DOCTYPE html>
       if (result && result.success === true) {
         applyTheme(s.theme);
         configureQuickSelector(s);
+        if (queue.length === 0) {
+          selectGlobalMode(s.sortie_type === 'audio' ? 'Audio' : 'Vidéo');
+        }
         document.getElementById('setDownloadFolder').value = result.path;
         openView('viewMain');
       } else {
@@ -2136,8 +2141,10 @@ HTML_PAGE = """<!DOCTYPE html>
     if (e) { e.stopPropagation(); }
     queue[idx].mode = mode;
     if (mode === 'Audio') {
-      queue[idx].selectedQuality = 'FLAC';
-      queue[idx].selectedQualityLabel = 'FLAC (Studio Master)';
+      const preferred = currentQuickSettings.audio_format || 'FLAC';
+      const desired = preferred === 'MP3' ? 'MP3_320' : preferred === 'M4A' ? 'M4A' : 'FLAC';
+      queue[idx].selectedQuality = desired;
+      queue[idx].selectedQualityLabel = desired === 'MP3_320' ? 'MP3 (320 kbps)' : desired === 'M4A' ? 'M4A (Format natif)' : 'FLAC (Studio Master)';
     } else if (mode === 'GIF') {
       queue[idx].selectedQuality = 'GIF';
       queue[idx].selectedQualityLabel = 'GIF (Haute Qualité)';
@@ -2293,8 +2300,8 @@ HTML_PAGE = """<!DOCTYPE html>
     callApi('get_app_settings').then(s => {
       if (!s) return;
       if (s.theme) applyTheme(s.theme);
-      if (queue.length === 0) selectGlobalMode(s.sortie_type === 'audio' ? 'Audio' : 'Vidéo');
       configureQuickSelector(s);
+      if (queue.length === 0) selectGlobalMode(s.sortie_type === 'audio' ? 'Audio' : 'Vidéo');
     });
   }
 
