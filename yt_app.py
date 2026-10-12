@@ -87,27 +87,44 @@ FFMPEG_PATH = os.path.join(BIN_DIR, "ffmpeg.exe")
 YTDLP_URL = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
 FFMPEG_URL = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
 
-DEFAULT_DOWNLOAD_BASE = os.path.join(os.path.expanduser("~"), "Downloads", "MediaDownloader")
+# L'ancien repertoire servait aussi de dossier de developpement/test.
+# Ne plus enregistrer les nouveaux medias au milieu de yt_app.py, build, dist...
+LEGACY_DOWNLOAD_BASE = os.path.join(os.path.expanduser("~"), "Downloads", "MediaDownloader")
+DEFAULT_DOWNLOAD_BASE = os.path.join(os.path.expanduser("~"), "Downloads", "All-Download-Medias")
 
 # Dossiers locaux, séparés du dépôt GitHub. Ne jamais écraser les anciens médias.
 DOWNLOAD_CATEGORIES = ("AUTRES", "VIDÉOS", "CHAÎNES", "AUDIOS", "PLAYLIST", "GIFS")
 
-def choose_initial_download_folder(config):
-    """Choisir les dossiers portables ou le dossier de donnees de l'installation.
 
-    Respecter toujours le repertoire deja choisi dans la configuration.
-    Si le repertoire de l'application n'est pas accessible en ecriture,
-    conserver le comportement historique (Downloads/MediaDownloader).
+def is_legacy_download_folder(path):
+    """Reconnaitre uniquement l'ancien chemin par defaut, pas un dossier personnalise."""
+    if not isinstance(path, str) or not path.strip():
+        return False
+    try:
+        return os.path.normcase(os.path.abspath(os.path.expanduser(path))) == (
+            os.path.normcase(os.path.abspath(LEGACY_DOWNLOAD_BASE))
+        )
+    except (OSError, ValueError, TypeError):
+        return False
+
+
+def choose_initial_download_folder(config):
+    """Isoler les nouvelles sorties de l'ancien projet sans déplacer les médias.
+
+    Une destination personnalisée reste prioritaire, sauf l'ancien répertoire
+    MediaDownloader : celui-ci etait utilise comme dossier de test.
     """
     saved = config.get("download_folder")
-    if isinstance(saved, str) and saved.strip():
+    if isinstance(saved, str) and saved.strip() and not is_legacy_download_folder(saved):
         return saved
 
     if getattr(sys, "frozen", False):
         executable_dir = os.path.dirname(os.path.abspath(sys.executable))
-        # La version Windows installee est un EXE monofichier dans
-        # %LOCALAPPDATA%/Programs. Elle doit conserver les medias dans Downloads,
-        # jamais dans le dossier qui peut etre remplace/desinstalle.
+        # Ne jamais utiliser le dossier de l'ancien projet comme destination,
+        # meme si celui-ci contient deja les six sous-dossiers.
+        if is_legacy_download_folder(executable_dir):
+            return DEFAULT_DOWNLOAD_BASE
+        # L'édition installée écrit hors du répertoire de désinstallation.
         if os.path.isfile(os.path.join(executable_dir, ".all-download-installed")):
             return DEFAULT_DOWNLOAD_BASE
         if all(os.path.isdir(os.path.join(executable_dir, d)) for d in DOWNLOAD_CATEGORIES):
@@ -2105,6 +2122,10 @@ class DownloaderAPI:
         self.config = self._load_config()
         self.download_folder = choose_initial_download_folder(self.config)
         ensure_media_directories(self.download_folder)
+        # Corriger aussi le chemin déjà enregistré sur les anciennes versions,
+        # en conservant les réglages, cookies et autres préférences.
+        if is_legacy_download_folder(self.config.get("download_folder")):
+            self._save_config()
         self.is_cancelled = False
         self.is_paused = False
         self._active_download_process = None
