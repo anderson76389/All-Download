@@ -1,114 +1,125 @@
 <div align="center">
 
-<img src="./logo.jpg" alt="Logo All-Download" width="140">
+<img src="./logo.jpg" width="132" alt="Logo All-Download">
 
-# ALL-DOWNLOAD
+# All-Download
 
-**⚡ Vidéos, musiques, GIF, playlists et chaînes : tout au même endroit.**
+**Vidéos, musiques, GIF, playlists et chaînes : un seul logiciel pour vos téléchargements.**
 
-Téléchargeur multimédia **Windows**, avec interface en français, propulsé par [yt-dlp](https://github.com/yt-dlp/yt-dlp) et [FFmpeg](https://ffmpeg.org/).
+Application Windows en français, basée sur [yt-dlp](https://github.com/yt-dlp/yt-dlp), [FFmpeg](https://ffmpeg.org/) et [pywebview](https://pywebview.flowrl.com/).
 
-[![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-0078D4?style=flat-square)](https://github.com/anderson76389/All-Download)
-[![Python](https://img.shields.io/badge/Python-3-3776AB?style=flat-square&logo=python&logoColor=white)](./yt_app.py)
-[![Build Windows](https://github.com/anderson76389/All-Download/actions/workflows/build-windows.yml/badge.svg)](https://github.com/anderson76389/All-Download/actions/workflows/build-windows.yml)
+[![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-0078D4?style=flat-square&logo=windows11&logoColor=white)](https://github.com/anderson76389/All-Download)
+[![Code source](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)](./yt_app.py)
+[![Tests Windows](https://github.com/anderson76389/All-Download/actions/workflows/build-windows.yml/badge.svg)](https://github.com/anderson76389/All-Download/actions/workflows/build-windows.yml)
 
-### ⬇️ Téléchargements Windows
+## Télécharger All-Download
 
-[![Télécharger Portable Windows](https://img.shields.io/badge/T%C3%89L%C3%89CHARGER-WINDOWS%20PORTABLE-2563EB?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Portable-Windows.zip)
+[![Windows Portable](https://img.shields.io/badge/T%C3%89L%C3%89CHARGER-WINDOWS%20PORTABLE-2563EB?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Portable-Windows.zip)
 
-[![Télécharger Windows classique](https://img.shields.io/badge/T%C3%89L%C3%89CHARGER-WINDOWS%20CLASSIQUE-4B5563?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Classique-Windows.zip)
+[![Windows Classique](https://img.shields.io/badge/T%C3%89L%C3%89CHARGER-WINDOWS%20CLASSIQUE-374151?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Classique-Windows.zip)
 
-**Liens permanents et fixes** : ils pointent automatiquement vers les fichiers ZIP de la dernière [version publiée](https://github.com/anderson76389/All-Download/releases/latest).
-
-Chaque ZIP contient **l'application complète**, les logos, les six dossiers multimédias et **tous les fichiers suivis du dépôt** dans `Code-source/`.
+**Deux liens fixes, automatiquement mis à jour** avec la dernière [Release validée](https://github.com/anderson76389/All-Download/releases/latest).
 
 </div>
 
 ---
 
-## ✨ Fonctionnalités
+## Choisir sa version
 
-- **Vidéo** — qualité automatique ou résolution choisie, jusqu'à la 4K si disponible ; MP4 et MKV.
-- **Audio** — extraction et conversion en FLAC, M4A ou MP3.
-- **GIF** — conversion de vidéos et récupération de GIF directs compatibles.
-- **Playlists et chaînes** — téléchargement groupé, avec sélection des éléments.
-- **File d'attente** — plusieurs liens, suivi de la progression et journaux.
-- **Personnalisation** — miniatures, métadonnées, thèmes clair/sombre/OLED et normalisation audio.
-- **Options avancées** — SponsorBlock, cookies, proxy et paramètres d'extracteur.
+| | **Portable** | **Classique (installable)** |
+|---|---|---|
+| Lancement | EXE directement après extraction du ZIP | Installation via `All-Download-Setup.exe` |
+| Installation nécessaire | Non | Oui, sans droits administrateur |
+| Raccourcis Windows | À créer manuellement | Menu Démarrer ; Bureau en option |
+| Désinstallation Windows | Supprimer le dossier portable | Paramètres Windows → Applications |
+| Destination initiale des médias | Six dossiers à côté de l'EXE si accessibles en écriture | `Téléchargements\MediaDownloader` |
+| Moteur de téléchargement | Identique | Identique |
 
-La compatibilité dépend des plateformes et des flux accessibles via yt-dlp. La conversion en FLAC n'améliore pas la qualité d'une source déjà compressée.
+**La version classique a été revue :** elle utilise désormais un véritable installateur Windows qui installe l'exécutable autonome de la version Portable. Elle **ne distribue plus le dossier `_internal`** responsable de l'erreur `Python.Runtime.dll` sur certaines installations Windows.
 
-## ⬇️ Installer All-Download
+### Installation
 
-1. Cliquez sur le bouton **Windows Portable** ci-dessus (recommandé).
-2. Décompressez le ZIP dans un nouveau dossier.
-3. Lancez **`All_Media_Download.exe`**. Les logos et les six dossiers multimédias sont déjà fournis.
+**Portable :** téléchargez le ZIP Portable, extrayez tout son contenu dans un nouveau dossier, puis ouvrez `All_Media_Download.exe`.
 
-**Portable :** un seul exécutable, sans dossier `_internal/`. **Windows classique :** une distribution avec `_internal/`. Cette dernière a provoqué sur certains PC l'erreur `Python.Runtime.dll` : **choisissez Portable si vous rencontrez cette erreur**. Les deux archives comprennent le même code source complet dans `Code-source/`.
+**Classique :** téléchargez le ZIP Classique, extrayez-le et exécutez `All-Download-Setup.exe`. Suivez l'assistant pour installer l'application, créer éventuellement un raccourci sur le Bureau et la lancer depuis le menu Démarrer.
 
-**Prérequis :** Windows, WebView2, connexion Internet et espace disque.
+Les deux ZIP contiennent les **logos**, les **six dossiers** et la copie des **fichiers du dépôt** dans `Code-source/`. La version installable place le programme dans le profil Windows de l'utilisateur et conserve les téléchargements en dehors du dossier installé, pour éviter de les perdre à la désinstallation.
 
-> **Important :** le fichier [`dist/All_Media_Download.exe`](./dist/All_Media_Download.exe) déjà suivi dans le dépôt est une **ancienne compilation**. Les ZIP des boutons ci-dessus sont mis à jour automatiquement lors des compilations validées. SmartScreen peut encore avertir pour un EXE non signé ; ne désactivez pas les protections de Windows.
+**Prérequis :** Windows 10/11 (64 bits), Microsoft Edge WebView2, connexion Internet pour les médias et de l'espace disque. yt-dlp et FFmpeg sont récupérés au premier lancement si nécessaire.
 
-## 🚀 Utilisation et dossiers
+## Fonctionnalités
 
-Collez une URL → ajoutez le média à la liste → choisissez **Vidéo**, **Audio** ou **GIF**, et sa qualité → cliquez sur **Télécharger**.
+- **Vidéos :** choix de la qualité et de la résolution (jusqu'à 4K si la source le propose), formats MP4 et MKV.
+- **Audio :** extraction et conversion en FLAC, M4A ou MP3.
+- **GIF :** téléchargement direct et conversion de vidéos lorsque la source est compatible.
+- **Playlists et chaînes :** téléchargement groupé et sélection d'une plage d'éléments.
+- **File d'attente :** plusieurs liens, progression, journaux d'erreur, annulation et pause **entre les éléments**.
+- **Options :** miniatures, métadonnées, normalisation audio, SponsorBlock, proxy, cookies et thèmes clair/sombre/OLED.
 
-**Édition Portable :** les téléchargements sont rangés directement dans les six sous-dossiers placés à côté de `All_Media_Download.exe`, à condition que le dossier soit accessible en écriture. Si une destination est déjà enregistrée dans ta configuration, elle reste prioritaire.
+La prise en charge varie selon les sites, les droits d'accès, les formats disponibles et les changements apportés par les plateformes. La conversion vers FLAC ne restaure pas la qualité d'un audio compressé.
 
-**Version exécutée depuis Python ou dossier non modifiable :** emplacement de repli :
+## Comment télécharger ?
+
+1. Collez l'adresse du média dans All-Download et cliquez sur **Ajouter**.
+2. Choisissez **Vidéo**, **Audio** ou **GIF**, ainsi que la qualité souhaitée.
+3. Téléchargez un élément ou la file entière. Suivez l'avancement dans le logiciel.
+4. Ouvrez le dossier de destination avec le bouton dédié.
+
+### Organisation des médias
+
+| Dossier | Fichiers |
+|---|---|
+| `VIDÉOS/` | Vidéos YouTube individuelles |
+| `AUDIOS/` | Fichiers audio individuels |
+| `GIFS/` | GIF téléchargés ou convertis |
+| `CHAÎNES/` | Sous-dossiers par chaîne YouTube |
+| `PLAYLIST/` | Sous-dossiers par playlist YouTube |
+| `AUTRES/` | Autres médias et plateformes |
+
+L'application crée les six catégories si elles n'existent pas. L'ancien dossier `AUDIO/` est migré vers `AUDIOS/` **sans écraser les fichiers homonymes**.
+
+**Choix du dossier :** si une destination est déjà enregistrée dans la configuration, elle reste prioritaire. Sinon, la version Portable choisit ses dossiers voisins si elle peut y écrire, tandis que la version Classique installée utilise par défaut :
 
 ```text
 %USERPROFILE%\Downloads\MediaDownloader
 ```
 
-Les anciens médias restent à leur emplacement : aucun fichier n'est supprimé ni déplacé vers le nouveau dossier portable.
+Une mise à jour ou une désinstallation de la version Classique ne doit pas nécessiter la suppression de vos médias.
 
-| Dossier | Contenu |
-| --- | --- |
-| `VIDÉOS/` | Vidéos YouTube individuelles |
-| `AUDIOS/` | Fichiers audio individuels, de YouTube ou d'autres plateformes |
-| `GIFS/` | GIF téléchargés directement ou convertis |
-| `CHAÎNES/` | Chaînes YouTube, avec un sous-dossier par chaîne |
-| `PLAYLIST/` | Playlists YouTube, avec un sous-dossier par playlist |
-| `AUTRES/` | Autres médias |
+## Code source et vérifications
 
-Ces **six dossiers** sont créés automatiquement. Le dossier historique `AUDIO/` est migré vers `AUDIOS/` sans écraser les fichiers homonymes ; en cas de conflit, ceux-ci restent dans l'ancien dossier.
+Le dépôt comprend `yt_app.py` (application), les logos, les spécifications PyInstaller, `installer/All-Download.iss` (installateur Windows), `tests/` et la publication automatisée des [Releases](https://github.com/anderson76389/All-Download/releases).
 
-## 🛠️ Code source
+Les compilations publiées sont soumises à des tests Python, des tests d'interaction de l'interface, à des essais de démarrage Windows et à une vérification des archives. Les téléchargements réels dépendent néanmoins des sites : **les tests automatisés ne garantissent pas tous les contenus ni toutes les plateformes**.
 
-Le dépôt conserve le programme `yt_app.py`, les logos `logo.jpg` et `logo.ico`, les deux configurations de compilation `All_Media_Download.spec` et `All_Media_Download-Portable.spec`, les tests `tests/test_download_folders.py` et le workflow GitHub Actions. Les six dossiers multimédias sont présents sur GitHub et dans les ZIP grâce aux fichiers `.gitkeep` (petits fichiers marqueurs, sans effet sur les téléchargements).
-
-Pour lancer le logiciel depuis Python sous Windows :
+Pour lancer les sources avec Python 3.12 sous Windows :
 
 ```powershell
-python -m pip install pywebview
+python -m pip install pywebview==6.2.1
 python yt_app.py
 ```
 
-Pour compiler l'exécutable :
+Pour fabriquer l'EXE autonome :
 
 ```powershell
-python -m pip install pyinstaller pywebview
-python -m PyInstaller --clean --noconfirm All_Media_Download.spec
+python -m pip install pyinstaller==6.22.3 pywebview==6.2.1 pythonnet==3.2.1
+python -m PyInstaller --clean --noconfirm All_Media_Download-Portable.spec
 ```
 
-Les tests automatisés sont exécutés avant chaque compilation Windows, suivis d'une vérification de lancement de la véritable fenêtre sur les deux éditions. Les deux compilations sont effectuées **sans UPX**.
+> Le fichier `dist/All_Media_Download.exe` suivi historiquement dans le dépôt n'est **pas** la version actuelle. Utilisez les boutons de téléchargement en haut du README.
 
-## 🔧 Problèmes courants
+## Dépannage et sécurité
 
-- **Lien non pris en charge :** vérifiez le site, l'URL et l'extracteur yt-dlp.
-- **Accès refusé :** vérifiez vos droits et, si nécessaire, les cookies.
-- **Conversion impossible :** vérifiez FFmpeg et l'espace disque.
-- **Plantage au lancement :** consultez `%LOCALAPPDATA%\AllMediaDownload\crash_log.txt` et ouvrez un [signalement](https://github.com/anderson76389/All-Download/issues).
-- **Alerte Windows :** l'exécutable téléchargé n'est pas signé numériquement. SmartScreen peut afficher un avertissement de réputation ; une **détection de menace Microsoft Defender** est différente. Ne désactivez pas votre antivirus et ne forcez pas l'exécution en cas de détection : notez le nom exact de la menace et signalez-la avant de lancer l'application.
+- **Application qui ne démarre pas :** consultez `%LOCALAPPDATA%\AllMediaDownload\crash_log.txt` et créez une [issue](https://github.com/anderson76389/All-Download/issues) avec la dernière erreur (sans données personnelles).
+- **Téléchargement impossible :** vérifiez le lien, les cookies éventuels, la compatibilité de la source et les dépendances yt-dlp/FFmpeg.
+- **Alerte Microsoft SmartScreen :** les exécutables ne sont pas encore signés avec un certificat d'éditeur reconnu. Une alerte de réputation est distincte d'une détection de menace ; ne désactivez pas votre antivirus et vérifiez toute détection.
 
-**Utilisation responsable :** téléchargez uniquement les contenus pour lesquels vous disposez des autorisations nécessaires. Les protections DRM ne sont pas contournées.
+Téléchargez uniquement les contenus pour lesquels vous disposez des droits nécessaires. All-Download ne contourne pas les protections DRM.
 
 ---
 
 <div align="center">
 
-**All-Download** · Créé et maintenu par [anderson76389](https://github.com/anderson76389)
+Conçu et maintenu par [anderson76389](https://github.com/anderson76389) · [Versions Windows](https://github.com/anderson76389/All-Download/releases/latest) · [Signaler un problème](https://github.com/anderson76389/All-Download/issues)
 
 </div>
