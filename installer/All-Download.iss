@@ -27,7 +27,10 @@ UninstallDisplayIcon={app}\All_Media_Download.exe
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+MinVersion=10.0
+; EXE Python 64 bits : proposer uniquement Windows x64 (pas x86).
 ArchitecturesAllowed=x64
+ArchitecturesInstallIn64BitMode=x64
 DisableProgramGroupPage=yes
 CloseApplications=yes
 RestartApplications=no
