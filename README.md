@@ -78,7 +78,9 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 └── 📦 AUTRES/       Autres médias et plateformes
 ```
 
-Les **six catégories sont créées automatiquement**, sans effacer vos médias existants. L'ancien dossier `AUDIO/` est migré vers `AUDIOS/` lorsque c'est possible, sans écraser les fichiers homonymes.
+Les **six catégories sont créées automatiquement**, sans effacer vos médias existants. Les archives ZIP les contiennent comme **véritables dossiers vides**, sans fichiers `.gitkeep`. Sur la page du dépôt GitHub, les dossiers vides n'apparaissent pas : c'est le fonctionnement normal de Git.
+
+L'ancien dossier `AUDIO/` est migré vers `AUDIOS/` lorsque c'est possible, sans écraser les fichiers homonymes.
 
 | Édition | Emplacement initial des téléchargements |
 |---|---|
@@ -134,6 +136,7 @@ Le fichier `dist/All_Media_Download.exe` déjà présent dans le dépôt est une
 <details>
 <summary><strong>🩺 Dépannage, SmartScreen et sécurité</strong></summary>
 
+- **Crash CLR / pythonnet au démarrage :** All-Download tente automatiquement **une seule relance propre** lors de l'erreur connue `Python.Runtime.Loader.Initialize`. Si celle-ci échoue aussi, la boîte d'erreur et le journal restent disponibles.
 - **Problème de démarrage :** ouvrez `%LOCALAPPDATA%\AllMediaDownload\crash_log.txt` et partagez la dernière erreur dans une [issue](https://github.com/anderson76389/All-Download/issues), après avoir masqué les données personnelles.
 - **Média non disponible :** contrôlez l'URL, les autorisations, les cookies éventuels et la compatibilité yt-dlp.
 - **Conversion impossible :** vérifiez FFmpeg, l'espace disque et le format source.
