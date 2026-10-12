@@ -21,6 +21,9 @@ class ZipFolderTests(unittest.TestCase):
         portable = self.root / "dist" / "All-Download-Portable"
         portable.mkdir(parents=True)
         (portable / "All_Media_Download.exe").write_bytes(b"EXE")
+        # Le packaging Windows copie les logos dans le dossier Portable.
+        for asset in ("logo.ico", "logo.jpg"):
+            (portable / asset).write_bytes(b"TEST")
         classic = self.root / "dist" / "All-Download-Installer"
         classic.mkdir(parents=True)
         (classic / "All-Download-Setup.exe").write_bytes(b"SETUP")
