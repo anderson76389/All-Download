@@ -46,12 +46,14 @@ Source: "..\dist\All-Download-Portable\All_Media_Download.exe"; DestDir: "{app}"
 Source: "..\logo.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\logo.jpg"; DestDir: "{app}"; Flags: ignoreversion
 Source: "installed.marker"; DestDir: "{app}"; DestName: ".all-download-installed"; Flags: ignoreversion
-Source: "..\AUDIOS\.gitkeep"; DestDir: "{app}\AUDIOS"; Flags: ignoreversion
-Source: "..\AUTRES\.gitkeep"; DestDir: "{app}\AUTRES"; Flags: ignoreversion
-Source: "..\CHAÎNES\.gitkeep"; DestDir: "{app}\CHAÎNES"; Flags: ignoreversion
-Source: "..\GIFS\.gitkeep"; DestDir: "{app}\GIFS"; Flags: ignoreversion
-Source: "..\PLAYLIST\.gitkeep"; DestDir: "{app}\PLAYLIST"; Flags: ignoreversion
-Source: "..\VIDÉOS\.gitkeep"; DestDir: "{app}\VIDÉOS"; Flags: ignoreversion
+
+[Dirs]
+Name: "{app}\AUDIOS"
+Name: "{app}\AUTRES"
+Name: "{app}\CHAÎNES"
+Name: "{app}\GIFS"
+Name: "{app}\PLAYLIST"
+Name: "{app}\VIDÉOS"
 
 [Icons]
 Name: "{autoprograms}\All-Download"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
