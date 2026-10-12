@@ -2388,12 +2388,32 @@ class DownloaderAPI:
             "exact_cut": False,
             "theme": "light",
             "extra_selector": "none",
+            "audio_sample_rate": "source",
             "notify": "never",
             "proxy_toggle": False,
             "proxy_url": "",
             "impersonation": "none",
             "extractor_args": ""
         })
+
+    def save_quick_selector_value(self, kind, value):
+        """Enregistrer les choix de la barre du bas, sans écraser les autres options."""
+        key = None
+        if kind == "format" and value in ("MP4", "MKV"):
+            key = "video_format"
+        elif kind == "audio_rate" and value in ("source", "44100", "48000"):
+            key = "audio_sample_rate"
+        if key is None:
+            return {"success": False, "error": "Sélection non valide"}
+
+        original = dict(self.config)
+        settings = dict(self.get_app_settings())
+        settings[key] = value
+        self.config["settings"] = settings
+        if not self._save_config():
+            self.config = original
+            return {"success": False, "error": "Enregistrement impossible"}
+        return {"success": True, "value": value}
 
     def save_app_settings(self, settings_dict, download_folder=None):
         if not isinstance(settings_dict, dict):
@@ -2725,6 +2745,8 @@ class DownloaderAPI:
                         completed += 1
                         if self.window:
                             try:
+                                if settings.get("notify") == "always":
+                                    self.window.evaluate_js(f"showAppToast({json.dumps('Téléchargement terminé : ' + out_name)})")
                                 self.window.evaluate_js(f"markDownloadSuccess({json.dumps(url)})")
                                 self.window.evaluate_js(f"updateDownloadProgress(100, {json.dumps('Téléchargement terminé – ' + out_name)})")
                             except Exception:
@@ -2821,15 +2843,24 @@ class DownloaderAPI:
                 if mode == "Audio":
                     cmd.append("-x")
                     audio_choice = settings.get("audio_format", "FLAC")
-                    if quality == "MP3_320" or audio_choice == "MP3":
+                    # Une qualité choisie sur une carte prime sur le défaut global.
+                    selected_audio = quality if quality in ("FLAC", "M4A", "MP3_320") else audio_choice
+                    if selected_audio in ("MP3", "MP3_320"):
                         cmd.extend(["--audio-format", "mp3", "--audio-quality", "0"])
-                    elif quality == "M4A" or audio_choice == "M4A":
+                    elif selected_audio == "M4A":
                         cmd.extend(["--audio-format", "m4a"])
                     else:
                         cmd.extend(["--audio-format", "flac"])
 
+                    audio_args = []
                     if settings.get("post_process_audio") == "Normaliser":
-                        cmd.extend(["--postprocessor-args", "ffmpeg:-af loudnorm"])
+                        audio_args.extend(["-af", "loudnorm"])
+                    if settings.get("extra_selector") == "audio_rate":
+                        sample_rate = str(settings.get("audio_sample_rate", "source"))
+                        if sample_rate in ("44100", "48000"):
+                            audio_args.extend(["-ar", sample_rate])
+                    if audio_args:
+                        cmd.extend(["--postprocessor-args", "ffmpeg:" + " ".join(audio_args)])
                 elif mode == "GIF":
                     cmd.extend([
                         "-f", "bestvideo+bestaudio/best",
@@ -2901,6 +2932,8 @@ class DownloaderAPI:
                     completed += 1
                     try:
                         if self.window:
+                            if settings.get("notify") == "always":
+                                self.window.evaluate_js(f"showAppToast({json.dumps('Média téléchargé : ' + str(item.get('title', 'Média')))})")
                             self.window.evaluate_js(f"markDownloadSuccess({json.dumps(url)})")
                     except Exception:
                         pass
@@ -2913,6 +2946,8 @@ class DownloaderAPI:
                     else:
                         status = f"Traitement terminé – {completed}/{total} élément(s) téléchargé(s)."
                     self.window.evaluate_js(f"updateDownloadProgress(100, {json.dumps(status)})")
+                    if settings.get("notify") in ("finish", "always"):
+                        self.window.evaluate_js(f"showAppToast({json.dumps(status)})")
             except Exception:
                 pass
             gc.collect()
