@@ -3032,6 +3032,51 @@ def setup_binaries():
     finally:
         gc.collect()
 
+# Un demarrage Windows peut echouer une fois lors de l'initialisation
+# du pont CLR de pythonnet/WebView2 (Python.Runtime.Loader.Initialize).
+# Relancer UNE SEULE FOIS dans un processus PyInstaller independant :
+# ne pas reutiliser l'extraction temporaire du processus parent.
+STARTUP_RETRY_FLAG = "--all-download-retry-clr-startup"
+
+
+def retry_transient_gui_startup(error, argv=None):
+    """Rattraper une erreur CLR intermittente sans boucle infinie ni masquage."""
+    if not getattr(sys, "frozen", False) or sys.platform != "win32":
+        return False
+    if "Python.Runtime.Loader.Initialize" not in str(error):
+        return False
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if STARTUP_RETRY_FLAG in arguments:
+        return False
+
+    try:
+        command = [sys.executable] + arguments + [STARTUP_RETRY_FLAG]
+        env = os.environ.copy()
+        # PyInstaller 6 : forcer une nouvelle extraction onefile avant que
+        # le processus en echec ne nettoie son dossier _MEI temporaire.
+        env["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
+        subprocess.Popen(
+            command,
+            cwd=os.path.dirname(os.path.abspath(sys.executable)),
+            env=env,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        try:
+            with open(CRASH_LOG, "a", encoding="utf-8") as log:
+                log.write(f"\\n[{datetime.now():%Y-%m-%d %H:%M:%S}] "
+                          "Erreur CLR transitoire : une seule relance propre de l'EXE a ete declenchee.\\n")
+        except OSError:
+            pass
+        return True
+    except OSError as secondary:
+        _log_binary_setup_error(secondary)
+        return False
+
+
 if __name__ == '__main__':
     try:
         # Afficher l'interface avant les verifications de yt-dlp et FFmpeg.
@@ -3054,6 +3099,10 @@ if __name__ == '__main__':
         webview.start(func=setup_binaries, debug=False)
     except Exception as exc:
         handle_exception(type(exc), exc, exc.__traceback__)
+        if retry_transient_gui_startup(exc):
+            # Le nouveau processus reinitialise WinForms/CLR depuis zero.
+            # Cette tentative est bornee par STARTUP_RETRY_FLAG.
+            sys.exit(0)
         try:
             # Afficher aussi l'erreur precise dans la boite Windows :
             # l'utilisateur peut nous transmettre une capture sans chercher le journal.
