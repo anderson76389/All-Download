@@ -33,6 +33,9 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install pywebview==6.2.1 pythonnet==3.2.1 pyinstaller==6.22.3
 
+      - name: Confirmer Python 64 bits (Windows x64)
+        run: python -c "import struct; assert struct.calcsize('P') == 8, 'Python x64 requis pour les deux éditions'; print('Python x64 confirmé')"
+
       - name: Verifier la syntaxe
         run: python -m py_compile yt_app.py
 
@@ -52,6 +55,10 @@ jobs:
 
       - name: Compiler le moteur autonome commun aux deux versions
         run: python -m PyInstaller --clean --noconfirm --workpath build/portable --distpath dist/portable-build All_Media_Download-Portable.spec
+
+      - name: Verifier que l'EXE produit est bien x64
+        run: |
+          python -c "import struct, pathlib; p=pathlib.Path('dist/portable-build/All_Media_Download.exe'); b=p.read_bytes(); offset=struct.unpack_from('<I',b,0x3c)[0]; machine=struct.unpack_from('<H',b,offset+4)[0]; print('Architecture PE:',hex(machine)); assert machine==0x8664, 'EXE non x64'"
 
       - name: Preparer la version Portable
         shell: pwsh
