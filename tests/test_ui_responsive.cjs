@@ -89,6 +89,16 @@ assert.ok(executablePath, 'Microsoft Edge x64 introuvable sur le runner Windows'
     }
 
     await page.setViewportSize({width:1652,height:900});
+    const largeMain = await page.evaluate(() => ({
+      addHeight:document.querySelector('.btn-add').getBoundingClientRect().height,
+      urlHeight:document.querySelector('.input-wrapper').getBoundingClientRect().height,
+      downloadHeight:document.querySelector('.btn-download-all').getBoundingClientRect().height,
+      toolsHeight:document.querySelector('.tool-cluster-btn').getBoundingClientRect().height
+    }));
+    assert.ok(largeMain.addHeight>=54,'Bouton Ajouter trop petit en plein écran');
+    assert.ok(largeMain.urlHeight>=54,'Champ URL trop petit en plein écran');
+    assert.ok(largeMain.downloadHeight>=52 && largeMain.toolsHeight>=46,
+      'Commandes du bas trop petites en plein écran');
     await page.evaluate(() => showSettingsView());
     const centeredSettings = await page.evaluate(() => {
       const box = el => {const {left,right,top,bottom,height}=el.getBoundingClientRect();
@@ -99,8 +109,6 @@ assert.ok(executablePath, 'Microsoft Edge x64 introuvable sur le runner Windows'
         grid:getComputedStyle(section).display,
         headerNav:box(document.querySelector('.settings-nav')),
         themeButton:box(document.querySelector('.settings-header .btn-download-all')),
-        normalButton:box(document.querySelector('.btn-add')),
-        normalInput:box(document.querySelector('.input-wrapper')),
         settingInput:box(document.getElementById('setDownloadFolder')),
         labelSize:parseFloat(getComputedStyle(document.querySelector('.setting-label')).fontSize),
         tabSize:parseFloat(getComputedStyle(document.querySelector('.tab-btn')).fontSize),
@@ -115,8 +123,6 @@ assert.ok(executablePath, 'Microsoft Edge x64 introuvable sur le runner Windows'
     assert.ok(centeredSettings.sponsor.top >= centeredSettings.folder.bottom &&
       centeredSettings.sponsor.top < centeredSettings.sortie.bottom,
       'SponsorBlock doit suivre le dossier sans grand vide à gauche');
-    assert.ok(centeredSettings.normalButton.height>=54,'Bouton Ajouter trop petit en plein écran');
-    assert.ok(centeredSettings.normalInput.height>=54,'Champ URL trop petit en plein écran');
     assert.ok(centeredSettings.settingInput.height>=48,'Champ des paramètres trop petit');
     assert.ok(centeredSettings.labelSize>=16 && centeredSettings.tabSize>=16,
       'Textes et onglets des paramètres trop petits en plein écran');
