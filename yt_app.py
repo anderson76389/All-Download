@@ -446,7 +446,7 @@ HTML_PAGE = """<!DOCTYPE html>
   body.theme-dark .center-cluster { border-color: #7c3aed; background: #242424; }
   body.theme-dark .status-bar { background: #28163e; color: #c4b5fd; }
   body.theme-dark .progress-fill { background: #7c3aed; }
-  body.theme-dark .dropdown-item.selected, body.theme-dark .dropdown-item .check { color: #7c3aed; }
+  body.theme-dark .dropdown-item.selected, body.theme-dark .dropdown-item .check { color: #c4b5fd; }
   body.theme-dark .skeleton-card { background: #212121; border-color: #2e2e2e; }
   body.theme-dark .skeleton-thumb { background: #181818; color: #6b7280; }
   body.theme-dark .skeleton-bar { background: #111111; }
@@ -476,7 +476,7 @@ HTML_PAGE = """<!DOCTYPE html>
   body.theme-dark_pure .center-cluster { border-color: #7c3aed; background: #0d0d0d; }
   body.theme-dark_pure .status-bar { background: #1c1031; color: #c4b5fd; }
   body.theme-dark_pure .progress-fill { background: #7c3aed; }
-  body.theme-dark_pure .dropdown-item.selected, body.theme-dark_pure .dropdown-item .check { color: #7c3aed; }
+  body.theme-dark_pure .dropdown-item.selected, body.theme-dark_pure .dropdown-item .check { color: #c4b5fd; }
   body.theme-dark_pure .skeleton-card { background: #0d0d0d; border-color: #1f1f1f; }
   body.theme-dark_pure .skeleton-thumb { background: #050505; color: #4b5563; }
   body.theme-dark_pure .skeleton-bar { background: #050505; }
@@ -1286,9 +1286,9 @@ HTML_PAGE = """<!DOCTYPE html>
           <div class="setting-field">
             <div class="setting-label">Format audio :</div>
             <select class="setting-input" id="setAudioFormat">
-              <option value="FLAC">FLAC (Qualité Studio Master Lossless sans perte)</option>
-              <option value="M4A">M4A (Format natif haute fidélité)</option>
-              <option value="MP3">MP3 320 kbps (CBR Haute Définition maximale)</option>
+              <option value="FLAC">FLAC (format sans perte ; qualité limitée par la source)</option>
+              <option value="M4A">M4A (qualité selon la source)</option>
+              <option value="MP3">MP3 320 kbps (conversion ; dépend de la source)</option>
             </select>
             <div class="setting-subtext">Choisissez le format audio préféré.</div>
           </div>
@@ -1764,8 +1764,8 @@ HTML_PAGE = """<!DOCTYPE html>
 
     if (currentGlobalMode === 'Audio') {
       pop.innerHTML = `
-        <div class="dropdown-item ${currentGlobalQuality==='FLAC'?'selected':''}" onclick="selectGlobalQual('FLAC', 'FLAC (Studio Master)', event)"><span class="check">${currentGlobalQuality==='FLAC'?'✓':''}</span>FLAC (Studio Master)</div>
-        <div class="dropdown-item ${currentGlobalQuality==='M4A'?'selected':''}" onclick="selectGlobalQual('M4A', 'M4A (Format natif)', event)"><span class="check">${currentGlobalQuality==='M4A'?'✓':''}</span>M4A (Format natif)</div>
+        <div class="dropdown-item ${currentGlobalQuality==='FLAC'?'selected':''}" onclick="selectGlobalQual('FLAC', 'FLAC (selon la source)', event)"><span class="check">${currentGlobalQuality==='FLAC'?'✓':''}</span>FLAC (selon la source)</div>
+        <div class="dropdown-item ${currentGlobalQuality==='M4A'?'selected':''}" onclick="selectGlobalQual('M4A', 'M4A (selon la source)', event)"><span class="check">${currentGlobalQuality==='M4A'?'✓':''}</span>M4A (selon la source)</div>
         <div class="dropdown-item ${currentGlobalQuality==='MP3_320'?'selected':''}" onclick="selectGlobalQual('MP3_320', 'MP3 (320 kbps)', event)"><span class="check">${currentGlobalQuality==='MP3_320'?'✓':''}</span>MP3 (320 kbps)</div>
       `;
     } else if (currentGlobalMode === 'GIF') {
@@ -1793,7 +1793,7 @@ HTML_PAGE = """<!DOCTYPE html>
     if (mode === 'Audio') {
       const preferred = currentQuickSettings.audio_format || 'FLAC';
       currentGlobalQuality = preferred === 'MP3' ? 'MP3_320' : preferred === 'M4A' ? 'M4A' : 'FLAC';
-      const labels = { FLAC: 'FLAC (Studio Master)', M4A: 'M4A (Format natif)', MP3_320: 'MP3 (320 kbps)' };
+      const labels = { FLAC: 'FLAC (selon la source)', M4A: 'M4A (selon la source)', MP3_320: 'MP3 (320 kbps)' };
       document.getElementById('globalQualText').innerText = labels[currentGlobalQuality];
     } else if (mode === 'GIF') {
       currentGlobalQuality = 'GIF';
@@ -2149,7 +2149,7 @@ HTML_PAGE = """<!DOCTYPE html>
         res.data.mode = (res.data.mode === 'Image' || res.data.mode === 'GIF') ? res.data.mode : currentGlobalMode;
         if (res.data.mode === 'Audio') {
           res.data.selectedQuality = 'FLAC';
-          res.data.selectedQualityLabel = 'FLAC (Studio Master)';
+          res.data.selectedQualityLabel = 'FLAC (selon la source)';
         } else if (res.data.mode === 'GIF') {
           res.data.selectedQuality = 'GIF';
           res.data.selectedQualityLabel = 'GIF (Haute Qualité)';
@@ -2242,8 +2242,8 @@ HTML_PAGE = """<!DOCTYPE html>
         let plQualOptions = '';
         if (item.mode === 'Audio') {
           plQualOptions = `
-            <div class="dropdown-item ${item.selectedQuality==='FLAC'?'selected':''}" onclick="setCardQuality(${index}, 'FLAC', 'FLAC (Studio Master)', event)"><span class="check">${item.selectedQuality==='FLAC'?'✓':''}</span>FLAC (Studio Master)</div>
-            <div class="dropdown-item ${item.selectedQuality==='M4A'?'selected':''}" onclick="setCardQuality(${index}, 'M4A', 'M4A (Format natif)', event)"><span class="check">${item.selectedQuality==='M4A'?'✓':''}</span>M4A (Format natif)</div>
+            <div class="dropdown-item ${item.selectedQuality==='FLAC'?'selected':''}" onclick="setCardQuality(${index}, 'FLAC', 'FLAC (selon la source)', event)"><span class="check">${item.selectedQuality==='FLAC'?'✓':''}</span>FLAC (selon la source)</div>
+            <div class="dropdown-item ${item.selectedQuality==='M4A'?'selected':''}" onclick="setCardQuality(${index}, 'M4A', 'M4A (selon la source)', event)"><span class="check">${item.selectedQuality==='M4A'?'✓':''}</span>M4A (selon la source)</div>
             <div class="dropdown-item ${item.selectedQuality==='MP3_320'?'selected':''}" onclick="setCardQuality(${index}, 'MP3_320', 'MP3 (320 kbps)', event)"><span class="check">${item.selectedQuality==='MP3_320'?'✓':''}</span>MP3 (320 kbps)</div>
           `;
         } else {
@@ -2286,7 +2286,7 @@ HTML_PAGE = """<!DOCTYPE html>
                 </div>
 
                 <div class="pill-dropdown" onclick="toggleDropdown('pl_qual_pop_${index}', event)">
-                  <span>${item.selectedQualityLabel || (item.mode==='Audio'?'FLAC (Studio Master)':'Meilleure qualité (Auto)')}</span>
+                  <span>${item.selectedQualityLabel || (item.mode==='Audio'?'FLAC (selon la source)':'Meilleure qualité (Auto)')}</span>
                   <svg class="svg-icon" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
                   <div class="dropdown-popover" id="pl_qual_pop_${index}">
                     ${plQualOptions}
@@ -2315,8 +2315,8 @@ HTML_PAGE = """<!DOCTYPE html>
         let qualPopoverHtml = '';
         if (item.mode === 'Audio') {
           qualPopoverHtml = `
-            <div class="dropdown-item ${item.selectedQuality==='FLAC'?'selected':''}" onclick="setCardQuality(${index}, 'FLAC', 'FLAC (Studio Master)', event)"><span class="check">${item.selectedQuality==='FLAC'?'✓':''}</span>FLAC (Studio Master)</div>
-            <div class="dropdown-item ${item.selectedQuality==='M4A'?'selected':''}" onclick="setCardQuality(${index}, 'M4A', 'M4A (Format natif)', event)"><span class="check">${item.selectedQuality==='M4A'?'✓':''}</span>M4A (Format natif)</div>
+            <div class="dropdown-item ${item.selectedQuality==='FLAC'?'selected':''}" onclick="setCardQuality(${index}, 'FLAC', 'FLAC (selon la source)', event)"><span class="check">${item.selectedQuality==='FLAC'?'✓':''}</span>FLAC (selon la source)</div>
+            <div class="dropdown-item ${item.selectedQuality==='M4A'?'selected':''}" onclick="setCardQuality(${index}, 'M4A', 'M4A (selon la source)', event)"><span class="check">${item.selectedQuality==='M4A'?'✓':''}</span>M4A (selon la source)</div>
             <div class="dropdown-item ${item.selectedQuality==='MP3_320'?'selected':''}" onclick="setCardQuality(${index}, 'MP3_320', 'MP3 (320 kbps)', event)"><span class="check">${item.selectedQuality==='MP3_320'?'✓':''}</span>MP3 (320 kbps)</div>
           `;
         } else if (item.mode === 'GIF') {
@@ -2405,7 +2405,7 @@ HTML_PAGE = """<!DOCTYPE html>
       const preferred = currentQuickSettings.audio_format || 'FLAC';
       const desired = preferred === 'MP3' ? 'MP3_320' : preferred === 'M4A' ? 'M4A' : 'FLAC';
       queue[idx].selectedQuality = desired;
-      queue[idx].selectedQualityLabel = desired === 'MP3_320' ? 'MP3 (320 kbps)' : desired === 'M4A' ? 'M4A (Format natif)' : 'FLAC (Studio Master)';
+      queue[idx].selectedQualityLabel = desired === 'MP3_320' ? 'MP3 (320 kbps)' : desired === 'M4A' ? 'M4A (selon la source)' : 'FLAC (selon la source)';
     } else if (mode === 'GIF') {
       queue[idx].selectedQuality = 'GIF';
       queue[idx].selectedQualityLabel = 'GIF (Haute Qualité)';
