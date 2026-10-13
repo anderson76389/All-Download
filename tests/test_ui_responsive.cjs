@@ -57,12 +57,73 @@ assert.ok(executablePath, 'Microsoft Edge x64 introuvable sur le runner Windows'
       list:getComputedStyle(document.getElementById('cardList')).display,
       mainWidth:document.querySelector('.app-container').getBoundingClientRect().width,
       overflow:document.documentElement.scrollWidth>innerWidth,
-      footer:getComputedStyle(document.querySelector('.actions-bar')).flexWrap
+      footer:getComputedStyle(document.querySelector('.actions-bar')).display
     }));
     assert.equal(normal.list,'flex');
     assert.ok(normal.mainWidth>950, 'La fenêtre normale reste inutilement étroite');
-    assert.equal(normal.footer,'wrap','Le pied de page ne se réorganise pas');
+    assert.equal(normal.footer,'grid','Les trois groupes doivent rester alignés, sans retour à la ligne');
     assert.equal(normal.overflow,false,'Débordement horizontal en fenêtre normale');
+
+    // Les trois zones du pied doivent être sur la même ligne en fenêtre
+    // normale et grande : l'ancien flex-wrap en décalait le groupe central.
+    for (const width of [920, 1050, 1334, 1652, 1920]) {
+      await page.setViewportSize({width,height:900});
+      const geometry = await page.evaluate(() => {
+        const rect = selector => {
+          const {left,right,top,bottom,width,height} = document.querySelector(selector).getBoundingClientRect();
+          return {left,right,top,bottom,width,height,midX:(left+right)/2,midY:(top+bottom)/2};
+        };
+        return {left:rect('.actions-left'),center:rect('.center-cluster'),
+          right:rect('.actions-right'),footer:rect('.actions-bar'),viewport:innerWidth,
+          overflow:document.documentElement.scrollWidth>innerWidth};
+      });
+      assert.equal(geometry.overflow,false,'Débordement horizontal du pied à '+width);
+      assert.ok(Math.abs(geometry.center.midX - width/2) < 3,
+        'Format/qualité non centrés à '+width+': '+geometry.center.midX);
+      assert.ok(Math.abs(geometry.left.midY-geometry.center.midY) < 3 &&
+        Math.abs(geometry.center.midY-geometry.right.midY) < 3,
+        'Icônes et Télécharger non alignés verticalement à '+width);
+      assert.ok(geometry.left.right < geometry.center.left &&
+        geometry.center.right < geometry.right.left,
+        'Chevauchement des groupes du pied à '+width);
+    }
+
+    await page.setViewportSize({width:1652,height:900});
+    await page.evaluate(() => showSettingsView());
+    const centeredSettings = await page.evaluate(() => {
+      const box = el => {const {left,right,top,bottom,height}=el.getBoundingClientRect();
+        return {left,right,top,bottom,height,midX:(left+right)/2};};
+      const section=document.getElementById('setSectionTelech');
+      return {folder:box(section.children[0]),sortie:box(section.children[1]),
+        sponsor:box(section.children[3]),section:box(section),
+        grid:getComputedStyle(section).display,
+        headerNav:box(document.querySelector('.settings-nav')),
+        themeButton:box(document.querySelector('.settings-header .btn-download-all')),
+        normalButton:box(document.querySelector('.btn-add')),
+        normalInput:box(document.querySelector('.input-wrapper')),
+        settingInput:box(document.getElementById('setDownloadFolder')),
+        labelSize:parseFloat(getComputedStyle(document.querySelector('.setting-label')).fontSize),
+        tabSize:parseFloat(getComputedStyle(document.querySelector('.tab-btn')).fontSize),
+        bodyWidth:innerWidth,
+        overflow:document.documentElement.scrollWidth>innerWidth};
+    });
+    assert.equal(centeredSettings.grid,'grid','Les paramètres ne sont pas sur deux colonnes');
+    assert.ok(Math.abs(centeredSettings.headerNav.midX - 826)<3,'Onglets des paramètres décentrés');
+    assert.ok(Math.abs(centeredSettings.section.midX - 826)<3,'Grille des paramètres décentrée');
+    assert.ok(Math.abs(centeredSettings.folder.top-centeredSettings.sortie.top)<3,
+      'Dossier et sortie ne démarrent pas au même niveau');
+    assert.ok(centeredSettings.sponsor.top >= centeredSettings.folder.bottom &&
+      centeredSettings.sponsor.top < centeredSettings.sortie.bottom,
+      'SponsorBlock doit suivre le dossier sans grand vide à gauche');
+    assert.ok(centeredSettings.normalButton.height>=54,'Bouton Ajouter trop petit en plein écran');
+    assert.ok(centeredSettings.normalInput.height>=54,'Champ URL trop petit en plein écran');
+    assert.ok(centeredSettings.settingInput.height>=48,'Champ des paramètres trop petit');
+    assert.ok(centeredSettings.labelSize>=16 && centeredSettings.tabSize>=16,
+      'Textes et onglets des paramètres trop petits en plein écran');
+    assert.ok(centeredSettings.themeButton.height>=48,'Bouton Enregistrer trop petit');
+    assert.equal(centeredSettings.overflow,false,'Débordement horizontal dans les paramètres');
+    await page.evaluate(() => openView('viewMain'));
+    console.log('OK tailles et alignements à 920, 1050, 1334, 1652 et 1920 pixels');
 
     // Finitions : centrage et bordures reels, verifies dans Edge a 1334 px.
     await page.setViewportSize({width:1334,height:950});
