@@ -2071,7 +2071,9 @@ HTML_PAGE = """<!DOCTYPE html>
   }
 
   function openFolderSafe() {
-    callApi('open_folder');
+    callApi('open_folder').then(opened => {
+      if (opened !== true) showAppToast("Impossible d'ouvrir le dossier de téléchargements.");
+    }).catch(() => showAppToast("Impossible d'ouvrir le dossier de téléchargements."));
   }
 
   function cancelDownloadsSafe() {
@@ -2522,7 +2524,9 @@ HTML_PAGE = """<!DOCTYPE html>
   }
 
   function openExternal(url) {
-    callApi('open_external', url);
+    callApi('open_external', url).then(opened => {
+      if (opened !== true) showAppToast("Impossible d'ouvrir ce lien dans le navigateur.");
+    }).catch(() => showAppToast("Impossible d'ouvrir ce lien dans le navigateur."));
   }
 
   // Garder l'URL en donnees et non dans le code HTML du bouton.
@@ -2782,13 +2786,18 @@ class DownloaderAPI:
         try:
             ensure_media_directories(self.download_folder)
             os.startfile(self.download_folder)
-        except Exception: pass
+            return True
+        except (OSError, AttributeError):
+            return False
 
     def open_external(self, url):
         import webbrowser
+        if not isinstance(url, str) or not url.startswith(("http://", "https://")):
+            return False
         try:
-            webbrowser.open(url)
-        except Exception: pass
+            return bool(webbrowser.open(url))
+        except (OSError, webbrowser.Error):
+            return False
 
     def get_auth_config(self):
         return {
