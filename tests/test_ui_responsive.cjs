@@ -177,9 +177,9 @@ assert.ok(executablePath, 'Microsoft Edge x64 introuvable sur le runner Windows'
       {id:'light',name:'theme-light',body:'rgb(248, 250, 252)',footer:'rgb(255, 255, 255)',
        divider:'rgb(203, 213, 225)',accent:'rgb(124, 58, 237)',card:'rgb(255, 255, 255)'},
       {id:'dark',name:'theme-dark',body:'rgb(20, 20, 20)',footer:'rgb(28, 28, 28)',
-       divider:'rgb(59, 59, 59)',accent:'rgb(0, 230, 118)',card:'rgb(33, 33, 33)'},
+       divider:'rgb(59, 59, 59)',accent:'rgb(124, 58, 237)',card:'rgb(33, 33, 33)'},
       {id:'dark_pure',name:'theme-dark_pure',body:'rgb(0, 0, 0)',footer:'rgb(0, 0, 0)',
-       divider:'rgb(45, 45, 45)',accent:'rgb(0, 230, 118)',card:'rgb(0, 0, 0)'}
+       divider:'rgb(45, 45, 45)',accent:'rgb(124, 58, 237)',card:'rgb(0, 0, 0)'}
     ];
     // La carte de configuration avancee est creee dynamiquement ;
     // le controle visuel garde un echantillon neutre dans le DOM.
@@ -234,6 +234,31 @@ assert.ok(executablePath, 'Microsoft Edge x64 introuvable sur le runner Windows'
       for (const k of ['headerWidth','footerWidth','statusWidth','smallDividerWidth'])
         assert.equal(colors[k],'1px','Epaisseur de ligne differente de 1px ('+k+')');
       assert.equal(colors.mainButton,theme.accent,'Accent du bouton Ajouter incorrect : '+theme.id);
+      // Même violet dans les trois thèmes, mais fond sombre/OLED inchangé.
+      const accents = await page.evaluate(() => {
+        const bg = sel => getComputedStyle(document.querySelector(sel)).backgroundColor;
+        const color = sel => getComputedStyle(document.querySelector(sel)).color;
+        const border = sel => getComputedStyle(document.querySelector(sel)).borderColor;
+        const selected = document.querySelector('.mode-pill-btn.active');
+        const switchInput = document.getElementById('setSponsorEnable');
+        const slider = switchInput.nextElementSibling;
+        return {
+          add:bg('.btn-add'), download:bg('.btn-download-all'),
+          progress:bg('.progress-fill'), switch:bg('.switch input:checked + .slider'),
+          center:border('.center-cluster'), activeText:color('.tab-btn.active'),
+          statusText:color('.status-bar'), slider:bg('.slider'),
+          statusBg:bg('.status-bar')
+        };
+      });
+      assert.equal(accents.add,'rgb(124, 58, 237)','Ajouter doit être violet : '+theme.id);
+      assert.equal(accents.download,'rgb(124, 58, 237)','Télécharger doit être violet : '+theme.id);
+      assert.equal(accents.progress,'rgb(124, 58, 237)','Barre de progression non violette : '+theme.id);
+      assert.equal(accents.center,'rgb(124, 58, 237)','Cadre Vidéo/Qualité non violet : '+theme.id);
+      if(theme.id !== 'light') {
+        assert.equal(accents.activeText,'rgb(196, 181, 253)','Onglet actif non lisible : '+theme.id);
+        assert.notEqual(accents.statusBg,'rgb(0, 230, 118)','Fond vert interdit : '+theme.id);
+      }
+
       assert.notEqual(colors.secondaryButton,'rgb(56, 49, 51)',
         'Bouton secondaire conserve un fond gris-rose hors theme : '+theme.id);
       if (theme.id==='dark_pure') {
