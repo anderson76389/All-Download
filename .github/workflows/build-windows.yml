@@ -31,7 +31,7 @@ jobs:
       - name: Installer les dependances
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pywebview==6.2.1 pythonnet==3.2.1 pyinstaller==6.22.3
+          python -m pip install pywebview==6.2.1 pythonnet==3.2.1 pyinstaller==6.22.3 psutil>=6.1,<8
 
       - name: Confirmer Python 64 bits (Windows x64)
         run: python -c "import struct; assert struct.calcsize('P') == 8, 'Python x64 requis pour les deux éditions'; print('Python x64 confirmé')"
