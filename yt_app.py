@@ -2029,8 +2029,14 @@ HTML_PAGE = """<!DOCTYPE html>
 
   function saveAuth() {
     const f = document.getElementById('cookieFile').value;
-    callApi('save_auth_config', f, currentBrowser).then(() => {
-      openView('viewMain');
+    callApi('save_auth_config', f, currentBrowser).then(saved => {
+      if (saved === true) {
+        openView('viewMain');
+      } else {
+        showAppToast("Impossible d'enregistrer les cookies. Vérifiez l'accès à la configuration.");
+      }
+    }).catch(() => {
+      showAppToast("Impossible d'enregistrer les cookies. Vérifiez l'accès à la configuration.");
     });
   }
 
@@ -2074,11 +2080,24 @@ HTML_PAGE = """<!DOCTYPE html>
   }
 
   function pauseDownloadsSafe() {
-    callApi('pause_downloads');
+    callApi('pause_downloads').then(result => {
+      if (!result || !result.success) {
+        showAppToast(result && result.error ? result.error : "Pause impossible.");
+      } else {
+        showAppToast(result.mode === 'active'
+          ? "Téléchargement en cours suspendu." : "File en pause jusqu'à la reprise.");
+      }
+    }).catch(() => showAppToast("Pause impossible."));
   }
 
   function resumeDownloadsSafe() {
-    callApi('resume_downloads');
+    callApi('resume_downloads').then(result => {
+      if (!result || !result.success) {
+        showAppToast(result && result.error ? result.error : "Reprise impossible.");
+      } else {
+        showAppToast("Téléchargements repris.");
+      }
+    }).catch(() => showAppToast("Reprise impossible."));
   }
 
   function updateView() {
@@ -2594,6 +2613,7 @@ class DownloaderAPI:
         self.is_cancelled = False
         self.is_paused = False
         self._active_download_process = None
+        self._suspended_download_pids = []
 
     def _load_config(self):
         if os.path.exists(CONFIG_FILE):
@@ -2777,9 +2797,17 @@ class DownloaderAPI:
         }
 
     def save_auth_config(self, file_path, browser):
-        self.config["cookie_file"] = file_path
+        """Ne jamais annoncer que les cookies sont sauvegardés si l'écriture échoue."""
+        if not isinstance(file_path, str) or browser not in (
+            "none", "chrome", "firefox", "brave", "edge", "opera"
+        ):
+            return False
+        previous = dict(self.config)
+        self.config["cookie_file"] = file_path.strip()
         self.config["cookie_browser"] = browser
-        self._save_config()
+        if not self._save_config():
+            self.config = previous
+            return False
         return True
 
     def select_cookie_file(self):
@@ -2789,22 +2817,72 @@ class DownloaderAPI:
         except Exception:
             return ""
 
+    def _resume_active_processes(self):
+        """Reprendre uniquement les processus que CE téléchargement a suspendus."""
+        pids = list(getattr(self, "_suspended_download_pids", []))
+        self._suspended_download_pids = []
+        failures = []
+        if not pids:
+            return failures
+        import psutil
+        for pid in reversed(pids):
+            try:
+                psutil.Process(pid).resume()
+            except psutil.NoSuchProcess:
+                pass
+            except (psutil.AccessDenied, OSError) as exc:
+                failures.append(str(exc))
+        return failures
+
     def cancel_downloads(self):
         self.is_cancelled = True
-        # Annuler aussi le transfert yt-dlp en cours, pas seulement la file.
+        self.is_paused = False
+        self._resume_active_processes()
         proc = getattr(self, "_active_download_process", None)
         if proc is not None:
             try:
                 kill_process_tree(proc.pid)
-            except Exception:
+            except (OSError, AttributeError):
                 pass
         return True
 
     def pause_downloads(self):
+        """Suspendre réellement yt-dlp/FFmpeg, sinon bloquer le média suivant."""
+        if self.is_paused:
+            return {"success": True, "mode": "active" if self._suspended_download_pids else "queue"}
         self.is_paused = True
+        proc = getattr(self, "_active_download_process", None)
+        if proc is None or proc.poll() is not None:
+            return {"success": True, "mode": "queue"}
+        import psutil
+        suspended = []
+        try:
+            root = psutil.Process(proc.pid)
+            children = root.children(recursive=True)
+            # Suspendre FFmpeg d'abord : il ne doit pas continuer le transfert.
+            for child in children + [root]:
+                try:
+                    child.suspend()
+                    suspended.append(child.pid)
+                except psutil.NoSuchProcess:
+                    continue
+            if not suspended:
+                self.is_paused = False
+                return {"success": False, "error": "Le processus vient de se terminer."}
+            self._suspended_download_pids = suspended
+            return {"success": True, "mode": "active"}
+        except (psutil.Error, OSError) as exc:
+            self._suspended_download_pids = suspended
+            self._resume_active_processes()
+            self.is_paused = False
+            return {"success": False, "error": f"Pause réelle impossible : {exc}"}
 
     def resume_downloads(self):
+        errors = self._resume_active_processes()
+        if errors:
+            return {"success": False, "error": "Impossible de reprendre certains processus : " + "; ".join(errors)}
         self.is_paused = False
+        return {"success": True}
 
     def extract_info(self, raw_url):
         url = normalize_media_url(raw_url)
@@ -2966,6 +3044,8 @@ class DownloaderAPI:
 
     def start_downloads(self, items):
         self.is_cancelled = False
+        self.is_paused = False
+        self._suspended_download_pids = []
         settings = self.get_app_settings()
 
         def _worker():
