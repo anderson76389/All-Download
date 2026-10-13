@@ -57,8 +57,8 @@ const backend = {
   open_folder: () => {events.push(['open_folder']);return true;},
   open_external: url => {events.push(['open_external',url]);return true;},
   cancel_downloads: () => {events.push(['cancel_downloads']);return true;},
-  pause_downloads: () => {events.push(['pause_downloads']);return true;},
-  resume_downloads: () => {events.push(['resume_downloads']);return true;},
+  pause_downloads: () => {events.push(['pause_downloads']);return {success:true,mode:'active'};},
+  resume_downloads: () => {events.push(['resume_downloads']);return {success:true};},
   start_downloads: items => {events.push(['start_downloads',JSON.parse(JSON.stringify(items))]);return true;},
   extract_info: url => {
     events.push(['extract_info',url]);
@@ -291,6 +291,15 @@ async function run() {
   assert.ok(events.some(x=>x[0]==='cancel_downloads'));
   assert.ok(events.some(x=>x[0]==='pause_downloads'));
   assert.ok(events.some(x=>x[0]==='resume_downloads'));
+  await flush();
+  assert.ok(doc.getElementById('appToast').textContent.includes('repris'),
+    'La reprise doit confirmer réellement la réponse du moteur');
+
+  // Changer de thème depuis l'interface et vérifier le même accent violet.
+  for (const theme of ['light','dark','dark_pure']) {
+    win.applyTheme(theme);
+    assert.equal(doc.body.className,'theme-'+theme);
+  }
   win.selectGlobalMode('Audio');
   assert.equal(win.eval('queue[1].mode'),'Audio');
   win.clearFailed();
