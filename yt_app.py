@@ -961,6 +961,109 @@ HTML_PAGE = """<!DOCTYPE html>
     .settings-nav { order: 3; flex-basis: 100%; }
     .tab-btn { padding: 8px 12px; }
   }
+
+  /* Ajustements des proportions - meme rendu pour Portable et Classique. */
+  .actions-bar {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) auto minmax(0,1fr);
+    align-items: center;
+    justify-content: normal;
+    gap: clamp(8px,1.2vw,20px);
+    padding: 12px clamp(16px,2.5vw,42px);
+  }
+  .actions-left, .actions-center, .actions-right { flex:none; min-width:0; }
+  .actions-left { justify-self:start; }
+  .actions-center { justify-self:center; width:auto; order:initial; }
+  .actions-right { justify-self:end; }
+  .settings-header {
+    display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+    align-items:center; gap:14px;
+  }
+  .settings-header > :first-child { justify-self:start; }
+  .settings-header > .settings-nav { justify-self:center; }
+  .settings-header > :last-child { justify-self:end; }
+  .setting-section, .setting-field, .settings-content { min-width:0; }
+
+  @media (min-width:761px) and (max-width:1399px) {
+    .actions-bar { display:grid; flex-wrap:nowrap; justify-content:normal; }
+    .actions-center { order:initial; width:auto; flex-direction:column; gap:6px; }
+    .actions-left, .actions-right { flex:none; }
+    .settings-content { max-width:1080px; }
+  }
+  @media (min-width:1580px) {
+    .settings-content { max-width:1460px; padding:32px 46px 44px; }
+    #setSectionTelech:not([style*="display: none"]) {
+      display:grid !important;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      grid-template-areas:"folder sortie" "sponsor sortie";
+      grid-template-rows:auto 1fr;
+      column-gap:clamp(42px,4vw,78px);
+      row-gap:22px; align-content:start; align-items:start;
+    }
+    #setSectionTelech > .setting-section:nth-child(1) { grid-area:folder; }
+    #setSectionTelech > .setting-section:nth-child(2) { grid-area:sortie; }
+    #setSectionTelech > .setting-section:nth-child(4) { grid-area:sponsor; }
+    #setSectionTelech > div[style*="height:1px"] { display:none; }
+    #setSectionReseau[style*="display: flex"] {
+      display:flex !important; flex-direction:column;
+      max-width:1140px; margin-inline:auto;
+    }
+  }
+  /* Plein écran: améliorer la lisibilité sans zoomer l'interface WebView2. */
+  @media (min-width:1500px) and (min-height:760px) {
+    .app-container { padding-inline:clamp(34px,3vw,62px); }
+    .header { gap:16px; padding-block:24px; }
+    .input-wrapper, .btn-add { height:56px; }
+    .url-input { font-size:17px; }
+    .btn-add { font-size:16px; padding-inline:34px; }
+    .btn-settings { width:54px; height:54px; }
+    .btn-settings .svg-icon-lg { width:25px; height:25px; }
+    .empty-icon svg { width:68px !important; height:68px !important; }
+    .empty-title { font-size:24px; }
+    .empty-sub { font-size:15px; }
+    .status-bar { font-size:15px; padding-block:9px; }
+    .actions-bar { padding:17px clamp(34px,3vw,62px); }
+    .tools-cluster { padding:5px; }
+    .tool-cluster-btn { width:48px; height:48px; }
+    .tool-cluster-btn .svg-icon, .trash-group .svg-icon,
+    .center-cluster .svg-icon { width:19px; height:19px; }
+    .center-cluster { padding:5px 10px; }
+    .center-cluster .pill-dropdown { font-size:16px; height:46px; padding:9px 17px; }
+    .bottom-v-separator { height:32px; }
+    .trash-main, .trash-arrow { height:54px; padding-inline:16px; }
+    .btn-download-all { height:54px; font-size:16px; padding:12px 34px; }
+    .dropdown-item { font-size:15px; padding:11px 15px; }
+    .popover-item, .ctx-item { font-size:14px; padding:11px 14px; }
+    .tab-btn { font-size:16px; padding:11px 20px; }
+    .settings-header { padding:18px clamp(30px,3vw,60px); }
+    .settings-header > .btn-logs-card,
+    .settings-header > .btn-download-all {
+      height:48px !important; font-size:16px !important; padding:10px 24px !important;
+    }
+    .setting-sec-title { font-size:20px; }
+    .setting-sec-desc { font-size:14px; line-height:1.45; }
+    .setting-label, .switch-label { font-size:16px; }
+    .setting-subtext, .switch-desc { font-size:13.5px; line-height:1.5; }
+    .setting-input, .setting-textarea { font-size:16px; min-height:48px; padding:12px 16px; }
+    .setting-field { margin-bottom:18px; gap:9px; }
+    .setting-section { gap:16px; }
+    .switch-row { margin-bottom:17px; }
+    .switch { width:50px; height:28px; }
+    .slider:before { width:22px; height:22px; }
+    input:checked + .slider:before { transform:translateX(22px); }
+    .mode-pill-btn { font-size:15px; padding:9px 22px; }
+    .settings-content .btn-logs-card {
+      font-size:14px; min-height:44px; padding:10px 17px;
+    }
+    .card-act-btn { width:40px; height:40px; }
+  }
+  @media (max-width:760px) {
+    .actions-bar { display:flex; flex-wrap:wrap; justify-content:space-between; }
+    .actions-center { order:-1; width:100%; }
+    .actions-left, .actions-right { flex:1 1 auto; }
+    .settings-header { display:flex; flex-wrap:wrap; }
+    .settings-nav { order:3; flex-basis:100%; justify-content:center; }
+  }
 </style>
 </head>
 <body class="theme-light" id="appBody">
