@@ -179,6 +179,7 @@ jobs:
             foreach ($attempt in 1..$scenario.Times) {
               Write-Output "$($scenario.Name) demarrage $attempt/$($scenario.Times)"
               $exe = $scenario.Exe
+              $startupTimer = [System.Diagnostics.Stopwatch]::StartNew()
               $proc = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe -Parent) -PassThru
               $visible = $false
               try {
@@ -215,7 +216,7 @@ jobs:
                 # verifier WM_NULL qu'apres l'evenement HTML de ce processus.
                 $trace = Join-Path $env:LOCALAPPDATA "AllMediaDownload/startup_log.txt"
                 $htmlReady = $false
-                for ($readyAttempt=0; $readyAttempt -lt 60; $readyAttempt++) {
+                for ($readyAttempt=0; $readyAttempt -lt 100; $readyAttempt++) {
                   $proc.Refresh()
                   if ($proc.HasExited) { throw "Application fermee avant chargement HTML" }
                   if (Test-Path $trace) {
@@ -229,7 +230,7 @@ jobs:
                 }
                 if (-not $htmlReady) {
                   if (Test-Path $trace) { Get-Content $trace -Tail 35 }
-                  throw "Le contenu HTML n'a jamais fini de charger (30 s) : $($scenario.Name)"
+                  throw "Le contenu HTML n'a jamais fini de charger (50 s) : $($scenario.Name)"
                 }
                 # Une fois l'interface chargee, une fenetre qui ne repond pas
                 # a WM_NULL pendant 3 s est vraiment bloquee.
@@ -241,10 +242,23 @@ jobs:
                   if (Test-Path $trace) { Get-Content $trace -Tail 25 }
                   throw "Fenetre Windows figee apres chargement HTML : $($scenario.Name)"
                 }
-                Write-Output "Demarrage reussi, HTML charge et interface reactive : $($scenario.Name)"
+                $startupTimer.Stop()
+                Write-Output "Demarrage reussi, HTML charge et interface reactive : $($scenario.Name) en $([math]::Round($startupTimer.Elapsed.TotalSeconds,1)) secondes"
               } finally {
-                Get-Process -Name "All_Media_Download" -ErrorAction SilentlyContinue |
-                  Stop-Process -Force -ErrorAction SilentlyContinue
+                # Tester une fermeture NORMALE pour liberer WebView2 et son
+                # profil. Stop-Process -Force laissait potentiellement des
+                # enfants WebView2 et ralentissait les lancements suivants.
+                $guiToClose = Get-Process -Name "All_Media_Download" -ErrorAction SilentlyContinue |
+                  Where-Object { $_.MainWindowTitle -eq "All Media Download" } |
+                  Select-Object -First 1
+                if ($guiToClose) {
+                  try { [void]$guiToClose.CloseMainWindow() } catch {}
+                }
+                try { Wait-Process -Id $proc.Id -Timeout 10 -ErrorAction SilentlyContinue } catch {}
+                $proc.Refresh()
+                if (-not $proc.HasExited) {
+                  & taskkill.exe /T /F /PID $proc.Id 2>$null | Out-Null
+                }
               }
             }
           }
