@@ -43,6 +43,29 @@ assert.ok(executablePath, 'Microsoft Edge x64 introuvable sur le runner Windows'
     assert.ok(large.secondX>large.firstX+200,'Les cartes ne sont pas disposées côte à côte');
     assert.equal(large.hasHorizontalOverflow,false,'Débordement horizontal en plein écran');
 
+    // Le trait sous l'URL doit rejoindre les deux bords, sans élargir
+    // le champ ni déborder horizontalement, y compris après 1800px.
+    for (const width of [1050, 1652, 1920]) {
+      await page.setViewportSize({width,height:900});
+      const line = await page.evaluate(() => {
+        const header = document.querySelector('#viewMain .header');
+        const rect = header.getBoundingClientRect();
+        const pseudo = getComputedStyle(header, '::after');
+        const pseudoWidth = parseFloat(pseudo.width);
+        return {
+          left: rect.left + rect.width / 2 - pseudoWidth / 2,
+          right: rect.left + rect.width / 2 + pseudoWidth / 2,
+          color: pseudo.backgroundColor,
+          lineWidth: pseudoWidth,
+          viewport: innerWidth,
+          overflow: document.documentElement.scrollWidth > innerWidth
+        };
+      });
+      assert.ok(Math.abs(line.left) < 2 && Math.abs(line.right-width) < 2,
+        'Trait sous URL non étendu bord à bord à '+width+': '+JSON.stringify(line));
+      assert.equal(line.overflow,false,'Trait URL crée un débordement horizontal');
+    }
+    await page.setViewportSize({width:1920,height:1080});
     await page.evaluate(() => showSettingsView());
     const settings = await page.evaluate(() => ({
       width:document.getElementById('setSectionTelech').getBoundingClientRect().width,
