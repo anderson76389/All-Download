@@ -154,6 +154,23 @@ jobs:
           # Outils factices seulement dans le runner pour ne pas telecharger les outils dans la CI.
           New-Item -ItemType File -Force -Path (Join-Path $bin "yt-dlp.exe") | Out-Null
           New-Item -ItemType File -Force -Path (Join-Path $bin "ffmpeg.exe") | Out-Null
+          # Le titre seul n'est pas une preuve : Windows peut afficher une
+          # fenetre qui reste figee sur son thread UI.
+          Add-Type @"
+          using System;
+          using System.Runtime.InteropServices;
+          public static class AllDownloadWindowProbe {
+              [DllImport("user32.dll", SetLastError = true)]
+              public static extern IntPtr SendMessageTimeout(
+                  IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam,
+                  uint flags, uint timeout, out IntPtr result);
+          }
+          "@
+          $config = Join-Path $env:LOCALAPPDATA "AllMediaDownload/config.json"
+          if (Test-Path $config) {
+            Write-Output "Suppression de la configuration CI (runner jetable), pour tester un premier lancement neuf"
+            Remove-Item $config -Force
+          }
           $scenarios = @(
             @{ Name="Portable"; Exe=(Resolve-Path "dist/All-Download-Portable/All_Media_Download.exe").Path; Times=8 },
             @{ Name="Classique"; Exe=(Join-Path $env:RUNNER_TEMP "All-Download-Installed-Test/All_Media_Download.exe"); Times=4 }
@@ -173,7 +190,10 @@ jobs:
                   if (@($others | Where-Object { $_.MainWindowTitle -like "*erreur de démarrage*" }).Count -gt 0) {
                     throw "Fenetre d'erreur de demarrage detectee"
                   }
-                  if (@($others | Where-Object { $_.MainWindowTitle -eq "All Media Download" }).Count -gt 0) {
+                  $gui = @($others | Where-Object {
+                    $_.MainWindowTitle -eq "All Media Download" -and $_.MainWindowHandle -ne [IntPtr]::Zero
+                  } | Select-Object -First 1)
+                  if ($gui.Count -gt 0) {
                     $visible = $true
                     break
                   }
@@ -186,7 +206,22 @@ jobs:
                 Start-Sleep -Seconds 2
                 $proc.Refresh()
                 if ($proc.HasExited) { throw "Application fermee juste apres ouverture" }
-                Write-Output "Demarrage reussi : $($scenario.Name)"
+                # WM_NULL doit etre traite par la vraie boucle graphique (3 s max).
+                # Un processus avec une fenetre gelee echoue ici.
+                $guiProcess = Get-Process -Name "All_Media_Download" -ErrorAction SilentlyContinue |
+                  Where-Object { $_.MainWindowTitle -eq "All Media Download" -and $_.MainWindowHandle -ne [IntPtr]::Zero } |
+                  Select-Object -First 1
+                if (-not $guiProcess) { throw "Fenetre disparue pendant la verification" }
+                $probeResult = [IntPtr]::Zero
+                $probe = [AllDownloadWindowProbe]::SendMessageTimeout(
+                  $guiProcess.MainWindowHandle, 0, [IntPtr]::Zero, [IntPtr]::Zero,
+                  2, 3000, [ref]$probeResult)
+                if ($probe -eq [IntPtr]::Zero) {
+                  $trace = Join-Path $env:LOCALAPPDATA "AllMediaDownload/startup_log.txt"
+                  if (Test-Path $trace) { Get-Content $trace -Tail 25 }
+                  throw "Fenetre Windows figee (aucune reponse WM_NULL) : $($scenario.Name)"
+                }
+                Write-Output "Demarrage reussi et interface reactive : $($scenario.Name)"
               } finally {
                 Get-Process -Name "All_Media_Download" -ErrorAction SilentlyContinue |
                   Stop-Process -Force -ErrorAction SilentlyContinue
