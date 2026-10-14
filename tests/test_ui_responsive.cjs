@@ -97,8 +97,9 @@ assert.ok(executablePath, 'Microsoft Edge x64 introuvable sur le runner Windows'
     }));
     assert.ok(largeMain.addHeight>=54,'Bouton Ajouter trop petit en plein écran');
     assert.ok(largeMain.urlHeight>=54,'Champ URL trop petit en plein écran');
+    console.log('DIAGNOSTIC dimensions commandes 1652×900:', JSON.stringify(largeMain));
     assert.ok(largeMain.downloadHeight>=52 && largeMain.toolsHeight>=46,
-      'Commandes du bas trop petites en plein écran');
+      'Commandes du bas trop petites en plein écran: '+JSON.stringify(largeMain));
     await page.evaluate(() => showSettingsView());
     const centeredSettings = await page.evaluate(() => {
       const box = el => {const {left,right,top,bottom,height}=el.getBoundingClientRect();
