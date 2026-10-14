@@ -3500,8 +3500,14 @@ if __name__ == '__main__':
             raise RuntimeError("Failed to resolve Python.Runtime.Loader.Initialize [test]")
 
         # Les outils ne sont lances qu'apres l'evenement HTML charge.
-        # Cela evite l'I/O lourde pendant l'initialisation CLR/WebView2.
-        webview.start(debug=False)
+        # Le profil WebView2 vit dans LocalAppData (toujours modifiable),
+        # jamais pres de l'EXE qui peut etre dans Program Files ou dans un ZIP.
+        # Mode prive conserve : pas de cookies ni de sessions persistantes.
+        webview.start(
+            debug=False,
+            private_mode=True,
+            storage_path=os.path.join(APP_DIR, "webview"),
+        )
         log_startup_phase("Fermeture normale de la fenetre")
     except Exception as exc:
         log_startup_phase(f"Echec: {type(exc).__name__}: {exc}")
