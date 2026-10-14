@@ -30,6 +30,7 @@ BIN_DIR = os.path.join(APP_DIR, "bin")
 CONFIG_FILE = os.path.join(APP_DIR, "config.json")
 HTML_FILE = os.path.join(APP_DIR, "index.html")
 CRASH_LOG = os.path.join(APP_DIR, "crash_log.txt")
+STARTUP_LOG = os.path.join(APP_DIR, "startup_log.txt")
 
 os.makedirs(APP_DIR, exist_ok=True)
 os.makedirs(BIN_DIR, exist_ok=True)
@@ -59,6 +60,17 @@ def handle_exception(exc_type, exc_value, exc_traceback):
             traceback.print_exception(exc_type, exc_value, exc_traceback, file=f)
     except Exception:
         pass
+
+def log_startup_phase(phase):
+    """Journalise les phases de lancement, y compris un blocage sans exception Python."""
+    try:
+        if os.path.exists(STARTUP_LOG) and os.path.getsize(STARTUP_LOG) > 256 * 1024:
+            os.replace(STARTUP_LOG, STARTUP_LOG + ".old")
+        with open(STARTUP_LOG, "a", encoding="utf-8") as output:
+            output.write(f"[{datetime.now():%Y-%m-%d %H:%M:%S.%f}] PID={os.getpid()} {phase}\n")
+    except OSError:
+        pass
+
 
 sys.excepthook = handle_exception
 if hasattr(threading, 'excepthook'):
@@ -781,6 +793,20 @@ HTML_PAGE = """<!DOCTYPE html>
   .header {
     border-bottom: 1px solid var(--ui-divider);
     margin-bottom: 6px;
+    position: relative;
+  }
+  /* Le separateur traverse aussi les marges et la largeur max (1800px)
+     du contenu, comme celui du bas, sans elargir le champ URL. */
+  .header::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -1px;
+    width: 100vw;
+    height: 1px;
+    transform: translateX(-50%);
+    background: var(--ui-divider);
+    pointer-events: none;
   }
   .empty-view {
     text-align: center;
@@ -3379,6 +3405,18 @@ def setup_binaries():
     finally:
         gc.collect()
 
+def schedule_binary_setup_after_ui():
+    """Attendre une interface HTML chargee avant les telechargements de yt-dlp / FFmpeg."""
+    def worker():
+        # Laisser WebView2 peindre sa premiere frame et rendre les boutons actifs.
+        time.sleep(3)
+        log_startup_phase("Outils: verification en arriere-plan")
+        setup_binaries()
+        log_startup_phase("Outils: verification terminee")
+
+    threading.Thread(target=worker, name="AllDownload-Outils", daemon=True).start()
+
+
 # Un demarrage Windows peut echouer une fois lors de l'initialisation
 # du pont CLR de pythonnet/WebView2 (Python.Runtime.Loader.Initialize).
 # Relancer UNE SEULE FOIS dans un processus PyInstaller independant :
@@ -3426,10 +3464,9 @@ def retry_transient_gui_startup(error, argv=None):
 
 if __name__ == '__main__':
     try:
-        # Afficher l'interface avant les verifications de yt-dlp et FFmpeg.
-        # webview.start(func=...) demarre la fonction dans un thread seulement
-        # une fois la boucle graphique initialisee (pas en concurrence avec CLR).
+        log_startup_phase("Debut: preparation des reglages et dossiers")
         api = DownloaderAPI()
+        log_startup_phase("Reglages prepares: creation de la fenetre")
         window = webview.create_window(
             'All Media Download',
             html=html_for_config(api.config),
@@ -3441,15 +3478,33 @@ if __name__ == '__main__':
         )
         api.window = window
 
+        # Une fenetre WinForms creee n'implique pas que le HTML soit charge.
+        tools_started = threading.Event()
+
+        def on_window_shown(*_):
+            log_startup_phase("Fenetre native affichee")
+
+        def on_window_loaded(*_):
+            log_startup_phase("Interface HTML chargee")
+            if not tools_started.is_set():
+                tools_started.set()
+                schedule_binary_setup_after_ui()
+
+        window.events.shown += on_window_shown
+        window.events.loaded += on_window_loaded
+        log_startup_phase("Fenetre creee: demarrage WebView2")
+
         # Injection réservée au test d'intégration Windows du workflow :
         # le marqueur est retiré AVANT la relance, afin que le nouvel EXE démarre.
         if os.environ.pop("ALL_DOWNLOAD_TEST_CLR_FAILURE_ONCE", None) == "1":
             raise RuntimeError("Failed to resolve Python.Runtime.Loader.Initialize [test]")
 
-        # Conserver le moteur Windows deja utilise et les reglages performants.
-        # L'initialisation des binaires se fait en arriere-plan apres le GUI.
-        webview.start(func=setup_binaries, debug=False)
+        # Les outils ne sont lances qu'apres l'evenement HTML charge.
+        # Cela evite l'I/O lourde pendant l'initialisation CLR/WebView2.
+        webview.start(debug=False)
+        log_startup_phase("Fermeture normale de la fenetre")
     except Exception as exc:
+        log_startup_phase(f"Echec: {type(exc).__name__}: {exc}")
         handle_exception(type(exc), exc, exc.__traceback__)
         if retry_transient_gui_startup(exc):
             # Le nouveau processus reinitialise WinForms/CLR depuis zero.
