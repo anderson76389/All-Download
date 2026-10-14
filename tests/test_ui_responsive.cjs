@@ -89,11 +89,22 @@ assert.ok(executablePath, 'Microsoft Edge x64 introuvable sur le runner Windows'
     }
 
     await page.setViewportSize({width:1652,height:900});
+    // WebView2/Edge peut terminer l'ancienne frame après setViewportSize.
+    // Attendre le style du VRAI plein écran avant de mesurer les dimensions.
+    await page.waitForFunction(() => {
+      const download = document.querySelector('#viewMain .actions-right .btn-download-all');
+      const tool = document.querySelector('#viewMain .tool-cluster-btn');
+      return window.matchMedia('(min-width:1500px) and (min-height:760px)').matches &&
+        download && tool && download.getBoundingClientRect().height >= 52 &&
+        tool.getBoundingClientRect().height >= 46;
+    }, null, {timeout:10000});
+    await page.evaluate(() => new Promise(resolve =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve))));
     const largeMain = await page.evaluate(() => ({
-      addHeight:document.querySelector('.btn-add').getBoundingClientRect().height,
-      urlHeight:document.querySelector('.input-wrapper').getBoundingClientRect().height,
-      downloadHeight:document.querySelector('.btn-download-all').getBoundingClientRect().height,
-      toolsHeight:document.querySelector('.tool-cluster-btn').getBoundingClientRect().height
+      addHeight:document.querySelector('#viewMain .btn-add').getBoundingClientRect().height,
+      urlHeight:document.querySelector('#viewMain .input-wrapper').getBoundingClientRect().height,
+      downloadHeight:document.querySelector('#viewMain .actions-right .btn-download-all').getBoundingClientRect().height,
+      toolsHeight:document.querySelector('#viewMain .tool-cluster-btn').getBoundingClientRect().height
     }));
     assert.ok(largeMain.addHeight>=54,'Bouton Ajouter trop petit en plein écran');
     assert.ok(largeMain.urlHeight>=54,'Champ URL trop petit en plein écran');
