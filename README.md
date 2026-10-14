@@ -19,8 +19,6 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 
 ---
 
-<br>
-
 ### 📥 TÉLÉCHARGER ALL-DOWNLOAD
 
 <a href="https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Portable-Windows.zip"><img src="https://img.shields.io/badge/T%C3%89L%C3%89CHARGER-WINDOWS%20PORTABLE-2563EB?style=for-the-badge&logo=windows11&logoColor=white" alt="Télécharger Windows Portable"></a>
@@ -34,8 +32,6 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 </div>
 
 ---
-
-<br>
 
 ## ✨ Tout ce qu'il vous faut
 
@@ -51,11 +47,7 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 
 > Les formats, résolutions et sites pris en charge dépendent de la disponibilité des sources et des extracteurs yt-dlp. Aucune application ne peut garantir le téléchargement de tous les contenus.
 
-<br>
-
 ---
-
-<br>
 
 ## 💻 Deux versions Windows, le même All-Download
 
@@ -69,11 +61,7 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 
 **Configuration requise :** Windows 10/11 **x64 (64 bits)** et WebView2. La compilation utilise Python et un EXE x64 ; **x86 (32 bits) n'est pas pris en charge**. Une connexion Internet est nécessaire pour récupérer les contenus et, au besoin, yt-dlp et FFmpeg au premier lancement.
 
-<br>
-
 ---
-
-<br>
 
 ## 🚀 Télécharger en quelques clics
 
@@ -82,11 +70,7 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 3. **⬇️ Lancez** le téléchargement individuel ou celui de la file d'attente.
 4. **📂 Retrouvez** votre média dans le dossier correspondant.
 
-<br>
-
 ---
-
-<br>
 
 ## 📁 Un rangement automatique et organisé
 
@@ -109,8 +93,6 @@ L'ancien dossier `AUDIO/` est migré vers `AUDIOS/` lorsque c'est possible, sans
 | **Portable x64** | Sous-dossiers voisins de l'EXE, si le dossier est accessible en écriture |
 | **Classique x64** | `%USERPROFILE%\Downloads\All-Download-Medias` |
 
-<br>
-
 ---
 
 ### 📂 Choisir librement son dossier
@@ -125,11 +107,7 @@ L'ancien emplacement automatique `Téléchargements/MediaDownloader` est migré 
 
 **Désinstaller l'édition Classique ne doit pas nécessiter la suppression de vos médias**, stockés à part.
 
-<br>
-
 ---
-
-<br>
 
 ## 🔒 Versions officielles et mises à jour
 
@@ -141,8 +119,6 @@ Les deux boutons en haut de cette page renvoient vers les fichiers de la **derni
 Chaque archive comprend les **logos**, les **six dossiers** et une copie de **tous les fichiers suivis sur GitHub** dans `Code-source/`.
 
 Les versions sont construites automatiquement et soumises à des tests Python, des tests d'interface et des vérifications du démarrage sur Windows. **Cela ne remplace pas un essai réel de chaque site ou de chaque format.**
-
-<br>
 
 <details>
 <summary><strong>🧑‍💻 Développeurs — Code source et compilation</strong></summary>
@@ -166,8 +142,6 @@ python -m PyInstaller --clean --noconfirm All_Media_Download-Portable.spec
 Le fichier `dist/All_Media_Download.exe` déjà présent dans le dépôt est une **ancienne compilation**, à ne pas confondre avec les versions proposées dans les Releases.
 
 </details>
-
-<br>
 
 <details>
 <summary><strong>🩺 Dépannage, SmartScreen et sécurité</strong></summary>
