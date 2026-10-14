@@ -206,26 +206,18 @@ jobs:
                 Start-Sleep -Seconds 2
                 $proc.Refresh()
                 if ($proc.HasExited) { throw "Application fermee juste apres ouverture" }
-                # WM_NULL doit etre traite par la vraie boucle graphique (3 s max).
-                # Un processus avec une fenetre gelee echoue ici.
                 $guiProcess = Get-Process -Name "All_Media_Download" -ErrorAction SilentlyContinue |
                   Where-Object { $_.MainWindowTitle -eq "All Media Download" -and $_.MainWindowHandle -ne [IntPtr]::Zero } |
                   Select-Object -First 1
                 if (-not $guiProcess) { throw "Fenetre disparue pendant la verification" }
-                $probeResult = [IntPtr]::Zero
-                $probe = [AllDownloadWindowProbe]::SendMessageTimeout(
-                  $guiProcess.MainWindowHandle, 0, [IntPtr]::Zero, [IntPtr]::Zero,
-                  2, 3000, [ref]$probeResult)
-                if ($probe -eq [IntPtr]::Zero) {
-                  $trace = Join-Path $env:LOCALAPPDATA "AllMediaDownload/startup_log.txt"
-                  if (Test-Path $trace) { Get-Content $trace -Tail 25 }
-                  throw "Fenetre Windows figee (aucune reponse WM_NULL) : $($scenario.Name)"
-                }
-                # Verifier l'evenement de chargement WebView2, pas seulement le
-                # titre WinForms. Sinon yt-dlp / FFmpeg ne seraient jamais initialises.
+                # pywebview cree la fenetre native AVANT de terminer WebView2.
+                # Le thread WinForms peut etre occupe pendant cette phase : ne
+                # verifier WM_NULL qu'apres l'evenement HTML de ce processus.
                 $trace = Join-Path $env:LOCALAPPDATA "AllMediaDownload/startup_log.txt"
                 $htmlReady = $false
-                for ($readyAttempt=0; $readyAttempt -lt 12; $readyAttempt++) {
+                for ($readyAttempt=0; $readyAttempt -lt 60; $readyAttempt++) {
+                  $proc.Refresh()
+                  if ($proc.HasExited) { throw "Application fermee avant chargement HTML" }
                   if (Test-Path $trace) {
                     $lines = @(Get-Content $trace -Tail 45)
                     if (@($lines | Where-Object { $_.Contains("PID=$($guiProcess.Id) Interface HTML chargee") }).Count -gt 0) {
@@ -237,7 +229,17 @@ jobs:
                 }
                 if (-not $htmlReady) {
                   if (Test-Path $trace) { Get-Content $trace -Tail 35 }
-                  throw "Le contenu HTML n'a jamais fini de charger : $($scenario.Name)"
+                  throw "Le contenu HTML n'a jamais fini de charger (30 s) : $($scenario.Name)"
+                }
+                # Une fois l'interface chargee, une fenetre qui ne repond pas
+                # a WM_NULL pendant 3 s est vraiment bloquee.
+                $probeResult = [IntPtr]::Zero
+                $probe = [AllDownloadWindowProbe]::SendMessageTimeout(
+                  $guiProcess.MainWindowHandle, 0, [IntPtr]::Zero, [IntPtr]::Zero,
+                  2, 3000, [ref]$probeResult)
+                if ($probe -eq [IntPtr]::Zero) {
+                  if (Test-Path $trace) { Get-Content $trace -Tail 25 }
+                  throw "Fenetre Windows figee apres chargement HTML : $($scenario.Name)"
                 }
                 Write-Output "Demarrage reussi, HTML charge et interface reactive : $($scenario.Name)"
               } finally {
