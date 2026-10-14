@@ -221,7 +221,25 @@ jobs:
                   if (Test-Path $trace) { Get-Content $trace -Tail 25 }
                   throw "Fenetre Windows figee (aucune reponse WM_NULL) : $($scenario.Name)"
                 }
-                Write-Output "Demarrage reussi et interface reactive : $($scenario.Name)"
+                # Verifier l'evenement de chargement WebView2, pas seulement le
+                # titre WinForms. Sinon yt-dlp / FFmpeg ne seraient jamais initialises.
+                $trace = Join-Path $env:LOCALAPPDATA "AllMediaDownload/startup_log.txt"
+                $htmlReady = $false
+                for ($readyAttempt=0; $readyAttempt -lt 12; $readyAttempt++) {
+                  if (Test-Path $trace) {
+                    $lines = @(Get-Content $trace -Tail 45)
+                    if (@($lines | Where-Object { $_.Contains("PID=$($guiProcess.Id) Interface HTML chargee") }).Count -gt 0) {
+                      $htmlReady = $true
+                      break
+                    }
+                  }
+                  Start-Sleep -Milliseconds 500
+                }
+                if (-not $htmlReady) {
+                  if (Test-Path $trace) { Get-Content $trace -Tail 35 }
+                  throw "Le contenu HTML n'a jamais fini de charger : $($scenario.Name)"
+                }
+                Write-Output "Demarrage reussi, HTML charge et interface reactive : $($scenario.Name)"
               } finally {
                 Get-Process -Name "All_Media_Download" -ErrorAction SilentlyContinue |
                   Stop-Process -Force -ErrorAction SilentlyContinue
