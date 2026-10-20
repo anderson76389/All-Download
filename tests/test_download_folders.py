@@ -73,13 +73,53 @@ class DownloadFolderTests(unittest.TestCase):
                 yt_app.choose_initial_download_folder({"download_folder": other}), other
             )
 
-    def test_no_portable_folders_uses_clean_new_destination(self):
+    def test_no_portable_folders_creates_categories_next_to_exe(self):
+        # Une extraction du ZIP sans les dossiers vides reste portable.
         with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
             yt_app.sys, "executable", os.path.join(self.root, "All_Media_Download.exe")
         ):
             self.assertEqual(
-                yt_app.choose_initial_download_folder({}), yt_app.DEFAULT_DOWNLOAD_BASE
+                yt_app.choose_initial_download_folder({}), self.root
             )
+            with patch.object(yt_app, "CONFIG_FILE", os.path.join(self.root, "config.json")):
+                api = yt_app.DownloaderAPI()
+            self.assertEqual(api.download_folder, self.root)
+            for category in yt_app.DOWNLOAD_CATEGORIES:
+                self.assertTrue(os.path.isdir(os.path.join(self.root, category)))
+
+    def test_portable_ignores_old_automatic_downloads_but_preserves_media(self):
+        old_auto = os.path.join(self.root, "All-Download-Medias")
+        portable = os.path.join(self.root, "Portable")
+        os.makedirs(portable)
+        os.makedirs(os.path.join(old_auto, "VIDÉOS"))
+        preserved = os.path.join(old_auto, "VIDÉOS", "video-existante.mp4")
+        with open(preserved, "wb") as f:
+            f.write(b"original")
+        with patch.object(yt_app, "DEFAULT_DOWNLOAD_BASE", old_auto), patch.object(
+            yt_app.sys, "frozen", True, create=True
+        ), patch.object(yt_app.sys, "executable", os.path.join(portable, "All_Media_Download.exe")):
+            self.assertEqual(
+                yt_app.choose_initial_download_folder({
+                    "download_folder": old_auto, "download_folder_custom": False
+                }), portable
+            )
+            self.assertEqual(
+                yt_app.choose_initial_download_folder({
+                    "download_folder": old_auto
+                }), portable
+            )
+        with open(preserved, "rb") as f:
+            self.assertEqual(f.read(), b"original")
+
+    def test_portable_relocation_does_not_reuse_old_auto_path(self):
+        old_root = os.path.join(self.root, "ancienne-version")
+        new_root = os.path.join(self.root, "nouvelle-version")
+        os.makedirs(new_root)
+        config = {"download_folder": old_root, "download_folder_custom": False}
+        with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
+            yt_app.sys, "executable", os.path.join(new_root, "All_Media_Download.exe")
+        ):
+            self.assertEqual(yt_app.choose_initial_download_folder(config), new_root)
 
     def test_legacy_saved_folder_is_not_reused(self):
         legacy_dir = os.path.join(self.root, "MediaDownloader")
