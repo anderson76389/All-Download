@@ -3583,12 +3583,21 @@ if __name__ == '__main__':
         # Le profil WebView2 vit dans LocalAppData (toujours modifiable),
         # jamais pres de l'EXE qui peut etre dans Program Files ou dans un ZIP.
         # Mode prive conserve : pas de cookies ni de sessions persistantes.
+        webview_session = get_webview_storage_path()
         webview.start(
             debug=False,
             private_mode=True,
-            storage_path=get_webview_storage_path(),
+            storage_path=webview_session,
         )
         log_startup_phase("Fermeture normale de la fenetre")
+        # La session privée est jetable ; ne pas accumuler les caches.
+        if PORTABLE_DATA_LOCAL:
+            try:
+                shutil.rmtree(webview_session)
+            except OSError:
+                # Windows peut conserver un verrou quelques instants apres
+                # la fermeture ; aucune donnee utilisateur n'est touchee.
+                pass
     except Exception as exc:
         log_startup_phase(f"Echec: {type(exc).__name__}: {exc}")
         handle_exception(type(exc), exc, exc.__traceback__)
