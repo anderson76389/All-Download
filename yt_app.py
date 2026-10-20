@@ -76,8 +76,10 @@ def get_webview_storage_path():
     ancien processus. Les sessions Portables distinctes evitent ce conflit.
     """
     if PORTABLE_DATA_LOCAL:
+        profile_parent = os.path.join(APP_DIR, "webview")
+        os.makedirs(profile_parent, exist_ok=True)
         return os.path.join(
-            APP_DIR, "webview", f"session-{os.getpid()}-{time.time_ns()}"
+            profile_parent, f"session-{os.getpid()}-{time.time_ns()}"
         )
     return os.path.join(APP_DIR, "webview")
 
