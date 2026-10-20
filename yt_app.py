@@ -17,6 +17,7 @@ from datetime import datetime
 import ctypes
 from ctypes import wintypes
 import multiprocessing
+import tempfile
 from pathlib import Path
 import webview
 
@@ -24,8 +25,40 @@ import webview
 if __name__ == '__main__':
     multiprocessing.freeze_support()
 
-# 2. Chemins globaux
-APP_DIR = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "AllMediaDownload")
+# 2. Chemins globaux. La version Portable regroupe ses donnees a cote
+# de l'EXE : medias, reglages, outils, journaux et stockage WebView2.
+# La version installee reste hors du dossier des medias pour proteger
+# ceux-ci pendant la desinstallation.
+LEGACY_APP_DIR = os.path.join(
+    os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "AllMediaDownload"
+)
+
+
+def get_portable_root():
+    """Dossier du vrai EXE PyInstaller, jamais le dossier _MEI temporaire."""
+    if not getattr(sys, "frozen", False):
+        return None
+    root = os.path.dirname(os.path.abspath(sys.executable))
+    if os.path.isfile(os.path.join(root, ".all-download-installed")):
+        return None
+    return root
+
+
+def portable_root_is_writable(root):
+    if not root or not os.path.isdir(root):
+        return False
+    try:
+        with tempfile.TemporaryFile(dir=root):
+            pass
+        return True
+    except OSError:
+        return False
+
+
+PORTABLE_ROOT = get_portable_root()
+PORTABLE_DATA_LOCAL = bool(PORTABLE_ROOT and portable_root_is_writable(PORTABLE_ROOT))
+APP_DIR = (os.path.join(PORTABLE_ROOT, "Donnees")
+           if PORTABLE_DATA_LOCAL else LEGACY_APP_DIR)
 BIN_DIR = os.path.join(APP_DIR, "bin")
 CONFIG_FILE = os.path.join(APP_DIR, "config.json")
 HTML_FILE = os.path.join(APP_DIR, "index.html")
@@ -34,6 +67,22 @@ STARTUP_LOG = os.path.join(APP_DIR, "startup_log.txt")
 
 os.makedirs(APP_DIR, exist_ok=True)
 os.makedirs(BIN_DIR, exist_ok=True)
+
+
+def import_legacy_portable_settings():
+    """Conserver les reglages existants sans jamais deplacer des medias."""
+    if not PORTABLE_DATA_LOCAL or os.path.isfile(CONFIG_FILE):
+        return
+    old_config = os.path.join(LEGACY_APP_DIR, "config.json")
+    if not os.path.isfile(old_config):
+        return
+    try:
+        shutil.copy2(old_config, CONFIG_FILE)
+    except OSError:
+        pass
+
+
+import_legacy_portable_settings()
 
 # 3. Sous PyInstaller (--noconsole), stdout/stderr peuvent etre None.
 # Utiliser un vrai descripteur vers NUL plutot que fileno() = -1 :
@@ -121,43 +170,34 @@ def is_legacy_download_folder(path):
 
 
 def choose_initial_download_folder(config):
-    """Isoler les nouvelles sorties de l'ancien projet sans déplacer les médias.
+    """Portable : categories a cote de l'EXE, meme sans dossiers preexistants.
 
-    Une destination personnalisée reste prioritaire, sauf l'ancien répertoire
-    MediaDownloader : celui-ci etait utilise comme dossier de test.
+    Les destinations personnalisées restent respectees ; seul un ancien
+    emplacement automatique est automatiquement corrige.
     """
     saved = config.get("download_folder")
-    # Les deux éditions partagent config.json, mais pas leur destination
-    # automatique : Portable près de l'EXE, Classique dans Téléchargements.
-    # Seul un chemin choisi volontairement doit suivre les deux éditions.
     custom = config.get("download_folder_custom")
+    saved_is_old_auto = (
+        isinstance(saved, str)
+        and saved.strip()
+        and (is_legacy_download_folder(saved)
+             or os.path.normcase(os.path.abspath(saved))
+                == os.path.normcase(os.path.abspath(DEFAULT_DOWNLOAD_BASE)))
+    )
     if isinstance(saved, str) and saved.strip() and (
-        custom is True or (
-            custom is not False
-            and not is_legacy_download_folder(saved)
-            and os.path.normcase(os.path.abspath(saved)) != os.path.normcase(os.path.abspath(DEFAULT_DOWNLOAD_BASE))
-        )
+        (custom is True and not is_legacy_download_folder(saved))
+        or (custom is None and not saved_is_old_auto)
     ):
         return saved
 
-    if getattr(sys, "frozen", False):
-        executable_dir = os.path.dirname(os.path.abspath(sys.executable))
-        # Ne jamais utiliser le dossier de l'ancien projet comme destination,
-        # meme si celui-ci contient deja les six sous-dossiers.
-        if is_legacy_download_folder(executable_dir):
-            return DEFAULT_DOWNLOAD_BASE
-        # L'édition installée écrit hors du répertoire de désinstallation.
-        if os.path.isfile(os.path.join(executable_dir, ".all-download-installed")):
-            return DEFAULT_DOWNLOAD_BASE
-        if all(os.path.isdir(os.path.join(executable_dir, d)) for d in DOWNLOAD_CATEGORIES):
-            try:
-                import tempfile
-                with tempfile.TemporaryFile(dir=executable_dir):
-                    pass
-                return executable_dir
-            except OSError:
-                pass
+    portable_root = get_portable_root()
+    if portable_root and portable_root_is_writable(portable_root):
+        if not is_legacy_download_folder(portable_root):
+            return portable_root
+    # Classique : les medias ne doivent pas se trouver dans le dossier
+    # dont la suppression est geree par l'installateur.
     return DEFAULT_DOWNLOAD_BASE
+
 
 def ensure_media_directories(root):
     os.makedirs(root, exist_ok=True)
@@ -2638,7 +2678,8 @@ class DownloaderAPI:
         ensure_media_directories(self.download_folder)
         # Corriger aussi le chemin déjà enregistré sur les anciennes versions,
         # en conservant les réglages, cookies et autres préférences.
-        if is_legacy_download_folder(self.config.get("download_folder")):
+        if (not self.config["download_folder_custom"]
+                and self.config.get("download_folder") != self.download_folder):
             self._save_config()
         self.is_cancelled = False
         self.is_paused = False
@@ -3365,9 +3406,35 @@ def safe_download_file(url, target_path):
                 pass
 
 
+def import_legacy_portable_tools():
+    """Reutiliser les binaires deja telecharges, sans effacer l'ancien dossier."""
+    if not PORTABLE_DATA_LOCAL:
+        return
+    previous_bin = os.path.join(LEGACY_APP_DIR, "bin")
+    for name in ("yt-dlp.exe", "ffmpeg.exe", "ffprobe.exe"):
+        previous = os.path.join(previous_bin, name)
+        target = os.path.join(BIN_DIR, name)
+        temporary = target + ".import-tmp"
+        try:
+            if (not os.path.isfile(target) and os.path.isfile(previous)
+                    and os.path.getsize(previous) > 0):
+                with open(previous, "rb") as source, open(temporary, "wb") as dest:
+                    shutil.copyfileobj(source, dest, length=1024 * 1024)
+                os.replace(temporary, target)
+        except OSError as error:
+            _log_binary_setup_error(error)
+        finally:
+            if os.path.isfile(temporary):
+                try:
+                    os.remove(temporary)
+                except OSError:
+                    pass
+
+
 def setup_binaries():
     """Premier lancement : ne pas charger FFmpeg intégralement dans la RAM."""
     try:
+        import_legacy_portable_tools()
         if not os.path.isfile(YTDLP_PATH) or os.path.getsize(YTDLP_PATH) == 0:
             safe_download_file(YTDLP_URL, YTDLP_PATH)
 
