@@ -149,11 +149,18 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          $bin = Join-Path $env:LOCALAPPDATA "AllMediaDownload/bin"
-          New-Item -ItemType Directory -Force -Path $bin | Out-Null
-          # Outils factices seulement dans le runner pour ne pas telecharger les outils dans la CI.
-          New-Item -ItemType File -Force -Path (Join-Path $bin "yt-dlp.exe") | Out-Null
-          New-Item -ItemType File -Force -Path (Join-Path $bin "ffmpeg.exe") | Out-Null
+          $portableRoot = (Resolve-Path "dist/All-Download-Portable").Path
+          $classicData = Join-Path $env:LOCALAPPDATA "AllMediaDownload"
+          $portableData = Join-Path $portableRoot "Donnees"
+          # Outils factices NON VIDES uniquement sur le runner :
+          # aucun gros telechargement FFmpeg pendant la mesure des demarrages.
+          foreach ($dataDir in @($portableData, $classicData)) {
+            $bin = Join-Path $dataDir "bin"
+            New-Item -ItemType Directory -Force -Path $bin | Out-Null
+            foreach ($tool in @("yt-dlp.exe", "ffmpeg.exe", "ffprobe.exe")) {
+              [IO.File]::WriteAllBytes((Join-Path $bin $tool), [byte[]]@(77,90))
+            }
+          }
           # Le titre seul n'est pas une preuve : Windows peut afficher une
           # fenetre qui reste figee sur son thread UI.
           Add-Type @"
@@ -179,6 +186,7 @@ jobs:
             foreach ($attempt in 1..$scenario.Times) {
               Write-Output "$($scenario.Name) demarrage $attempt/$($scenario.Times)"
               $exe = $scenario.Exe
+              $dataDir = if ($scenario.Name -eq "Portable") { $portableData } else { $classicData }
               $startupTimer = [System.Diagnostics.Stopwatch]::StartNew()
               $proc = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe -Parent) -PassThru
               $visible = $false
@@ -200,7 +208,7 @@ jobs:
                   }
                 }
                 if (-not $visible) {
-                  $log = Join-Path $env:LOCALAPPDATA "AllMediaDownload/crash_log.txt"
+                  $log = Join-Path $dataDir "crash_log.txt"
                   if (Test-Path $log) { Get-Content $log -Tail 60 }
                   throw "La vraie fenetre du logiciel n'est pas apparue"
                 }
@@ -214,7 +222,7 @@ jobs:
                 # pywebview cree la fenetre native AVANT de terminer WebView2.
                 # Le thread WinForms peut etre occupe pendant cette phase : ne
                 # verifier WM_NULL qu'apres l'evenement HTML de ce processus.
-                $trace = Join-Path $env:LOCALAPPDATA "AllMediaDownload/startup_log.txt"
+                $trace = Join-Path $dataDir "startup_log.txt"
                 $htmlReady = $false
                 for ($readyAttempt=0; $readyAttempt -lt 100; $readyAttempt++) {
                   $proc.Refresh()
@@ -288,7 +296,7 @@ jobs:
               }
             }
             if (-not $started) { throw "Le processus relance ne presente pas son interface" }
-            $logFile = Join-Path $env:LOCALAPPDATA "AllMediaDownload/crash_log.txt"
+            $logFile = Join-Path $env:GITHUB_WORKSPACE "dist/All-Download-Portable/Donnees/crash_log.txt"
             if (-not (Test-Path $logFile)) { throw "Journal de relance CLR absent" }
             $contents = Get-Content -Raw -Encoding UTF8 $logFile
             if (-not $contents.Contains("Erreur CLR transitoire")) {
