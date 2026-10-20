@@ -18,7 +18,6 @@ import ctypes
 from ctypes import wintypes
 import multiprocessing
 import tempfile
-import uuid
 from pathlib import Path
 import webview
 
@@ -68,21 +67,6 @@ STARTUP_LOG = os.path.join(APP_DIR, "startup_log.txt")
 
 os.makedirs(APP_DIR, exist_ok=True)
 os.makedirs(BIN_DIR, exist_ok=True)
-
-
-def get_webview_storage_path():
-    """Isoler les profils WebView2 temporaires de chaque lancement Portable.
-
-    WebView2 peut conserver des verrous sur un profil encore utilise par un
-    ancien processus. Les sessions Portables distinctes evitent ce conflit.
-    """
-    if PORTABLE_DATA_LOCAL:
-        profile_parent = os.path.join(APP_DIR, "webview")
-        os.makedirs(profile_parent, exist_ok=True)
-        return os.path.join(
-            profile_parent, f"session-{os.getpid()}-{uuid.uuid4().hex}"
-        )
-    return os.path.join(APP_DIR, "webview")
 
 
 def import_legacy_portable_settings():
@@ -3586,21 +3570,15 @@ if __name__ == '__main__':
         # Le profil WebView2 vit dans LocalAppData (toujours modifiable),
         # jamais pres de l'EXE qui peut etre dans Program Files ou dans un ZIP.
         # Mode prive conserve : pas de cookies ni de sessions persistantes.
-        webview_session = get_webview_storage_path()
+        # WebView2 garde son profil interne dans AppData pour eviter les
+        # blocages de premiere initialisation Windows. Cela ne change PAS
+        # l'emplacement des medias, reglages, outils ou journaux Portable.
         webview.start(
             debug=False,
             private_mode=True,
-            storage_path=webview_session,
+            storage_path=os.path.join(LEGACY_APP_DIR, "webview"),
         )
         log_startup_phase("Fermeture normale de la fenetre")
-        # La session privée est jetable ; ne pas accumuler les caches.
-        if PORTABLE_DATA_LOCAL:
-            try:
-                shutil.rmtree(webview_session)
-            except OSError:
-                # Windows peut conserver un verrou quelques instants apres
-                # la fermeture ; aucune donnee utilisateur n'est touchee.
-                pass
     except Exception as exc:
         log_startup_phase(f"Echec: {type(exc).__name__}: {exc}")
         handle_exception(type(exc), exc, exc.__traceback__)
