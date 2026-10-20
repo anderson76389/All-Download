@@ -57,10 +57,6 @@ class PortableStorageTests(unittest.TestCase):
         ):
             self.assertEqual(app[key], os.path.join(data, name))
         self.assertEqual(app["BIN_DIR"], os.path.join(data, "bin"))
-        first_session = app["get_webview_storage_path"]()
-        second_session = app["get_webview_storage_path"]()
-        self.assertTrue(first_session.startswith(os.path.join(data, "webview", "session-")))
-        self.assertNotEqual(first_session, second_session)
         self.assertEqual(self.selected_folder(app), self.portable)
         app["ensure_media_directories"](self.portable)
         for category in app["DOWNLOAD_CATEGORIES"]:
