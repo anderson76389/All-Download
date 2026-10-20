@@ -276,6 +276,11 @@ jobs:
                 if (-not $proc.HasExited) {
                   & taskkill.exe /T /F /PID $proc.Id 2>$null | Out-Null
                 }
+                # Laisser le temps aux sous-processus Edge/WebView2 de
+                # liberer leurs ressources avant de relancer le meme EXE.
+                # Une nouvelle ouverture instantanee n'est pas representative
+                # d'un utilisateur et accentue les courses d'initialisation.
+                Start-Sleep -Seconds 6
               }
             }
           }
