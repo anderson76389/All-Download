@@ -69,6 +69,19 @@ os.makedirs(APP_DIR, exist_ok=True)
 os.makedirs(BIN_DIR, exist_ok=True)
 
 
+def get_webview_storage_path():
+    """Isoler les profils WebView2 temporaires de chaque lancement Portable.
+
+    WebView2 peut conserver des verrous sur un profil encore utilise par un
+    ancien processus. Les sessions Portables distinctes evitent ce conflit.
+    """
+    if PORTABLE_DATA_LOCAL:
+        return os.path.join(
+            APP_DIR, "webview", f"session-{os.getpid()}-{time.time_ns()}"
+        )
+    return os.path.join(APP_DIR, "webview")
+
+
 def import_legacy_portable_settings():
     """Conserver les reglages existants sans jamais deplacer des medias."""
     if not PORTABLE_DATA_LOCAL or os.path.isfile(CONFIG_FILE):
@@ -3573,7 +3586,7 @@ if __name__ == '__main__':
         webview.start(
             debug=False,
             private_mode=True,
-            storage_path=os.path.join(APP_DIR, "webview"),
+            storage_path=get_webview_storage_path(),
         )
         log_startup_phase("Fermeture normale de la fenetre")
     except Exception as exc:
