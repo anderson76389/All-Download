@@ -3576,7 +3576,10 @@ if __name__ == '__main__':
         webview.start(
             debug=False,
             private_mode=True,
-            storage_path=os.path.join(LEGACY_APP_DIR, "webview"),
+            storage_path=os.path.join(
+                LEGACY_APP_DIR,
+                "webview" if get_portable_root() else "webview-classique"
+            ),
         )
         log_startup_phase("Fermeture normale de la fenetre")
     except Exception as exc:
