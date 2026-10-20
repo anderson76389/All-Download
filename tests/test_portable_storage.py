@@ -1,6 +1,7 @@
 """La vraie edition Portable garde son etat dans le dossier de l'EXE."""
 import json
 import os
+import faulthandler
 import runpy
 import tempfile
 import unittest
@@ -28,7 +29,21 @@ class PortableStorageTests(unittest.TestCase):
         with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
             yt_app.sys, "executable", self.exe
         ), patch.dict(os.environ, {"LOCALAPPDATA": self.legacy}):
-            return runpy.run_path(yt_app.__file__, run_name="all_download_storage_test")
+            app = runpy.run_path(yt_app.__file__, run_name="all_download_storage_test")
+        # runpy execute le bloc de diagnostic a nouveau dans CE processus.
+        # Sous Windows, fermer le descripteur ouvre par faulthandler, sinon
+        # TemporaryDirectory ne peut plus supprimer crash_log.txt.
+        faulthandler.disable()
+        crash_stream = app.get("_CRASH_STREAM")
+        if crash_stream is not None:
+            crash_stream.close()
+        return app
+
+    def selected_folder(self, app):
+        with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
+            yt_app.sys, "executable", self.exe
+        ):
+            return app["choose_initial_download_folder"]({})
 
     def test_clean_portable_uses_only_adjacent_data_and_media(self):
         app = self.load_mode()
@@ -42,9 +57,7 @@ class PortableStorageTests(unittest.TestCase):
         ):
             self.assertEqual(app[key], os.path.join(data, name))
         self.assertEqual(app["BIN_DIR"], os.path.join(data, "bin"))
-        self.assertEqual(
-            app["choose_initial_download_folder"]({}), self.portable
-        )
+        self.assertEqual(self.selected_folder(app), self.portable)
         app["ensure_media_directories"](self.portable)
         for category in app["DOWNLOAD_CATEGORIES"]:
             self.assertTrue(os.path.isdir(os.path.join(self.portable, category)))
@@ -105,7 +118,7 @@ class PortableStorageTests(unittest.TestCase):
         self.assertEqual(
             app["APP_DIR"], os.path.join(self.legacy, "AllMediaDownload")
         )
-        self.assertNotEqual(app["choose_initial_download_folder"]({}), self.portable)
+        self.assertNotEqual(self.selected_folder(app), self.portable)
         self.assertFalse(os.path.exists(os.path.join(self.portable, "Donnees")))
 
 
