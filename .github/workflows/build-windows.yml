@@ -238,6 +238,15 @@ jobs:
                 }
                 if (-not $htmlReady) {
                   if (Test-Path $trace) { Get-Content $trace -Tail 35 }
+                  $crashLog = Join-Path $dataDir "crash_log.txt"
+                  if (Test-Path $crashLog) {
+                    Write-Output "Diagnostic Python/CLR :"
+                    Get-Content $crashLog -Tail 100
+                  }
+                  Write-Output "Processus WebView2 visibles :"
+                  Get-Process -Name "msedgewebview2" -ErrorAction SilentlyContinue |
+                    Select-Object -First 10 Id, CPU, Responding, StartTime |
+                    Format-Table -AutoSize | Out-String | Write-Output
                   throw "Le contenu HTML n'a jamais fini de charger (50 s) : $($scenario.Name)"
                 }
                 # Une fois l'interface chargee, une fenetre qui ne repond pas
