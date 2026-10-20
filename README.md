@@ -55,7 +55,7 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 |---|---|
 | **Sans installation**, à emporter partout. | **Installateur Windows**, avec intégration au système. |
 | ① Téléchargez le ZIP Portable.<br>② Extrayez-le où vous voulez.<br>③ Lancez `All_Media_Download.exe`. | ① Téléchargez le ZIP Classique.<br>② Extrayez-le et lancez `All-Download-Setup.exe`.<br>③ Ouvrez l'application depuis le menu Démarrer. |
-| ✅ Exécutable autonome<br>✅ Aucun dossier `_internal`<br>✅ Médias à côté de l'EXE si le dossier est accessible en écriture | ✅ Installation sans droits administrateur<br>✅ Raccourci Bureau facultatif<br>✅ Désinstallation Windows<br>✅ Médias séparés de l'installation |
+| ✅ Exécutable autonome<br>✅ Aucun dossier `_internal`<br>✅ Médias, paramètres, outils et journaux dans le dossier Portable (accessible en écriture) | ✅ Installation sans droits administrateur<br>✅ Raccourci Bureau facultatif<br>✅ Désinstallation Windows<br>✅ Médias séparés de l'installation |
 
 **Important :** la version Classique actuelle utilise le même moteur autonome que la Portable. Elle **ne repose plus sur l'ancien dossier `_internal`** qui pouvait provoquer l'erreur `Python.Runtime.dll` sur certains PC.
 
@@ -75,14 +75,24 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 ## 📁 Un rangement automatique et organisé
 
 ```text
-📁 All-Download / Dossier de téléchargements
-├── 🎵 AUDIOS/       Musiques et fichiers audio individuels
-├── 🎬 VIDÉOS/       Vidéos YouTube individuelles
-├── 🎞️ GIFS/         GIF téléchargés et GIF convertis
-├── 📺 CHAÎNES/      Sous-dossiers par chaîne YouTube
-├── 📑 PLAYLIST/     Sous-dossiers par playlist YouTube
-└── 📦 AUTRES/       Autres médias et plateformes
+📁 All-Download-Portable/
+├── All_Media_Download.exe
+├── logo.ico et logo.jpg
+├── 🎵 AUDIOS/        Musiques et fichiers audio individuels
+├── 🎬 VIDÉOS/        Vidéos YouTube individuelles
+├── 🎞️ GIFS/          GIF téléchargés et GIF convertis
+├── 📺 CHAÎNES/       Sous-dossiers par chaîne YouTube
+├── 📑 PLAYLIST/      Sous-dossiers par playlist YouTube
+├── 📦 AUTRES/        Autres médias et plateformes
+└── 📁 Donnees/       Créé au premier lancement de la version Portable
+    ├── config.json   Réglages du logiciel
+    ├── bin/          yt-dlp, FFmpeg et ffprobe
+    ├── webview/      Données du moteur d'affichage
+    ├── startup_log.txt
+    └── crash_log.txt
 ```
+
+**Portable autonome :** les six catégories sont toujours créées à côté de l'EXE, même si leurs dossiers étaient absents dans l'archive extraite. Les réglages, outils et journaux restent dans `Donnees/` et voyagent avec le dossier. Windows/PyInstaller peuvent toujours utiliser des fichiers **temporaires système** pendant l'exécution.
 
 Les **six catégories sont créées automatiquement**, sans effacer vos médias existants. Les archives ZIP les contiennent comme **véritables dossiers vides**, sans fichiers `.gitkeep`. Sur la page du dépôt GitHub, les dossiers vides n'apparaissent pas : c'est le fonctionnement normal de Git.
 
@@ -90,7 +100,7 @@ L'ancien dossier `AUDIO/` est migré vers `AUDIOS/` lorsque c'est possible, sans
 
 | Édition | Emplacement initial des téléchargements |
 |---|---|
-| **Portable x64** | Sous-dossiers voisins de l'EXE, si le dossier est accessible en écriture |
+| **Portable x64** | Dans le dossier contenant l'EXE, sans dossier `All-Download-Medias` supplémentaire (si l'emplacement est modifiable) |
 | **Classique x64** | `%USERPROFILE%\Downloads\All-Download-Medias` |
 
 ---
@@ -101,9 +111,9 @@ Dans **Paramètres → Téléchargement → Dossier des téléchargements**, cli
 
 Les six catégories sont créées dans le dossier choisi. L'application vérifie l'accès en écriture et conserve l'ancien emplacement en cas d'erreur. **Les fichiers existants ne sont pas déplacés ni supprimés.**
 
-Les éditions Portable et Classique utilisent la même configuration pour un **dossier personnalisé** ; si vous choisissez le mode automatique, **chacune conserve son propre emplacement par défaut**.
+La version Portable conserve sa **propre configuration dans `Donnees/config.json`**, indépendante du stockage de la version Classique. Au premier démarrage, les anciens réglages de `%LOCALAPPDATA%\\AllMediaDownload` sont copiés s'ils existent, sans effacer leur origine. Un dossier personnalisé expressément choisi reste prioritaire.
 
-L'ancien emplacement automatique `Téléchargements/MediaDownloader` est migré vers le dossier propre `All-Download-Medias` pour éviter de mélanger les médias avec les fichiers de l'ancien projet de test. Vous pouvez néanmoins sélectionner manuellement n'importe quel emplacement auquel votre compte a accès.
+En version Portable, les anciens emplacements automatiques `Téléchargements/MediaDownloader` et `Téléchargements/All-Download-Medias` ne sont plus utilisés pour **les nouveaux téléchargements** : ils vont dans les catégories du dossier Portable. **Les anciens fichiers ne sont ni déplacés ni effacés automatiquement** ; vérifiez leur contenu avant de supprimer un ancien dossier. Vous pouvez toujours choisir une destination personnalisée dans les paramètres. En version Classique, l'emplacement séparé de l'application reste volontaire pour protéger les médias pendant une désinstallation.
 
 **Désinstaller l'édition Classique ne doit pas nécessiter la suppression de vos médias**, stockés à part.
 
