@@ -18,6 +18,7 @@ import ctypes
 from ctypes import wintypes
 import multiprocessing
 import tempfile
+import uuid
 from pathlib import Path
 import webview
 
@@ -79,7 +80,7 @@ def get_webview_storage_path():
         profile_parent = os.path.join(APP_DIR, "webview")
         os.makedirs(profile_parent, exist_ok=True)
         return os.path.join(
-            profile_parent, f"session-{os.getpid()}-{time.time_ns()}"
+            profile_parent, f"session-{os.getpid()}-{uuid.uuid4().hex}"
         )
     return os.path.join(APP_DIR, "webview")
 
