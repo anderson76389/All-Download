@@ -87,12 +87,11 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 └── 📁 Donnees/       Créé au premier lancement de la version Portable
     ├── config.json   Réglages du logiciel
     ├── bin/          yt-dlp, FFmpeg et ffprobe
-    ├── webview/      Données du moteur d'affichage
     ├── startup_log.txt
     └── crash_log.txt
 ```
 
-**Portable autonome :** les six catégories sont toujours créées à côté de l'EXE, même si leurs dossiers étaient absents dans l'archive extraite. Les réglages, outils et journaux restent dans `Donnees/` et voyagent avec le dossier. Windows/PyInstaller peuvent toujours utiliser des fichiers **temporaires système** pendant l'exécution.
+**Portable autonome :** les six catégories sont toujours créées à côté de l'EXE, même si leurs dossiers étaient absents dans l'archive extraite. Les réglages, outils et journaux restent dans `Donnees/` et voyagent avec le dossier. **Exception technique :** le cache du moteur d'affichage WebView2 est placé dans `%LOCALAPPDATA%\\AllMediaDownload\\webview` pour la stabilité du premier lancement Windows ; PyInstaller peut aussi employer des fichiers temporaires système. Ces caches ne créent pas de dossier de médias dans Téléchargements.
 
 Les **six catégories sont créées automatiquement**, sans effacer vos médias existants. Les archives ZIP les contiennent comme **véritables dossiers vides**, sans fichiers `.gitkeep`. Sur la page du dépôt GitHub, les dossiers vides n'apparaissent pas : c'est le fonctionnement normal de Git.
 
