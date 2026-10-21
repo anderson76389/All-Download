@@ -42,11 +42,63 @@ PATCHED = """        # All-Download: ne pas initialiser EdgeChromium dans le con
 
 
 def patch_source(source: str) -> str:
-    if source.count(PATCHED) == 1:
-        return source
-    if source.count(ORIGINAL) != 1:
-        raise RuntimeError("Version pywebview incompatible : appel d'initialisation introuvable ou ambigu")
-    return source.replace(ORIGINAL, PATCHED, 1)
+    if source.count(ORIGINAL) == 1:
+        source = source.replace(ORIGINAL, PATCHED, 1)
+    elif source.count(PATCHED) != 1:
+        raise RuntimeError("Version pywebview incompatible : initialisation introuvable ou ambigue")
+
+    # DIAGNOSTIC UNIQUEMENT : au lieu d'inferer a partir de l'absence de
+    # 'loaded', ecrire les etapes exactes de pywebview dans webview_log.txt.
+    # Les logs vont dans Donnees/ via le RotatingFileHandler de yt_app.py.
+    stages = [
+        (
+            "        self.form.Shown += self._initialize_when_shown",
+            "        logger.warning('DIAGNOSTIC: WebView2 constructeur termine, attente Form.Shown')\\n"
+            "        self.form.Shown += self._initialize_when_shown"
+        ),
+        (
+            "    def _initialize_when_shown(self, _sender, _args):\\n        try:",
+            "    def _initialize_when_shown(self, _sender, _args):\\n"
+            "        logger.warning('DIAGNOSTIC: Form.Shown recu, planification BeginInvoke')\\n        try:"
+        ),
+        (
+            "    def _initialize_after_first_paint(self):\\n        try:",
+            "    def _initialize_after_first_paint(self):\\n"
+            "        logger.warning('DIAGNOSTIC: BeginInvoke execute, EnsureCoreWebView2Async lance')\\n        try:"
+        ),
+        (
+            "            self.webview.EnsureCoreWebView2Async(None)\\n        except Exception:",
+            "            self.webview.EnsureCoreWebView2Async(None)\\n"
+            "            logger.warning('DIAGNOSTIC: EnsureCoreWebView2Async a retourne')\\n        except Exception:"
+        ),
+        (
+            "    def on_webview_ready(self, sender, args):\\n        if not args.IsSuccess:",
+            "    def on_webview_ready(self, sender, args):\\n"
+            "        logger.warning('DIAGNOSTIC: CoreWebView2InitializationCompleted, succes=%s', args.IsSuccess)\\n"
+            "        if not args.IsSuccess:"
+        ),
+        (
+            "    def on_navigation_start(self, sender, args):\\n        if self.pywebview_window.transparent:",
+            "    def on_navigation_start(self, sender, args):\\n"
+            "        logger.warning('DIAGNOSTIC: NavigationStarting')\\n"
+            "        if self.pywebview_window.transparent:"
+        ),
+        (
+            "    def on_navigation_completed(self, sender, _):\\n        url = str(sender.Source)",
+            "    def on_navigation_completed(self, sender, _):\\n"
+            "        logger.warning('DIAGNOSTIC: NavigationCompleted')\\n"
+            "        url = str(sender.Source)"
+        ),
+    ]
+    for original, instrumented in stages:
+        original = original.replace('\\\\n', '\\n')
+        instrumented = instrumented.replace('\\\\n', '\\n')
+        if source.count(instrumented) == 1:
+            continue
+        if source.count(original) != 1:
+            raise RuntimeError("Instrument diagnostic WebView2 incompatible: " + original[:64])
+        source = source.replace(original, instrumented, 1)
+    return source
 
 
 def main():
