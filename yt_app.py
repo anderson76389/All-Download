@@ -13,6 +13,8 @@ import subprocess
 import threading
 import traceback
 import faulthandler
+import logging
+from logging.handlers import RotatingFileHandler
 from datetime import datetime
 import ctypes
 from ctypes import wintypes
@@ -126,6 +128,27 @@ def log_startup_phase(phase):
     except OSError:
         pass
 
+
+def enable_webview_diagnostics():
+    """Conserver les erreurs du moteur WebView2 qui allaient sinon vers NUL."""
+    try:
+        logger = logging.getLogger("pywebview")
+        filename = os.path.join(APP_DIR, "webview_log.txt")
+        handler = RotatingFileHandler(
+            filename, maxBytes=512 * 1024, backupCount=1, encoding="utf-8"
+        )
+        handler.setLevel(logging.WARNING)
+        handler.setFormatter(logging.Formatter(
+            "%(asctime)s %(levelname)s %(name)s: %(message)s"
+        ))
+        logger.addHandler(handler)
+        if logger.level > logging.WARNING:
+            logger.setLevel(logging.WARNING)
+    except (OSError, ValueError):
+        pass
+
+
+enable_webview_diagnostics()
 
 sys.excepthook = handle_exception
 if hasattr(threading, 'excepthook'):
@@ -3495,6 +3518,70 @@ def schedule_binary_setup_after_ui():
 # Relancer UNE SEULE FOIS dans un processus PyInstaller independant :
 # ne pas reutiliser l'extraction temporaire du processus parent.
 STARTUP_RETRY_FLAG = "--all-download-retry-clr-startup"
+WEBVIEW_RETRY_FLAG = "--all-download-retry-webview-startup"
+WEBVIEW_STARTUP_TIMEOUT = 35  # Laisse terminer les demarrages WebView2 lents (< 35 s).
+
+
+def restart_after_webview_timeout(argv=None):
+    """Une seule relance propre lorsque l'interface ne finit jamais de charger.
+
+    Ne s'applique qu'aux EXE Windows. La 2e tentative ne relance plus jamais
+    le processus : aucun cycle de redemarrage ni perte de donnees utilisateur.
+    """
+    if not getattr(sys, "frozen", False) or sys.platform != "win32":
+        return False
+
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if WEBVIEW_RETRY_FLAG in arguments or STARTUP_RETRY_FLAG in arguments:
+        log_startup_phase("WebView2 toujours bloque a la deuxieme tentative: aucune boucle de relance")
+        return False
+
+    try:
+        env = os.environ.copy()
+        env["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
+        subprocess.Popen(
+            [sys.executable, *arguments, WEBVIEW_RETRY_FLAG],
+            cwd=os.path.dirname(os.path.abspath(sys.executable)),
+            env=env,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        log_startup_phase("WebView2 bloque: nouvelle tentative automatique unique")
+        return True
+    except OSError as error:
+        _log_binary_setup_error(error)
+        log_startup_phase("Impossible de relancer WebView2: " + str(error))
+        return False
+
+
+def start_webview_startup_watchdog(ready_event, closed_event, timeout=WEBVIEW_STARTUP_TIMEOUT):
+    """Observe l'evenement HTML charge, pas la simple apparition de la fenetre.
+
+    Thread independant du moteur graphique WinForms; si CLR ou WebView2
+    ne termine jamais son initialisation, le processus est relance une fois.
+    """
+    if not getattr(sys, "frozen", False) or sys.platform != "win32":
+        return None
+
+    def monitor():
+        if ready_event.wait(timeout) or closed_event.is_set():
+            return
+        log_startup_phase(f"WebView2: interface HTML non chargee apres {timeout}s")
+        if closed_event.is_set() or ready_event.is_set():
+            return
+        if restart_after_webview_timeout():
+            # Fermeture immediate de l'ancien processus bloque. Le nouveau EXE
+            # PyInstaller dispose de sa propre extraction et de son propre CLR.
+            os._exit(0)
+
+    thread = threading.Thread(
+        target=monitor, name="AllDownload-Demarrage-Surveillance", daemon=True
+    )
+    thread.start()
+    return thread
 
 
 def retry_transient_gui_startup(error, argv=None):
@@ -3504,7 +3591,7 @@ def retry_transient_gui_startup(error, argv=None):
     if "Python.Runtime.Loader.Initialize" not in str(error):
         return False
     arguments = list(sys.argv[1:] if argv is None else argv)
-    if STARTUP_RETRY_FLAG in arguments:
+    if STARTUP_RETRY_FLAG in arguments or WEBVIEW_RETRY_FLAG in arguments:
         return False
 
     try:
@@ -3553,18 +3640,24 @@ if __name__ == '__main__':
 
         # Une fenetre WinForms creee n'implique pas que le HTML soit charge.
         tools_started = threading.Event()
+        webview_closed = threading.Event()
 
         def on_window_shown(*_):
             log_startup_phase("Fenetre native affichee")
 
         def on_window_loaded(*_):
+            tools_started.set()
             log_startup_phase("Interface HTML chargee")
             if not tools_started.is_set():
                 tools_started.set()
                 schedule_binary_setup_after_ui()
 
+        def on_window_closed(*_):
+            webview_closed.set()
+
         window.events.shown += on_window_shown
         window.events.loaded += on_window_loaded
+        window.events.closed += on_window_closed
         log_startup_phase("Fenetre creee: demarrage WebView2")
 
         # Injection réservée au test d'intégration Windows du workflow :
@@ -3579,14 +3672,30 @@ if __name__ == '__main__':
         # WebView2 garde son profil interne dans AppData pour eviter les
         # blocages de premiere initialisation Windows. Cela ne change PAS
         # l'emplacement des medias, reglages, outils ou journaux Portable.
-        webview.start(
-            debug=False,
-            private_mode=True,
-            storage_path=os.path.join(
-                LEGACY_APP_DIR,
-                "webview" if get_portable_root() else "webview-classique"
-            ),
+        # Test d'integration: forcer une initialisation sans signal HTML pour
+        # verifier le vrai mecanisme de recuperation dans un EXE Windows.
+        simulated_hang = os.environ.pop("ALL_DOWNLOAD_TEST_WEBVIEW_HANG_ONCE", None) == "1"
+        watchdog_timeout = 4 if simulated_hang else WEBVIEW_STARTUP_TIMEOUT
+        start_webview_startup_watchdog(
+            tools_started, webview_closed, timeout=watchdog_timeout
         )
+        if simulated_hang:
+            log_startup_phase("TEST: simulation d'un moteur WebView2 sans evenement loaded")
+            # La surveillance effectue une relance et arrete ce processus.
+            # La variable de test a deja ete retiree de l'environnement.
+            webview_closed.wait(watchdog_timeout + 12)
+        else:
+            try:
+                webview.start(
+                    debug=False,
+                    private_mode=True,
+                    storage_path=os.path.join(
+                        LEGACY_APP_DIR,
+                        "webview" if get_portable_root() else "webview-classique"
+                    ),
+                )
+            finally:
+                webview_closed.set()
         log_startup_phase("Fermeture normale de la fenetre")
     except Exception as exc:
         log_startup_phase(f"Echec: {type(exc).__name__}: {exc}")
