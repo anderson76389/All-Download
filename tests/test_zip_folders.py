@@ -32,8 +32,11 @@ class ZipFolderTests(unittest.TestCase):
         with zipfile.ZipFile(self.out / name) as z:
             files = set(z.namelist())
             for cat in arch.MEDIA_DIRS:
-                self.assertIn(cat + "/", files)
-                self.assertTrue(z.getinfo(cat + "/").is_dir())
+                if name == arch.PORTABLE_NAME:
+                    self.assertIn(cat + "/", files)
+                    self.assertTrue(z.getinfo(cat + "/").is_dir())
+                else:
+                    self.assertNotIn(cat + "/", files)
             self.assertFalse(any(".gitkeep" in entry for entry in files))
             self.assertIn("Code-source/yt_app.py", files)
 
