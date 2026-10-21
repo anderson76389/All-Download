@@ -42,6 +42,14 @@ jobs:
       - name: Tester le routage et la preservation des medias
         run: python -m unittest discover -s tests -v
 
+      - name: Executer un vrai yt-dlp Windows x64 et confirmer sa version
+        shell: pwsh
+        run: |
+          python scripts/verify_ytdlp_runtime.py
+          if ($LASTEXITCODE -ne 0) {
+            throw "Un vrai yt-dlp.exe valide ne peut pas s'executer sur Windows : aucune Release autorisee"
+          }
+
       - name: Tester les boutons de l'interface (DOM JavaScript)
         shell: pwsh
         run: |
@@ -526,7 +534,9 @@ jobs:
           - Classique : All-Download-Setup.exe, raccourcis Windows et desinstallation.
           - Les deux utilisent le moteur autonome compatible (aucun dossier _internal a distribuer).
           - Les deux editions utilisent les six categories et Donnees/ a cote de leur EXE.
-          - Le ZIP Portable contient les six dossiers. Le ZIP Classique contient uniquement l'installateur et les sources, sans dossiers medias parasites.
+          - Le ZIP Portable contient les six dossiers, aucun faux yt-dlp.exe, ffmpeg.exe, ffprobe.exe, ni Donnees/ du runner. Les vrais outils sont telecharges et verifies en PE x64 au premier lancement, avec remplacement des invalides.
+          - Le ZIP Classique contient uniquement l'installateur et les sources, sans dossiers medias parasites.
+          - Test CI obligatoire : executable yt-dlp officiel telecharge et lance avec --version sur Windows x64.
           - La mise a jour et la desinstallation Classique conservent medias et reglages personnels.
           - WebView2 : correction du pont JavaScript (aucune reference WinForms publique), testee sur 32 premiers lancements experimentaux, puis 12 lancements Windows obligatoires en CI.
           - Sur le runner de comparaison : 2/5 de l'ancienne version et 8/9 de la version corrigee sans relance.
