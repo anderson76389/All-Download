@@ -21,6 +21,14 @@ class ZipFolderTests(unittest.TestCase):
         portable = self.root / "dist" / "All-Download-Portable"
         portable.mkdir(parents=True)
         (portable / "All_Media_Download.exe").write_bytes(b"EXE")
+        # Reproduire les deux-octets MZ installes par erreur dans la Build 151.
+        # Meme s'ils sont present dans dist avant l'archivage, le nouveau ZIP
+        # ne doit jamais contenir les outils et donnees du runner.
+        for tool in ("yt-dlp.exe", "ffmpeg.exe", "ffprobe.exe"):
+            test_tool = portable / "Donnees" / "bin" / tool
+            test_tool.parent.mkdir(parents=True, exist_ok=True)
+            test_tool.write_bytes(b"MZ")
+        (portable / "Donnees" / "startup_log.txt").write_text("test only")
         # Le packaging Windows copie les logos dans le dossier Portable.
         for asset in ("logo.ico", "logo.jpg"):
             (portable / asset).write_bytes(b"TEST")
@@ -38,6 +46,7 @@ class ZipFolderTests(unittest.TestCase):
                 else:
                     self.assertNotIn(cat + "/", files)
             self.assertFalse(any(".gitkeep" in entry for entry in files))
+            self.assertFalse(any(entry.startswith(("Donnees/", "bin/")) for entry in files))
             self.assertIn("Code-source/yt_app.py", files)
 
     def test_portable(self):
