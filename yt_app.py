@@ -2694,7 +2694,12 @@ def html_for_config(config):
 # -------------------------------------------------------------
 class DownloaderAPI:
     def __init__(self):
-        self.window = None
+        # pywebview 6.2.1 parcourt recursivement les attributs publics de js_api.
+        # Exposer 'window' provoquait l'exploration de WinForms/.NET, une
+        # avalanche d'exceptions COM et le gel au premier lancement.
+        # Le champ prive reste utilisable par les appels internes de l'app
+        # mais est ignore par le pont JavaScript.
+        self._window = None
         self.config = self._load_config()
         if "download_folder_custom" not in self.config:
             saved = self.config.get("download_folder")
@@ -2740,11 +2745,11 @@ class DownloaderAPI:
         return choose_initial_download_folder({"download_folder_custom": False})
 
     def browse_download_folder(self):
-        if self.window is None:
+        if self._window is None:
             return None
         try:
             initial = self.download_folder if os.path.isdir(self.download_folder) else os.path.expanduser("~")
-            result = self.window.create_file_dialog(
+            result = self._window.create_file_dialog(
                 webview.FileDialog.FOLDER, directory=initial
             )
             if result:
@@ -2918,7 +2923,7 @@ class DownloaderAPI:
 
     def select_cookie_file(self):
         try:
-            res = self.window.create_file_dialog(webview.OPEN_DIALOG, allow_multiple=False, file_types=('Fichiers Cookies (*.txt;*.cookies)', 'Tous les fichiers (*.*)'))
+            res = self._window.create_file_dialog(webview.OPEN_DIALOG, allow_multiple=False, file_types=('Fichiers Cookies (*.txt;*.cookies)', 'Tous les fichiers (*.*)'))
             return res[0] if res else ""
         except Exception:
             return ""
@@ -3194,12 +3199,12 @@ class DownloaderAPI:
                             f_out.write(resp.read())
                         
                         completed += 1
-                        if self.window:
+                        if self._window:
                             try:
                                 if settings.get("notify") == "always":
-                                    self.window.evaluate_js(f"showAppToast({json.dumps('Téléchargement terminé : ' + out_name)})")
-                                self.window.evaluate_js(f"markDownloadSuccess({json.dumps(url)})")
-                                self.window.evaluate_js(f"updateDownloadProgress(100, {json.dumps('Téléchargement terminé – ' + out_name)})")
+                                    self._window.evaluate_js(f"showAppToast({json.dumps('Téléchargement terminé : ' + out_name)})")
+                                self._window.evaluate_js(f"markDownloadSuccess({json.dumps(url)})")
+                                self._window.evaluate_js(f"updateDownloadProgress(100, {json.dumps('Téléchargement terminé – ' + out_name)})")
                             except Exception:
                                 pass
                         continue
@@ -3372,8 +3377,8 @@ class DownloaderAPI:
                                 last_time = curr_time
                                 msg = f"[{idx}/{total}] {clean}"
                                 try:
-                                    if self.window:
-                                        self.window.evaluate_js(f"updateDownloadProgress({pct}, {json.dumps(msg)})")
+                                    if self._window:
+                                        self._window.evaluate_js(f"updateDownloadProgress({pct}, {json.dumps(msg)})")
                                 except Exception: pass
 
                 proc.communicate()
@@ -3382,23 +3387,23 @@ class DownloaderAPI:
                 if not self.is_cancelled and getattr(proc, "returncode", None) == 0:
                     completed += 1
                     try:
-                        if self.window:
+                        if self._window:
                             if settings.get("notify") == "always":
-                                self.window.evaluate_js(f"showAppToast({json.dumps('Média téléchargé : ' + str(item.get('title', 'Média')))})")
-                            self.window.evaluate_js(f"markDownloadSuccess({json.dumps(url)})")
+                                self._window.evaluate_js(f"showAppToast({json.dumps('Média téléchargé : ' + str(item.get('title', 'Média')))})")
+                            self._window.evaluate_js(f"markDownloadSuccess({json.dumps(url)})")
                     except Exception:
                         pass
 
             self._active_download_process = None
             try:
-                if self.window:
+                if self._window:
                     if self.is_cancelled:
                         status = f"Annulé – {completed}/{total} élément(s) téléchargé(s)."
                     else:
                         status = f"Traitement terminé – {completed}/{total} élément(s) téléchargé(s)."
-                    self.window.evaluate_js(f"updateDownloadProgress(100, {json.dumps(status)})")
+                    self._window.evaluate_js(f"updateDownloadProgress(100, {json.dumps(status)})")
                     if settings.get("notify") in ("finish", "always"):
-                        self.window.evaluate_js(f"showAppToast({json.dumps(status)})")
+                        self._window.evaluate_js(f"showAppToast({json.dumps(status)})")
             except Exception:
                 pass
             gc.collect()
@@ -3650,7 +3655,7 @@ if __name__ == '__main__':
             min_size=(920, 620),
             background_color={"light": "#f8fafc", "dark": "#141414", "dark_pure": "#000000"}[configured_theme(api.config)]
         )
-        api.window = window
+        api._window = window
 
         # Une fenetre WinForms creee n'implique pas que le HTML soit charge.
         tools_started = threading.Event()
