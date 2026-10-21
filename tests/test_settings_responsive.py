@@ -64,7 +64,7 @@ class SettingsWorkflowTests(unittest.TestCase):
                 "title": "Un test", "selectedQuality": quality}
         with patch.object(yt_app.threading, "Thread", ThreadNow), patch.object(
             yt_app.subprocess, "Popen", side_effect=popen
-        ):
+        ), patch.object(yt_app, "ensure_ytdlp_ready", return_value=True):
             self.api.start_downloads([item])
         self.assertEqual(len(commands), 1)
         return commands[0]
