@@ -1,4 +1,4 @@
-name: Diagnostic PyInstaller - Onefile vs Onedir
+name: Diagnostic WebView2 - HTML complet vs minimal
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   compare:
-    name: Comparer 16 premiers lancements Windows (sans Release)
+    name: Comparer HTML complet/minimal, 16 lancements froids (sans Release)
     runs-on: windows-latest
     timeout-minutes: 40
     steps:
@@ -41,14 +41,7 @@ jobs:
           python scripts/patch_webview_startup.py --check-only
           if ($LASTEXITCODE -ne 0) { throw "Patch WebView2 non verifie" }
 
-      - name: Construire EXE monofichier identique au mode actuel
-        shell: pwsh
-        run: |
-          python -m PyInstaller --clean --noconfirm --workpath build/onefile --distpath dist/onefile All_Media_Download-Portable.spec
-          if ($LASTEXITCODE -ne 0) { throw "Compilation onefile echouee" }
-          if (-not (Test-Path "dist/onefile/All_Media_Download.exe")) { throw "EXE onefile absent" }
-
-      - name: Construire EXE dossier avec dependances deja extraites
+      - name: Construire un seul EXE dossier commun aux deux HTML
         shell: pwsh
         run: |
           python -m PyInstaller --clean --noconfirm --workpath build/onedir --distpath dist/onedir All_Media_Download.spec
@@ -56,7 +49,7 @@ jobs:
           if (-not (Test-Path "dist/onedir/All_Media_Download/All_Media_Download.exe")) { throw "EXE onedir absent" }
           if (-not (Test-Path "dist/onedir/All_Media_Download/_internal")) { throw "Dependances onedir absentes" }
 
-      - name: Comparer 8 premiers lancements froids par compilation
+      - name: Comparer 8 chargements froids HTML complet contre 8 HTML minimal
         shell: pwsh
         run: |
           ./scripts/compare_pyinstaller_startup.ps1
@@ -65,10 +58,11 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rapport-comparaison-pyinstaller-windows
+          name: rapport-comparaison-webview-html-windows
           path: |
             startup-comparison/results.json
             startup-comparison/startup-*.txt
             startup-comparison/crash-*.txt
+            startup-comparison/webview-*.txt
           if-no-files-found: warn
           retention-days: 30
