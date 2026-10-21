@@ -145,6 +145,7 @@ python yt_app.py
 
 ```powershell
 python -m pip install pyinstaller==6.22.3 pywebview==6.2.1 pythonnet==3.2.1
+python scripts/patch_webview_startup.py
 python -m PyInstaller --clean --noconfirm All_Media_Download-Portable.spec
 ```
 
@@ -155,6 +156,7 @@ Le fichier `dist/All_Media_Download.exe` déjà présent dans le dépôt est une
 <details>
 <summary><strong>🩺 Dépannage, SmartScreen et sécurité</strong></summary>
 
+- **Premier démarrage Windows / WebView2 :** la compilation officielle applique une correction ciblée au cycle de vie WinForms : WebView2 commence son initialisation après l'affichage de la fenêtre. Un test Windows exige un premier chargement HTML réactif **sans relance automatique**, pour chaque édition. Le diagnostic de lancements répétés demeure disponible et peut toujours relever un blocage intermittent sur certaines configurations.
 - **Crash CLR / pythonnet au démarrage :** All-Download tente automatiquement **une seule relance propre** lors de l'erreur connue `Python.Runtime.Loader.Initialize`. Si celle-ci échoue aussi, la boîte d'erreur et le journal restent disponibles.
 - **Problème de démarrage :** ouvrez `Donnees/crash_log.txt` ou `Donnees/startup_log.txt` dans le dossier de l'application et partagez la dernière erreur dans une [issue](https://github.com/anderson76389/All-Download/issues), après avoir masqué les données personnelles. Si le dossier de l'application n'est pas modifiable, les journaux peuvent se trouver dans `%LOCALAPPDATA%\AllMediaDownload`.
 - **Média non disponible :** contrôlez l'URL, les autorisations, les cookies éventuels et la compatibilité yt-dlp.
