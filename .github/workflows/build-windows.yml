@@ -205,9 +205,9 @@ jobs:
                 $entries = @(Get-Content $log -Tail 70)
                 $recovered = @($entries | Where-Object { $_.Contains("nouvelle tentative automatique unique") }).Count -gt 0
                 if ($recovered) { break }
-                $matches = @($entries | Where-Object { $_ -match 'PID=([0-9]+) Interface HTML chargee' })
-                if ($matches.Count -gt 0) {
-                  $parsed = [regex]::Match($matches[-1], 'PID=([0-9]+) Interface HTML chargee')
+                $loadedEntries = @($entries | Where-Object { $_ -match 'PID=([0-9]+) Interface HTML chargee' })
+                if ($loadedEntries.Count -gt 0) {
+                  $parsed = [regex]::Match($loadedEntries[-1], 'PID=([0-9]+) Interface HTML chargee')
                   $guiPID = [int]$parsed.Groups[1].Value
                   $gui = Get-Process -Id $guiPID -ErrorAction SilentlyContinue
                   if ($gui -and $gui.MainWindowHandle -ne [IntPtr]::Zero) {
