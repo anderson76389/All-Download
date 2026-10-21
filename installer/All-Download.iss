@@ -47,13 +47,17 @@ Source: "..\logo.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\logo.jpg"; DestDir: "{app}"; Flags: ignoreversion
 Source: "installed.marker"; DestDir: "{app}"; DestName: ".all-download-installed"; Flags: ignoreversion
 
+; Les medias, parametres, journaux et outils sont personnels.
+; Inno Setup ne doit JAMAIS supprimer ces dossiers lors d'une
+; mise a jour ou d'une desinstallation, meme s'ils sont vides.
 [Dirs]
-Name: "{app}\AUDIOS"
-Name: "{app}\AUTRES"
-Name: "{app}\CHAÎNES"
-Name: "{app}\GIFS"
-Name: "{app}\PLAYLIST"
-Name: "{app}\VIDÉOS"
+Name: "{app}\AUDIOS"; Flags: uninsneveruninstall
+Name: "{app}\AUTRES"; Flags: uninsneveruninstall
+Name: "{app}\CHAÎNES"; Flags: uninsneveruninstall
+Name: "{app}\GIFS"; Flags: uninsneveruninstall
+Name: "{app}\PLAYLIST"; Flags: uninsneveruninstall
+Name: "{app}\VIDÉOS"; Flags: uninsneveruninstall
+Name: "{app}\Donnees"; Flags: uninsneveruninstall
 
 [Icons]
 Name: "{autoprograms}\All-Download"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
