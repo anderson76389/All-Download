@@ -1,4 +1,4 @@
-# Comparatif A/B PyInstaller sur Windows : 8 demarrages froids par edition.
+# Comparatif A/B WebView2 : 8 demarrages froids HTML reel vs minimal.
 $ErrorActionPreference = "Stop"
 $workspace = (Get-Location).Path
 $out = Join-Path $workspace "startup-comparison"
@@ -13,10 +13,10 @@ public static class StartupProbe {
 }
 "@
 $exes = @{
-  onefile = (Join-Path $workspace "dist/onefile/All_Media_Download.exe")
-  onedir = (Join-Path $workspace "dist/onedir/All_Media_Download/All_Media_Download.exe")
+  full = (Join-Path $workspace "dist/onedir/All_Media_Download/All_Media_Download.exe")
+  minimal = (Join-Path $workspace "dist/onedir/All_Media_Download/All_Media_Download.exe")
 }
-foreach ($mode in @("onefile","onedir")) {
+foreach ($mode in @("full","minimal")) {
   if (-not (Test-Path $exes[$mode] -PathType Leaf)) { throw "EXE $mode absent" }
 }
 function Stop-App {
@@ -30,7 +30,7 @@ function Stop-App {
 $results = [System.Collections.Generic.List[object]]::new()
 try {
   for ($n=1; $n -le 8; $n++) {
-    $order = if (($n % 2) -eq 1) { @("onefile","onedir") } else { @("onedir","onefile") }
+    $order = if (($n % 2) -eq 1) { @("full","minimal") } else { @("minimal","full") }
     foreach ($mode in $order) {
       Stop-App
       $label = "$mode-$n"
@@ -47,7 +47,13 @@ try {
         [IO.File]::WriteAllBytes((Join-Path $data "bin/$name"), [byte[]]@(77,90))
       }
       $oldLocal = $env:LOCALAPPDATA
+      $oldHtmlMode = $env:ALL_DOWNLOAD_DIAGNOSTIC_MINIMAL_HTML
       $env:LOCALAPPDATA = $profile
+      if ($mode -eq "minimal") {
+        $env:ALL_DOWNLOAD_DIAGNOSTIC_MINIMAL_HTML = "1"
+      } else {
+        Remove-Item Env:ALL_DOWNLOAD_DIAGNOSTIC_MINIMAL_HTML -ErrorAction SilentlyContinue
+      }
       $timer = [System.Diagnostics.Stopwatch]::StartNew()
       $loaded = $false; $responsive = $false; $restarted = $false
       $loadedPid = 0; $errorDetail = ""
@@ -83,6 +89,12 @@ try {
       } finally {
         $timer.Stop()
         $env:LOCALAPPDATA = $oldLocal
+        if ($null -ne $oldHtmlMode) { $env:ALL_DOWNLOAD_DIAGNOSTIC_MINIMAL_HTML = $oldHtmlMode }
+        else { Remove-Item Env:ALL_DOWNLOAD_DIAGNOSTIC_MINIMAL_HTML -ErrorAction SilentlyContinue }
+        $webviewLog = Join-Path $data "webview_log.txt"
+        if (Test-Path $webviewLog) {
+          Copy-Item $webviewLog (Join-Path $out "webview-$label.txt") -Force
+        }
         if (Test-Path $trace) { Copy-Item $trace (Join-Path $out "startup-$label.txt") -Force }
         $crash = Join-Path $data "crash_log.txt"
         if (Test-Path $crash) { Copy-Item $crash (Join-Path $out "crash-$label.txt") -Force }
@@ -104,7 +116,7 @@ try {
   Stop-App
   $results | ConvertTo-Json -Depth 4 | Set-Content -Encoding UTF8 (Join-Path $out "results.json")
 }
-foreach ($mode in @("onefile","onedir")) {
+foreach ($mode in @("full","minimal")) {
   $items = @($results | Where-Object { $_.mode -eq $mode })
   $passed = @($items | Where-Object { $_.success_first_launch })
   $mean = if ($passed.Count) { [math]::Round(($passed | Measure-Object -Property seconds -Average).Average,1) } else { "N/A" }
