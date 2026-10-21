@@ -59,46 +59,44 @@ def patch_source(source: str) -> str:
     stages = [
         (
             "        self.form.Shown += self._initialize_when_shown",
-            "        logger.warning('DIAGNOSTIC: WebView2 constructeur termine, attente Form.Shown')\\n"
+            "        logger.warning('DIAGNOSTIC: WebView2 constructeur termine, attente Form.Shown')\n"
             "        self.form.Shown += self._initialize_when_shown"
         ),
         (
-            "    def _initialize_when_shown(self, _sender, _args):\\n        try:",
-            "    def _initialize_when_shown(self, _sender, _args):\\n"
-            "        logger.warning('DIAGNOSTIC: Form.Shown recu, planification BeginInvoke')\\n        try:"
+            "    def _initialize_when_shown(self, _sender, _args):\n        try:",
+            "    def _initialize_when_shown(self, _sender, _args):\n"
+            "        logger.warning('DIAGNOSTIC: Form.Shown recu, planification BeginInvoke')\n        try:"
         ),
         (
-            "    def _initialize_after_first_paint(self):\\n        try:",
-            "    def _initialize_after_first_paint(self):\\n"
-            "        logger.warning('DIAGNOSTIC: BeginInvoke execute, EnsureCoreWebView2Async lance')\\n        try:"
+            "    def _initialize_after_first_paint(self):\n        try:",
+            "    def _initialize_after_first_paint(self):\n"
+            "        logger.warning('DIAGNOSTIC: BeginInvoke execute, EnsureCoreWebView2Async lance')\n        try:"
         ),
         (
-            "            self.webview.EnsureCoreWebView2Async(None)\\n        except Exception:",
-            "            self.webview.EnsureCoreWebView2Async(None)\\n"
-            "            logger.warning('DIAGNOSTIC: EnsureCoreWebView2Async a retourne')\\n        except Exception:"
+            "            self.webview.EnsureCoreWebView2Async(None)\n        except Exception:",
+            "            self.webview.EnsureCoreWebView2Async(None)\n"
+            "            logger.warning('DIAGNOSTIC: EnsureCoreWebView2Async a retourne')\n        except Exception:"
         ),
         (
-            "    def on_webview_ready(self, sender, args):\\n        if not args.IsSuccess:",
-            "    def on_webview_ready(self, sender, args):\\n"
-            "        logger.warning('DIAGNOSTIC: CoreWebView2InitializationCompleted, succes=%s', args.IsSuccess)\\n"
+            "    def on_webview_ready(self, sender, args):\n        if not args.IsSuccess:",
+            "    def on_webview_ready(self, sender, args):\n"
+            "        logger.warning('DIAGNOSTIC: CoreWebView2InitializationCompleted, succes=%s', args.IsSuccess)\n"
             "        if not args.IsSuccess:"
         ),
         (
-            "    def on_navigation_start(self, sender, args):\\n        if self.pywebview_window.transparent:",
-            "    def on_navigation_start(self, sender, args):\\n"
-            "        logger.warning('DIAGNOSTIC: NavigationStarting')\\n"
+            "    def on_navigation_start(self, sender, args):\n        if self.pywebview_window.transparent:",
+            "    def on_navigation_start(self, sender, args):\n"
+            "        logger.warning('DIAGNOSTIC: NavigationStarting')\n"
             "        if self.pywebview_window.transparent:"
         ),
         (
-            "    def on_navigation_completed(self, sender, _):\\n        url = str(sender.Source)",
-            "    def on_navigation_completed(self, sender, _):\\n"
-            "        logger.warning('DIAGNOSTIC: NavigationCompleted')\\n"
+            "    def on_navigation_completed(self, sender, _):\n        url = str(sender.Source)",
+            "    def on_navigation_completed(self, sender, _):\n"
+            "        logger.warning('DIAGNOSTIC: NavigationCompleted')\n"
             "        url = str(sender.Source)"
         ),
     ]
     for original, instrumented in stages:
-        original = original.replace('\\\\n', '\\n')
-        instrumented = instrumented.replace('\\\\n', '\\n')
         if source.count(instrumented) == 1:
             continue
         if source.count(original) != 1:
