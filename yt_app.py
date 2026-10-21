@@ -203,18 +203,23 @@ def is_valid_windows_executable(filename):
             executable.seek(offset)
             signature = executable.read(6)
             return (len(signature) == 6
-                    and signature[:4] == b"PE\\0\\0"
+                    and signature[:4] == b"PE\0\0"
                     and int.from_bytes(signature[4:6], "little") == 0x8664)
     except (OSError, ValueError, OverflowError):
         return False
 
 
 def ensure_ytdlp_ready():
-    """Ne jamais demander a Windows d'executer un faux yt-dlp.exe."""
+    """Reparer yt-dlp avant analyse, sans attendre le gros ZIP FFmpeg."""
     if is_valid_windows_executable(YTDLP_PATH):
         return True
-    setup_binaries()
-    return is_valid_windows_executable(YTDLP_PATH)
+    with _BINARIES_LOCK:
+        if is_valid_windows_executable(YTDLP_PATH):
+            return True
+        import_legacy_portable_tools()
+        if is_valid_windows_executable(YTDLP_PATH):
+            return True
+        return safe_download_file(YTDLP_URL, YTDLP_PATH) and is_valid_windows_executable(YTDLP_PATH)
 
 # L'ancien repertoire servait aussi de dossier de developpement/test.
 # Ne plus enregistrer les nouveaux medias au milieu de yt_app.py, build, dist...
