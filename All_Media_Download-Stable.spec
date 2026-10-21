@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 # DIAGNOSTIC EXPERIMENTAL : EXE Windows avec runtime persistant.
 # Contrairement au monofichier, aucun DLL n'est extrait dans %TEMP%
-# au lancement. Les dependencies restent dans Donnees/Runtime.
+# au lancement. Les dependencies restent dans Runtime/.
 a = Analysis(
     ['yt_app.py'],
     pathex=[],
@@ -34,7 +34,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    contents_directory='Donnees/Runtime',
+    contents_directory='Runtime',
     icon=['logo.ico'],
 )
 
