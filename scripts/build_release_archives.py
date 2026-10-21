@@ -44,6 +44,13 @@ def check_zip(zip_path: Path, tracked: list[Path], executable: str) -> None:
             stray = sorted(n for n in names if n in {f"{d}/" for d in MEDIA_DIRS})
             if stray:
                 raise ValueError(f"Dossiers medias parasites hors de l'installateur : {stray}")
+        if zip_path.name == PORTABLE_NAME:
+            # Le runner cree des pseudo executables MZ lors des tests GUI.
+            # Donnees/ ne doit JAMAIS entrer dans la release : ni outils
+            # factices, ni config, ni logs, ni medias personnels.
+            forbidden = [name for name in names if name.startswith(("Donnees/", "bin/"))]
+            if forbidden:
+                raise ValueError(f"Fichiers du runner trouves dans le ZIP Portable : {sorted(forbidden)}")
         if any(path.endswith(".gitkeep") for path in names):
             raise ValueError("Les ZIP ne doivent contenir aucun .gitkeep")
         needed.update(f"{SOURCES}/{path.as_posix()}" for path in tracked)
@@ -62,9 +69,14 @@ def build_portable(root: Path, output: Path, tracked: list[Path]) -> None:
     with zipfile.ZipFile(output / PORTABLE_NAME, "w", zipfile.ZIP_DEFLATED, compresslevel=6, allowZip64=True) as zf:
         for category in MEDIA_DIRS:
             zf.writestr(f"{category}/", "")
-        for path in sorted(app.rglob("*")):
-            if path.is_file():
-                zf.write(path, path.relative_to(app).as_posix())
+        # Ne distribuer que l'EXE et les logos. Les categories sont ajoutees
+        # explicitement comme dossiers vides ; Donnees/ est cree au premier
+        # lancement et les outils reels sont telecharges puis verifies.
+        for filename in ("All_Media_Download.exe", "logo.ico", "logo.jpg"):
+            path = app / filename
+            if not path.is_file():
+                raise FileNotFoundError(f"Fichier Portable obligatoire absent : {path}")
+            zf.write(path, filename)
         add_source(zf, root, tracked)
     check_zip(output / PORTABLE_NAME, tracked, "All_Media_Download.exe")
 
