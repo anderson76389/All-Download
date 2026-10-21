@@ -260,12 +260,12 @@ class DownloadFolderTests(unittest.TestCase):
                 self.arguments = (kind, directory)
                 return self.result
 
-        api.window = FakeWindow()
+        api._window = FakeWindow()
         result = api.browse_download_folder()
         self.assertEqual(result, chosen)
-        self.assertEqual(api.window.arguments[0], yt_app.webview.FileDialog.FOLDER)
+        self.assertEqual(api._window.arguments[0], yt_app.webview.FileDialog.FOLDER)
         self.assertEqual(api.download_folder, self.root)
-        api.window.result = None
+        api._window.result = None
         self.assertIsNone(api.browse_download_folder())
         self.assertEqual(api.download_folder, self.root)
 
@@ -346,7 +346,7 @@ class DownloadFolderTests(unittest.TestCase):
         api.config = {"settings": {"sponsor_enable": False}}
         api.is_paused = False
         api.is_cancelled = False
-        api.window = None
+        api._window = None
         return api
 
     def test_download_commands_use_right_directories(self):
@@ -394,22 +394,22 @@ class DownloadFolderTests(unittest.TestCase):
             def evaluate_js(self, script):
                 self.scripts.append(script)
 
-        api.window = Recorder()
+        api._window = Recorder()
         with patch.object(yt_app.threading, "Thread", ImmediateThread), patch.object(
             yt_app.subprocess, "Popen", return_value=FakeProcess()
         ):
             api.start_downloads([self.item("https://youtube.com/watch?v=42")])
-        self.assertTrue(any("markDownloadSuccess(" in x for x in api.window.scripts))
+        self.assertTrue(any("markDownloadSuccess(" in x for x in api._window.scripts))
 
-        api.window.scripts.clear()
+        api._window.scripts.clear()
         failed = FakeProcess()
         failed.returncode = 1
         with patch.object(yt_app.threading, "Thread", ImmediateThread), patch.object(
             yt_app.subprocess, "Popen", return_value=failed
         ):
             api.start_downloads([self.item("https://youtube.com/watch?v=43")])
-        self.assertFalse(any("markDownloadSuccess(" in x for x in api.window.scripts))
-        self.assertTrue(any("0/1" in x for x in api.window.scripts))
+        self.assertFalse(any("markDownloadSuccess(" in x for x in api._window.scripts))
+        self.assertTrue(any("0/1" in x for x in api._window.scripts))
 
     def test_direct_pinterest_gif_saved_in_gifs(self):
         api = self.create_api()
