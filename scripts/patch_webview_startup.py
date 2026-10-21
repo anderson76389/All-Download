@@ -44,7 +44,7 @@ PATCHED = """        # All-Download: ne pas initialiser EdgeChromium dans le con
 def patch_source(source: str) -> str:
     if source.count(ORIGINAL) == 1:
         source = source.replace(ORIGINAL, PATCHED, 1)
-    elif source.count(PATCHED) != 1:
+    elif source.count("    def _initialize_when_shown(self, _sender, _args):") != 1:
         raise RuntimeError("Version pywebview incompatible : initialisation introuvable ou ambigue")
 
     # DIAGNOSTIC UNIQUEMENT : au lieu d'inferer a partir de l'absence de
