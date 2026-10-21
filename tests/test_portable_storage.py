@@ -112,14 +112,67 @@ class PortableStorageTests(unittest.TestCase):
         with open(new_ffmpeg, "rb") as source:
             self.assertEqual(source.read(), b"nouvel outil")
 
-    def test_classic_installer_keeps_data_outside_uninstaller_scope(self):
+    def test_classic_installer_keeps_media_and_preferences_beside_exe(self):
         app = self.load_mode(installed=True)
+        data = os.path.join(self.portable, "Donnees")
         self.assertFalse(app["PORTABLE_DATA_LOCAL"])
-        self.assertEqual(
-            app["APP_DIR"], os.path.join(self.legacy, "AllMediaDownload")
-        )
-        self.assertNotEqual(self.selected_folder(app), self.portable)
-        self.assertFalse(os.path.exists(os.path.join(self.portable, "Donnees")))
+        self.assertTrue(app["APP_DATA_LOCAL"])
+        self.assertEqual(app["APP_DIR"], data)
+        self.assertEqual(app["CONFIG_FILE"], os.path.join(data, "config.json"))
+        self.assertEqual(app["BIN_DIR"], os.path.join(data, "bin"))
+        self.assertEqual(app["CRASH_LOG"], os.path.join(data, "crash_log.txt"))
+        self.assertEqual(self.selected_folder(app), self.portable)
+        app["ensure_media_directories"](self.portable)
+        self.assertTrue(all(
+            os.path.isdir(os.path.join(self.portable, category))
+            for category in app["DOWNLOAD_CATEGORIES"]
+        ))
+
+    def test_classic_upgrades_existing_settings_without_moving_medias(self):
+        previous = os.path.join(self.legacy, "AllMediaDownload")
+        os.makedirs(previous)
+        legacy_config = os.path.join(previous, "config.json")
+        old_root = os.path.join(self.home, "Downloads", "All-Download-Medias")
+        os.makedirs(os.path.join(old_root, "AUDIOS"))
+        old_audio = os.path.join(old_root, "AUDIOS", "old.mp3")
+        with open(old_audio, "wb") as file:
+            file.write(b"original")
+        with open(legacy_config, "w", encoding="utf-8") as file:
+            json.dump({
+                "settings": {"theme": "dark_pure"},
+                "download_folder": old_root,
+                "download_folder_custom": False
+            }, file)
+        app = self.load_mode(installed=True)
+        local_config = app["CONFIG_FILE"]
+        self.assertTrue(os.path.isfile(local_config))
+        with patch.object(yt_app, "CONFIG_FILE", local_config), patch.object(
+            yt_app, "DEFAULT_DOWNLOAD_BASE", old_root
+        ), patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
+            yt_app.sys, "executable", self.exe
+        ):
+            api = yt_app.DownloaderAPI()
+        self.assertEqual(api.download_folder, self.portable)
+        self.assertEqual(api.config["settings"]["theme"], "dark_pure")
+        with open(old_audio, "rb") as file:
+            self.assertEqual(file.read(), b"original")
+        with open(legacy_config, encoding="utf-8") as file:
+            self.assertEqual(json.load(file)["download_folder"], old_root)
+
+    def test_classic_custom_destination_survives_upgrade(self):
+        previous = os.path.join(self.legacy, "AllMediaDownload")
+        os.makedirs(previous)
+        custom = os.path.join(self.home, "Mes-Medias")
+        os.makedirs(custom)
+        with open(os.path.join(previous, "config.json"), "w", encoding="utf-8") as file:
+            json.dump({"download_folder": custom, "download_folder_custom": True}, file)
+        app = self.load_mode(installed=True)
+        with patch.object(yt_app, "CONFIG_FILE", app["CONFIG_FILE"]), patch.object(
+            yt_app.sys, "frozen", True, create=True
+        ), patch.object(yt_app.sys, "executable", self.exe):
+            api = yt_app.DownloaderAPI()
+        self.assertEqual(api.download_folder, custom)
+        self.assertTrue(api.config["download_folder_custom"])
 
 
 if __name__ == "__main__":
