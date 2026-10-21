@@ -30,6 +30,22 @@ class StartupRecoveryTests(unittest.TestCase):
         with open(self.log, encoding="utf-8") as log:
             self.assertIn("Erreur CLR transitoire", log.read())
 
+    def test_webview_recovery_uses_separate_storage_profile(self):
+        # Eviter un conflit avec les enfants WebView2 restes actifs apres un gel.
+        with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
+            yt_app.sys, "executable", os.path.join(self.temp.name, "All_Media_Download.exe")
+        ):
+            initial = yt_app.get_gui_webview_storage_path([])
+            retry = yt_app.get_gui_webview_storage_path([yt_app.WEBVIEW_RETRY_FLAG])
+            self.assertNotEqual(initial, retry)
+            self.assertTrue(retry.endswith("webview-recuperation"))
+            self.assertEqual(retry, yt_app.get_gui_webview_storage_path([yt_app.STARTUP_RETRY_FLAG]))
+            marker = os.path.join(self.temp.name, ".all-download-installed")
+            with open(marker, "w") as file:
+                file.write("installed")
+            self.assertTrue(yt_app.get_gui_webview_storage_path([]).endswith("webview-classique"))
+            self.assertTrue(yt_app.get_gui_webview_storage_path([yt_app.WEBVIEW_RETRY_FLAG]).endswith("webview-classique-recuperation"))
+
     def test_webview_hang_relaunches_windows_exe_only_once(self):
         with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
             yt_app.sys, "platform", "win32"
