@@ -143,6 +143,9 @@ jobs:
               throw "Dossier installe absent : $d"
             }
           }
+          if (-not (Test-Path "$installed/Donnees" -PathType Container)) {
+            throw "Dossier Donnees absent dans la version Classique"
+          }
           Write-Output "Installation classique effectuee avec succes"
 
       - name: Tester les demarrages Windows (4+2 automatiques, 8+4 en stress manuel)
@@ -150,7 +153,7 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $portableRoot = (Resolve-Path "dist/All-Download-Portable").Path
-          $classicData = Join-Path $env:LOCALAPPDATA "AllMediaDownload"
+          $classicData = Join-Path $env:RUNNER_TEMP "All-Download-Installed-Test/Donnees"
           $portableData = Join-Path $portableRoot "Donnees"
           # Outils factices NON VIDES uniquement sur le runner :
           # aucun gros telechargement FFmpeg pendant la mesure des demarrages.
@@ -173,7 +176,7 @@ jobs:
                   uint flags, uint timeout, out IntPtr result);
           }
           "@
-          $config = Join-Path $env:LOCALAPPDATA "AllMediaDownload/config.json"
+          $config = Join-Path $classicData "config.json"
           if (Test-Path $config) {
             Write-Output "Suppression de la configuration CI (runner jetable), pour tester un premier lancement neuf"
             Remove-Item $config -Force
@@ -335,11 +338,36 @@ jobs:
           $installDir = Join-Path $env:RUNNER_TEMP "All-Download-Installed-Test"
           $uninstaller = Join-Path $installDir "unins000.exe"
           if (-not (Test-Path $uninstaller)) { throw "Desinstalleur non trouve" }
+          # Des medias et reglages fictifs mais REELS sont places dans le
+          # repertoire d'installation pour verifier qu'une desinstallation
+          # n'efface aucun fichier personnel.
+          $mediaToKeep = Join-Path $installDir "VIDÉOS/preserve-me.mp4"
+          $prefsToKeep = Join-Path $installDir "Donnees/config.json"
+          [IO.File]::WriteAllText($mediaToKeep, "MEDIA-PERSONNEL-NE-PAS-EFFACER")
+          [IO.File]::WriteAllText($prefsToKeep, '{"settings":{"theme":"dark_pure"}}')
+          # Une mise a jour dans le meme dossier ne doit ni supprimer ni
+          # reinitialiser les preferences ou les medias precedents.
+          $setup = (Resolve-Path "dist/All-Download-Installer/All-Download-Setup.exe").Path
+          $update = Start-Process -FilePath $setup -ArgumentList @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-", "/DIR=$installDir") -Wait -PassThru
+          if ($update.ExitCode -ne 0) { throw "Mise a jour Classique en echec" }
+          if ((Get-Content -Raw -Encoding UTF8 $mediaToKeep) -ne "MEDIA-PERSONNEL-NE-PAS-EFFACER") {
+            throw "La mise a jour Classique a efface ou modifie un media"
+          }
+          if (-not ((Get-Content -Raw -Encoding UTF8 $prefsToKeep).Contains("dark_pure"))) {
+            throw "La mise a jour Classique a efface les preferences"
+          }
           $proc = Start-Process -FilePath $uninstaller -ArgumentList @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART") -Wait -PassThru
           if ($proc.ExitCode -ne 0) { throw "Desinstallation en echec : $($proc.ExitCode)" }
           if (Test-Path "$installDir/All_Media_Download.exe") {
             throw "L'EXE reste apres desinstallation"
           }
+          if ((Get-Content -Raw -Encoding UTF8 $mediaToKeep) -ne "MEDIA-PERSONNEL-NE-PAS-EFFACER") {
+            throw "Le desinstalleur a efface ou modifie les medias personnels"
+          }
+          if (-not ((Get-Content -Raw -Encoding UTF8 $prefsToKeep).Contains("dark_pure"))) {
+            throw "Le desinstalleur a efface les preferences"
+          }
+          Write-Output "OK : mise a jour et desinstallation conservent medias et preferences"
 
       - name: Fabriquer et verifier les deux ZIP complets avec les sources GitHub
         run: python scripts/build_release_archives.py --output release-archives
@@ -358,8 +386,9 @@ jobs:
           - Portable : executable autonome sans installation.
           - Classique : All-Download-Setup.exe, raccourcis Windows et desinstallation.
           - Les deux utilisent le moteur autonome compatible (aucun dossier _internal a distribuer).
-          - Le ZIP contient les logos, les six dossiers et la copie des sources dans Code-source/.
-          - La version installee conserve les medias hors du dossier de l'application.
+          - Les deux editions utilisent les six categories et Donnees/ a cote de leur EXE.
+          - Le ZIP Portable contient les six dossiers. Le ZIP Classique contient uniquement l'installateur et les sources, sans dossiers medias parasites.
+          - La mise a jour et la desinstallation Classique conservent medias et reglages personnels.
           - Application non signee : avertissement SmartScreen possible.
           "@
           gh release create $tag $portable $classic --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title "All-Download Windows - Build $env:GITHUB_RUN_NUMBER" --notes "$notes" --latest
