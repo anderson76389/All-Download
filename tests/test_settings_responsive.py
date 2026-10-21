@@ -44,7 +44,7 @@ class SettingsWorkflowTests(unittest.TestCase):
         self.api.download_folder = self.root
         self.api.is_cancelled = False
         self.api.is_paused = False
-        self.api.window = Recorder()
+        self.api._window = Recorder()
         self.api._active_download_process = None
         self.api.config = {"settings": {"sponsor_enable": False}}
         self.config_path = os.path.join(self.root, "config.json")
@@ -121,9 +121,9 @@ class SettingsWorkflowTests(unittest.TestCase):
     def test_notifications_never_finish_and_always(self):
         for notify in ("never", "finish", "always"):
             with self.subTest(notify=notify):
-                self.api.window.scripts.clear()
+                self.api._window.scripts.clear()
                 self.download(notify=notify)
-                scripts = [x for x in self.api.window.scripts if "showAppToast(" in x]
+                scripts = [x for x in self.api._window.scripts if "showAppToast(" in x]
                 self.assertEqual(len(scripts), 0 if notify == "never" else
                                  1 if notify == "finish" else 2)
 
