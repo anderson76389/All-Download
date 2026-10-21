@@ -144,11 +144,12 @@ def enable_webview_diagnostics():
         logger.addHandler(handler)
         if logger.level > logging.WARNING:
             logger.setLevel(logging.WARNING)
+        return handler
     except (OSError, ValueError):
-        pass
+        return None
 
 
-enable_webview_diagnostics()
+_WEBVIEW_LOG_HANDLER = enable_webview_diagnostics()
 
 sys.excepthook = handle_exception
 if hasattr(threading, 'excepthook'):
