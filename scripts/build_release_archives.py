@@ -1,7 +1,8 @@
 """Publier deux ZIP complets : Portable et Windows Classique (installateur).
 
-Les ZIP incluent les logos, six dossiers vides et les fichiers suivis par Git
-dans Code-source/, sans aucun telechargement personnel ni donnee locale.
+Le ZIP Portable inclut ses six dossiers vides. Le ZIP Classique ne contient
+aucun dossier media parasite hors du programme installe. Les deux archives
+incluent les logos et les sources, sans fichiers personnels.
 """
 from __future__ import annotations
 
@@ -37,7 +38,12 @@ def check_zip(zip_path: Path, tracked: list[Path], executable: str) -> None:
             raise ValueError(f"ZIP corrompu : {broken}")
         names = set(archive.namelist())
         needed = {executable, "logo.ico", "logo.jpg"}
-        needed.update(f"{name}/" for name in MEDIA_DIRS)
+        if zip_path.name == PORTABLE_NAME:
+            needed.update(f"{name}/" for name in MEDIA_DIRS)
+        else:
+            stray = sorted(n for n in names if n in {f"{d}/" for d in MEDIA_DIRS})
+            if stray:
+                raise ValueError(f"Dossiers medias parasites hors de l'installateur : {stray}")
         if any(path.endswith(".gitkeep") for path in names):
             raise ValueError("Les ZIP ne doivent contenir aucun .gitkeep")
         needed.update(f"{SOURCES}/{path.as_posix()}" for path in tracked)
@@ -71,15 +77,15 @@ def build_classic(root: Path, output: Path, tracked: list[Path]) -> None:
         zf.write(setup, setup.name)
         zf.write(root / "logo.ico", "logo.ico")
         zf.write(root / "logo.jpg", "logo.jpg")
-        for category in MEDIA_DIRS:
-            zf.writestr(f"{category}/", "")
         zf.writestr("INSTALLATION-WINDOWS.txt",
             "ALL-DOWNLOAD - WINDOWS CLASSIQUE\n\n"
             "1. Lancez All-Download-Setup.exe.\n"
             "2. Choisissez vos raccourcis et terminez l'installation.\n"
-            "3. Les medias sont conserves dans votre dossier de telechargement,\n"
-            "   et NON dans le dossier du programme.\n"
-            "4. L'application peut etre desinstallee depuis Windows.\n\n"
+            "3. Les medias, reglages et outils sont conserves dans le dossier\n"
+            "   du logiciel, avec les six categories et Donnees/.\n"
+            "4. Mise a jour et desinstallation : les dossiers personnels restent\n"
+            "   sur le disque, sans effacement automatique.\n"
+            "5. Les anciens medias stockes ailleurs ne sont pas deplaces.\n\n"
             "L'avertissement de reputation SmartScreen peut subsister tant que\n"
             "le programme n'est pas signe par un editeur reconnu.\n")
         add_source(zf, root, tracked)
