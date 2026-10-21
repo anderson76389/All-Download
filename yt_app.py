@@ -3523,6 +3523,19 @@ WEBVIEW_RETRY_FLAG = "--all-download-retry-webview-startup"
 WEBVIEW_STARTUP_TIMEOUT = 35  # Laisse terminer les demarrages WebView2 lents (< 35 s).
 
 
+def get_gui_webview_storage_path(argv=None):
+    """Profil de secours distinct pour ne pas reutiliser un cache encore verrouille.
+
+    Le processus GUI initial conserve le profil habituel, les seules relances
+    automatiques utilisent le profil "recuperation".
+    """
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    name = "webview" if get_portable_root() else "webview-classique"
+    if WEBVIEW_RETRY_FLAG in arguments or STARTUP_RETRY_FLAG in arguments:
+        name += "-recuperation"
+    return os.path.join(LEGACY_APP_DIR, name)
+
+
 def restart_after_webview_timeout(argv=None):
     """Une seule relance propre lorsque l'interface ne finit jamais de charger.
 
@@ -3691,10 +3704,7 @@ if __name__ == '__main__':
                 webview.start(
                     debug=False,
                     private_mode=True,
-                    storage_path=os.path.join(
-                        LEGACY_APP_DIR,
-                        "webview" if get_portable_root() else "webview-classique"
-                    ),
+                    storage_path=get_gui_webview_storage_path(),
                 )
             finally:
                 webview_closed.set()
