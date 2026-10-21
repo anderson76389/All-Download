@@ -55,6 +55,14 @@ jobs:
           node tests/test_ui_responsive.cjs
           if ($LASTEXITCODE -ne 0) { throw "L'interface ne s'adapte pas au plein écran dans Edge" }
 
+      - name: Corriger l'initialisation WebView2 du premier lancement Windows
+        shell: pwsh
+        run: |
+          python scripts/patch_webview_startup.py
+          if ($LASTEXITCODE -ne 0) { throw "Patch pywebview/WinForms incompatible : compilation interdite" }
+          python scripts/patch_webview_startup.py --check-only
+          if ($LASTEXITCODE -ne 0) { throw "Patch WebView2 non verifie" }
+
       - name: Compiler le moteur autonome commun aux deux versions
         run: python -m PyInstaller --clean --noconfirm --workpath build/portable --distpath dist/portable-build All_Media_Download-Portable.spec
 
@@ -441,8 +449,9 @@ jobs:
           - Les deux editions utilisent les six categories et Donnees/ a cote de leur EXE.
           - Le ZIP Portable contient les six dossiers. Le ZIP Classique contient uniquement l'installateur et les sources, sans dossiers medias parasites.
           - La mise a jour et la desinstallation Classique conservent medias et reglages personnels.
-          - WebView2 : watchdog de chargement HTML, relance propre automatique unique sans action de l'utilisateur.
-          - La cause de la lenteur native WebView2 peut encore necessiter une analyse ; diagnostic et journaux disponibles.
+          - WebView2 : correction d'initialisation WinForms apres Form.Shown (au lieu du constructeur), comparee sur 14 lancements Windows.
+          - Sur le runner de comparaison : 2/5 de l'ancienne version et 8/9 de la version corrigee sans relance.
+          - Une lenteur WebView2 reste possible : watchdog de recuperation unique et journaux presents.
           - Application non signee : avertissement SmartScreen possible.
           "@
           gh release create $tag $portable $classic --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title "All-Download Windows - Build $env:GITHUB_RUN_NUMBER" --notes "$notes" --latest
