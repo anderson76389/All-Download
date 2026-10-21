@@ -3640,13 +3640,14 @@ if __name__ == '__main__':
 
         # Une fenetre WinForms creee n'implique pas que le HTML soit charge.
         tools_started = threading.Event()
+        webview_ready = threading.Event()
         webview_closed = threading.Event()
 
         def on_window_shown(*_):
             log_startup_phase("Fenetre native affichee")
 
         def on_window_loaded(*_):
-            tools_started.set()
+            webview_ready.set()
             log_startup_phase("Interface HTML chargee")
             if not tools_started.is_set():
                 tools_started.set()
@@ -3677,7 +3678,7 @@ if __name__ == '__main__':
         simulated_hang = os.environ.pop("ALL_DOWNLOAD_TEST_WEBVIEW_HANG_ONCE", None) == "1"
         watchdog_timeout = 4 if simulated_hang else WEBVIEW_STARTUP_TIMEOUT
         start_webview_startup_watchdog(
-            tools_started, webview_closed, timeout=watchdog_timeout
+            webview_ready, webview_closed, timeout=watchdog_timeout
         )
         if simulated_hang:
             log_startup_phase("TEST: simulation d'un moteur WebView2 sans evenement loaded")
