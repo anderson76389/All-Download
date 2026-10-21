@@ -35,7 +35,7 @@ jobs:
           python -m PyInstaller --clean --noconfirm --workpath build/onedir --distpath dist/onedir All_Media_Download-Stable.spec
           if ($LASTEXITCODE -ne 0) { throw "Build en dossier invalide" }
           $folder = "dist/onedir/All_Media_Download"
-          $runtime = "$folder/Donnees/Runtime"
+          $runtime = "$folder/Runtime"
           if (-not (Test-Path "$runtime/python312.dll")) {
             Get-ChildItem $folder -Recurse -Filter python312.dll | Select-Object -ExpandProperty FullName
             throw "L'EXE en dossier n'utilise pas le runtime permanent prevu"
