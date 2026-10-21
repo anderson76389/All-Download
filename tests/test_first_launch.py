@@ -75,6 +75,8 @@ class FirstLaunchTests(unittest.TestCase):
             file.write(valid_pe64_stub())
         with open(self.ffmpeg_path, "wb") as file:
             file.write(valid_pe64_stub())
+        with open(self.ffprobe_path, "wb") as file:
+            file.write(valid_pe64_stub())
         with patch.object(yt_app.urllib.request, "urlopen", side_effect=AssertionError("Unexpected download")):
             yt_app.setup_binaries()
         with open(self.ytdlp_path, "rb") as file:
