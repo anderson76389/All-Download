@@ -178,6 +178,44 @@ FFMPEG_PATH = os.path.join(BIN_DIR, "ffmpeg.exe")
 YTDLP_URL = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
 FFMPEG_URL = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
 
+# Un ancien workflow avait malencontreusement publie des fichiers MZ de
+# DEUX octets a la place des vrais EXE. Ne plus considerer "existe et non
+# vide" comme une preuve qu'un outil Windows est executable.
+_BINARIES_LOCK = threading.RLock()
+
+
+def is_valid_windows_executable(filename):
+    """PE Windows 64 bits avec un en-tete coherement forme et une taille reelle.
+
+    Le simple marqueur MZ n'est PAS suffisant : les binaires de test GitHub
+    etaient exactement b'MZ' et Windows les signalait comme 16 bits.
+    """
+    try:
+        if not os.path.isfile(filename) or os.path.getsize(filename) < 65536:
+            return False
+        with open(filename, "rb") as executable:
+            header = executable.read(64)
+            if len(header) != 64 or header[:2] != b"MZ":
+                return False
+            offset = int.from_bytes(header[0x3C:0x40], "little")
+            if offset < 64 or offset > 1024 * 1024:
+                return False
+            executable.seek(offset)
+            signature = executable.read(6)
+            return (len(signature) == 6
+                    and signature[:4] == b"PE\\0\\0"
+                    and int.from_bytes(signature[4:6], "little") == 0x8664)
+    except (OSError, ValueError, OverflowError):
+        return False
+
+
+def ensure_ytdlp_ready():
+    """Ne jamais demander a Windows d'executer un faux yt-dlp.exe."""
+    if is_valid_windows_executable(YTDLP_PATH):
+        return True
+    setup_binaries()
+    return is_valid_windows_executable(YTDLP_PATH)
+
 # L'ancien repertoire servait aussi de dossier de developpement/test.
 # Ne plus enregistrer les nouveaux medias au milieu de yt_app.py, build, dist...
 LEGACY_DOWNLOAD_BASE = os.path.join(os.path.expanduser("~"), "Downloads", "MediaDownloader")
@@ -3011,6 +3049,13 @@ class DownloaderAPI:
         is_pure_playlist = bool(("list=" in url or "/playlist" in url) and not has_video_id)
         is_channel = bool(any(k in url.lower() for k in ["/channel/", "/c/", "/user/", "@"]) and not has_video_id)
 
+        if not ensure_ytdlp_ready():
+            return {
+                "success": False,
+                "error": "yt-dlp est absent ou invalide. Impossible de recuperer "
+                         "les metadonnees : verifiez la connexion puis relancez l'application."
+            }
+
         cmd = [
             YTDLP_PATH, "-J",
             "--no-warnings",
@@ -3162,6 +3207,22 @@ class DownloaderAPI:
         def _worker():
             total = len(items)
             completed = 0
+            if any(not item.get("is_direct_download") for item in items):
+                if not ensure_ytdlp_ready():
+                    error_text = ("yt-dlp est absent ou invalide. "
+                                  "Impossible de demarrer les telechargements. "
+                                  "Verifiez la connexion Internet.")
+                    try:
+                        if self._window:
+                            self._window.evaluate_js(
+                                f"updateDownloadProgress(0, {json.dumps(error_text)})"
+                            )
+                            self._window.evaluate_js(
+                                f"showAppToast({json.dumps(error_text)})"
+                            )
+                    except Exception:
+                        pass
+                    return
             for idx, item in enumerate(items, 1):
                 while self.is_paused and not self.is_cancelled:
                     time.sleep(0.3)
@@ -3428,6 +3489,8 @@ def safe_download_file(url, target_path):
             shutil.copyfileobj(response, output, length=1024 * 1024)
         if os.path.getsize(tmp_path) == 0:
             raise ValueError("Fichier téléchargé vide")
+        if target_path.lower().endswith(".exe") and not is_valid_windows_executable(tmp_path):
+            raise ValueError("Executable Windows x64 invalide ou incomplet : " + os.path.basename(target_path))
         os.replace(tmp_path, target_path)
         return True
     except Exception as exc:
@@ -3467,13 +3530,20 @@ def import_legacy_portable_tools():
 
 
 def setup_binaries():
-    """Premier lancement : ne pas charger FFmpeg intégralement dans la RAM."""
+    """Installer/reparer uniquement des PE Windows x64 valides, une seule fois."""
+    with _BINARIES_LOCK:
+        return _setup_binaries_locked()
+
+
+def _setup_binaries_locked():
+    """Telecharger en arriere-plan, sans reutiliser les faux EXE des releases."""
     try:
         import_legacy_portable_tools()
-        if not os.path.isfile(YTDLP_PATH) or os.path.getsize(YTDLP_PATH) == 0:
+        if not is_valid_windows_executable(YTDLP_PATH):
             safe_download_file(YTDLP_URL, YTDLP_PATH)
 
-        if not os.path.isfile(FFMPEG_PATH) or os.path.getsize(FFMPEG_PATH) == 0:
+        probe_path = os.path.join(BIN_DIR, "ffprobe.exe")
+        if not is_valid_windows_executable(FFMPEG_PATH) or not is_valid_windows_executable(probe_path):
             zip_p = os.path.join(APP_DIR, "ffmpeg.zip")
             if not safe_download_file(FFMPEG_URL, zip_p):
                 return
@@ -3487,8 +3557,8 @@ def setup_binaries():
                         try:
                             with zf.open(member, "r") as source, open(temp_file, "wb") as output:
                                 shutil.copyfileobj(source, output, length=1024 * 1024)
-                            if os.path.getsize(temp_file) == 0:
-                                raise ValueError("Exécutable FFmpeg vide")
+                            if not is_valid_windows_executable(temp_file):
+                                raise ValueError("Executable FFmpeg x64 invalide : " + os.path.basename(target_file))
                             os.replace(temp_file, target_file)
                         finally:
                             if os.path.exists(temp_file):
