@@ -235,11 +235,11 @@ jobs:
             }
           }
 
-      - name: Diagnostiquer les demarrages Windows WebView2 (4+2 automatiques, 8+4 en stress manuel)
+      - name: Verifier obligatoirement 12 demarrages Windows reactifs (6+6)
         id: webview_startup_diagnostic
-        # Garder tous les essais reels et leur statut sans bloquer les
-        # correctifs independants de rangement de dossiers.
-        continue-on-error: true
+        # Le gel au premier lancement doit bloquer toute nouvelle Release.
+        # Refuser la publication si une seule ouverture reste figee.
+        continue-on-error: false
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
@@ -276,8 +276,8 @@ jobs:
           # La commande manuelle Actions conserve le stress 8+4 complet,
           # qui peut encore reveler une latence WebView2 intermittente.
           $stress = ($env:GITHUB_EVENT_NAME -eq "workflow_dispatch")
-          $portableTimes = if ($stress) { 8 } else { 4 }
-          $classicTimes = if ($stress) { 4 } else { 2 }
+          $portableTimes = if ($stress) { 8 } else { 6 }
+          $classicTimes = if ($stress) { 8 } else { 6 }
           $scenarios = @(
             @{ Name="Portable"; Exe=(Resolve-Path "dist/All-Download-Portable/All_Media_Download.exe").Path; Times=$portableTimes },
             @{ Name="Classique"; Exe=(Join-Path $env:RUNNER_TEMP "All-Download-Installed-Test/All_Media_Download.exe"); Times=$classicTimes }
@@ -528,7 +528,7 @@ jobs:
           - Les deux editions utilisent les six categories et Donnees/ a cote de leur EXE.
           - Le ZIP Portable contient les six dossiers. Le ZIP Classique contient uniquement l'installateur et les sources, sans dossiers medias parasites.
           - La mise a jour et la desinstallation Classique conservent medias et reglages personnels.
-          - WebView2 : correction d'initialisation WinForms apres Form.Shown (au lieu du constructeur), comparee sur 14 lancements Windows.
+          - WebView2 : correction du pont JavaScript (aucune reference WinForms publique), testee sur 32 premiers lancements experimentaux, puis 12 lancements Windows obligatoires en CI.
           - Sur le runner de comparaison : 2/5 de l'ancienne version et 8/9 de la version corrigee sans relance.
           - Une lenteur WebView2 reste possible : watchdog de recuperation unique et journaux presents.
           - Application non signee : avertissement SmartScreen possible.
