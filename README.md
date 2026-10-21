@@ -55,7 +55,7 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 |---|---|
 | **Sans installation**, à emporter partout. | **Installateur Windows**, avec intégration au système. |
 | ① Téléchargez le ZIP Portable.<br>② Extrayez-le où vous voulez.<br>③ Lancez `All_Media_Download.exe`. | ① Téléchargez le ZIP Classique.<br>② Extrayez-le et lancez `All-Download-Setup.exe`.<br>③ Ouvrez l'application depuis le menu Démarrer. |
-| ✅ Exécutable autonome<br>✅ Aucun dossier `_internal`<br>✅ Médias, paramètres, outils et journaux dans le dossier Portable (accessible en écriture) | ✅ Installation sans droits administrateur<br>✅ Raccourci Bureau facultatif<br>✅ Désinstallation Windows<br>✅ Médias séparés de l'installation |
+| ✅ Exécutable autonome<br>✅ Aucun dossier `_internal`<br>✅ Médias, paramètres, outils et journaux dans le dossier Portable (accessible en écriture) | ✅ Installation sans droits administrateur<br>✅ Raccourci Bureau facultatif<br>✅ Médias, paramètres et outils dans le dossier installé<br>✅ Désinstallation sans suppression des médias personnels |
 
 **Important :** la version Classique actuelle utilise le même moteur autonome que la Portable. Elle **ne repose plus sur l'ancien dossier `_internal`** qui pouvait provoquer l'erreur `Python.Runtime.dll` sur certains PC.
 
@@ -75,7 +75,7 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 ## 📁 Un rangement automatique et organisé
 
 ```text
-📁 All-Download-Portable/
+📁 All-Download-Portable/ (ou dossier d'installation Classique/)
 ├── All_Media_Download.exe
 ├── logo.ico et logo.jpg
 ├── 🎵 AUDIOS/        Musiques et fichiers audio individuels
@@ -84,23 +84,23 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 ├── 📺 CHAÎNES/       Sous-dossiers par chaîne YouTube
 ├── 📑 PLAYLIST/      Sous-dossiers par playlist YouTube
 ├── 📦 AUTRES/        Autres médias et plateformes
-└── 📁 Donnees/       Créé au premier lancement de la version Portable
+└── 📁 Donnees/       Données personnelles des deux éditions
     ├── config.json   Réglages du logiciel
     ├── bin/          yt-dlp, FFmpeg et ffprobe
     ├── startup_log.txt
     └── crash_log.txt
 ```
 
-**Portable autonome :** les six catégories sont toujours créées à côté de l'EXE, même si leurs dossiers étaient absents dans l'archive extraite. Les réglages, outils et journaux restent dans `Donnees/` et voyagent avec le dossier. **Exception technique :** le cache du moteur d'affichage WebView2 est placé dans `%LOCALAPPDATA%\\AllMediaDownload\\webview` pour la stabilité du premier lancement Windows ; PyInstaller peut aussi employer des fichiers temporaires système. Ces caches ne créent pas de dossier de médias dans Téléchargements.
+**Même rangement dans les deux éditions :** les six catégories sont créées à côté de l'EXE, même si elles n'existaient pas à l'extraction. Les réglages, outils et journaux restent dans `Donnees/` de chaque édition. **Exception technique :** les profils de cache WebView2 restent dans `%LOCALAPPDATA%\\AllMediaDownload` (séparés entre Portable et Classique) pour la stabilité au démarrage, et PyInstaller peut employer des fichiers temporaires système. Aucun de ces caches ne contient vos médias.
 
-Les **six catégories sont créées automatiquement**, sans effacer vos médias existants. Les archives ZIP les contiennent comme **véritables dossiers vides**, sans fichiers `.gitkeep`. Sur la page du dépôt GitHub, les dossiers vides n'apparaissent pas : c'est le fonctionnement normal de Git.
+Les **six catégories sont créées automatiquement**, sans effacer vos médias existants. Le ZIP **Portable** les contient comme véritables dossiers vides, sans `.gitkeep`. Le ZIP **Classique** n'ajoute aucun dossier parasite lors de l'extraction : l'installateur crée les catégories directement dans son dossier d'installation. Sur GitHub, les dossiers vides n'apparaissent pas : c'est le fonctionnement normal de Git.
 
 L'ancien dossier `AUDIO/` est migré vers `AUDIOS/` lorsque c'est possible, sans écraser les fichiers homonymes.
 
 | Édition | Emplacement initial des téléchargements |
 |---|---|
 | **Portable x64** | Dans le dossier contenant l'EXE, sans dossier `All-Download-Medias` supplémentaire (si l'emplacement est modifiable) |
-| **Classique x64** | `%USERPROFILE%\Downloads\All-Download-Medias` |
+| **Classique x64** | Directement à côté de l'EXE installé (par défaut `%LOCALAPPDATA%\Programs\All-Download`) |
 
 ---
 
@@ -110,11 +110,11 @@ Dans **Paramètres → Téléchargement → Dossier des téléchargements**, cli
 
 Les six catégories sont créées dans le dossier choisi. L'application vérifie l'accès en écriture et conserve l'ancien emplacement en cas d'erreur. **Les fichiers existants ne sont pas déplacés ni supprimés.**
 
-La version Portable conserve sa **propre configuration dans `Donnees/config.json`**, indépendante du stockage de la version Classique. Au premier démarrage, les anciens réglages de `%LOCALAPPDATA%\\AllMediaDownload` sont copiés s'ils existent, sans effacer leur origine. Un dossier personnalisé expressément choisi reste prioritaire.
+**Chaque édition possède sa propre configuration** dans `Donnees/config.json` à côté de son EXE. Au premier démarrage, les anciens réglages de `%LOCALAPPDATA%\\AllMediaDownload` sont copiés s'ils existent, sans effacer leur origine. Un dossier personnalisé expressément choisi reste prioritaire. Si le dossier du programme est exceptionnellement protégé contre l'écriture, le logiciel utilise une destination de repli modifiable.
 
-En version Portable, les anciens emplacements automatiques `Téléchargements/MediaDownloader` et `Téléchargements/All-Download-Medias` ne sont plus utilisés pour **les nouveaux téléchargements** : ils vont dans les catégories du dossier Portable. **Les anciens fichiers ne sont ni déplacés ni effacés automatiquement** ; vérifiez leur contenu avant de supprimer un ancien dossier. Vous pouvez toujours choisir une destination personnalisée dans les paramètres. En version Classique, l'emplacement séparé de l'application reste volontaire pour protéger les médias pendant une désinstallation.
+**Dans les deux éditions**, les anciens emplacements automatiques `Téléchargements/MediaDownloader` et `Téléchargements/All-Download-Medias` ne sont plus utilisés pour les nouveaux téléchargements : ils vont dans les catégories du dossier contenant l'EXE. **Les anciens fichiers ne sont ni déplacés ni effacés automatiquement** ; vérifiez leur contenu avant de supprimer un ancien dossier. Vous pouvez toujours choisir une destination personnalisée dans les paramètres.
 
-**Désinstaller l'édition Classique ne doit pas nécessiter la suppression de vos médias**, stockés à part.
+**Sécurité des données Classique :** lors d'une mise à jour ou d'une désinstallation, l'installateur est configuré pour ne jamais supprimer les six catégories personnelles ni `Donnees/`. La désinstallation enlève l'application, mais ces dossiers personnels peuvent rester dans l'ancien emplacement ; c'est volontaire pour éviter toute perte. Ne les supprimez manuellement qu'après vérification.
 
 ---
 
@@ -125,7 +125,7 @@ Les deux boutons en haut de cette page renvoient vers les fichiers de la **derni
 - `All-Download-Portable-Windows.zip` : application autonome et prête à ouvrir.
 - `All-Download-Classique-Windows.zip` : installateur Windows `All-Download-Setup.exe`.
 
-Chaque archive comprend les **logos**, les **six dossiers** et une copie de **tous les fichiers suivis sur GitHub** dans `Code-source/`.
+Chaque archive comprend les **logos** et une copie des **sources GitHub** dans `Code-source/`. Les six dossiers vides sont inclus uniquement dans le ZIP Portable ; ils sont créés par l'installateur pour la version Classique.
 
 Les versions sont construites automatiquement et soumises à des tests Python, des tests d'interface et des vérifications du démarrage sur Windows. **Cela ne remplace pas un essai réel de chaque site ou de chaque format.**
 
@@ -156,7 +156,7 @@ Le fichier `dist/All_Media_Download.exe` déjà présent dans le dépôt est une
 <summary><strong>🩺 Dépannage, SmartScreen et sécurité</strong></summary>
 
 - **Crash CLR / pythonnet au démarrage :** All-Download tente automatiquement **une seule relance propre** lors de l'erreur connue `Python.Runtime.Loader.Initialize`. Si celle-ci échoue aussi, la boîte d'erreur et le journal restent disponibles.
-- **Problème de démarrage :** ouvrez `%LOCALAPPDATA%\AllMediaDownload\crash_log.txt` et partagez la dernière erreur dans une [issue](https://github.com/anderson76389/All-Download/issues), après avoir masqué les données personnelles.
+- **Problème de démarrage :** ouvrez `Donnees/crash_log.txt` ou `Donnees/startup_log.txt` dans le dossier de l'application et partagez la dernière erreur dans une [issue](https://github.com/anderson76389/All-Download/issues), après avoir masqué les données personnelles. Si le dossier de l'application n'est pas modifiable, les journaux peuvent se trouver dans `%LOCALAPPDATA%\AllMediaDownload`.
 - **Média non disponible :** contrôlez l'URL, les autorisations, les cookies éventuels et la compatibilité yt-dlp.
 - **Conversion impossible :** vérifiez FFmpeg, l'espace disque et le format source.
 - **Avertissement SmartScreen :** les exécutables ne disposent pas encore d'une signature d'éditeur reconnue. Un avertissement de réputation ne constitue pas à lui seul une détection de malware. Ne désactivez pas vos protections et ne contournez pas une détection de menace.
