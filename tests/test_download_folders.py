@@ -367,7 +367,7 @@ class DownloadFolderTests(unittest.TestCase):
             commands.append(cmd)
             return FakeProcess()
 
-        with patch.object(yt_app.threading, "Thread", ImmediateThread), patch.object(yt_app.subprocess, "Popen", fake_popen):
+        with patch.object(yt_app.threading, "Thread", ImmediateThread), patch.object(yt_app, "ensure_ytdlp_ready", return_value=True), patch.object(yt_app.subprocess, "Popen", fake_popen):
             api.start_downloads([item for item, _ in items])
 
         self.assertEqual(len(commands), len(items))
@@ -397,7 +397,7 @@ class DownloadFolderTests(unittest.TestCase):
         api._window = Recorder()
         with patch.object(yt_app.threading, "Thread", ImmediateThread), patch.object(
             yt_app.subprocess, "Popen", return_value=FakeProcess()
-        ):
+        ), patch.object(yt_app, "ensure_ytdlp_ready", return_value=True):
             api.start_downloads([self.item("https://youtube.com/watch?v=42")])
         self.assertTrue(any("markDownloadSuccess(" in x for x in api._window.scripts))
 
@@ -406,7 +406,7 @@ class DownloadFolderTests(unittest.TestCase):
         failed.returncode = 1
         with patch.object(yt_app.threading, "Thread", ImmediateThread), patch.object(
             yt_app.subprocess, "Popen", return_value=failed
-        ):
+        ), patch.object(yt_app, "ensure_ytdlp_ready", return_value=True):
             api.start_downloads([self.item("https://youtube.com/watch?v=43")])
         self.assertFalse(any("markDownloadSuccess(" in x for x in api._window.scripts))
         self.assertTrue(any("0/1" in x for x in api._window.scripts))
