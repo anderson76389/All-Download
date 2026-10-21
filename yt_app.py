@@ -3643,7 +3643,14 @@ if __name__ == '__main__':
         log_startup_phase("Reglages prepares: creation de la fenetre")
         window = webview.create_window(
             'All Media Download',
-            html=html_for_config(api.config),
+            # Diagnostic uniquement, jamais distribue dans les Releases :
+            # tester moteur WebView2 avec HTML minimal vs vrai HTML de l'app.
+            html=(
+                "<!doctype html><html><head><meta charset='utf-8'></head>"
+                "<body><p>Diagnostic WebView2 minimal</p></body></html>"
+                if os.environ.get("ALL_DOWNLOAD_DIAGNOSTIC_MINIMAL_HTML") == "1"
+                else html_for_config(api.config)
+            ),
             js_api=api,
             width=1080,
             height=760,
