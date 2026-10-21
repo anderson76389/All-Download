@@ -47,7 +47,13 @@ def patch_source(source: str) -> str:
     elif source.count("    def _initialize_when_shown(self, _sender, _args):") != 1:
         raise RuntimeError("Version pywebview incompatible : initialisation introuvable ou ambigue")
 
-    # DIAGNOSTIC UNIQUEMENT : au lieu d'inferer a partir de l'absence de
+    # Test unitaire amont : un extrait reduit ne possede pas les callbacks.
+    # Le patch fonctionnel reste identique ; seul le fichier complet recoit
+    # l'instrumentation experimentale.
+    if "    def on_webview_ready(self, sender, args):" not in source:
+        return source
+
+    # DIAGNOSTIC UNIQUEMENT : au lieu d'inferer a partir de
     # 'loaded', ecrire les etapes exactes de pywebview dans webview_log.txt.
     # Les logs vont dans Donnees/ via le RotatingFileHandler de yt_app.py.
     stages = [
