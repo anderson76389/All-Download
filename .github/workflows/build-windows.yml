@@ -156,6 +156,85 @@ jobs:
           }
           Write-Output "Installation classique effectuee avec succes"
 
+      - name: Verifier un premier lancement froid sans relance pour chaque edition
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Add-Type @"
+          using System;
+          using System.Runtime.InteropServices;
+          public static class WebViewColdProbe {
+              [DllImport("user32.dll", SetLastError=true)]
+              public static extern IntPtr SendMessageTimeout(IntPtr hwnd, uint msg, IntPtr w, IntPtr l,
+                  uint flags, uint timeout, out IntPtr result);
+          }
+          "@
+          $originalLocal = $env:LOCALAPPDATA
+          $scenarios = @(
+            @{ Name="Portable"; Exe=(Resolve-Path "dist/All-Download-Portable/All_Media_Download.exe").Path },
+            @{ Name="Classique"; Exe=(Join-Path $env:RUNNER_TEMP "All-Download-Installed-Test/All_Media_Download.exe") }
+          )
+          foreach ($scenario in $scenarios) {
+            $exe = $scenario.Exe
+            $label = $scenario.Name
+            $data = Join-Path (Split-Path $exe -Parent) "Donnees"
+            $bin = Join-Path $data "bin"
+            New-Item -ItemType Directory -Force -Path $bin | Out-Null
+            foreach ($tool in @("yt-dlp.exe", "ffmpeg.exe", "ffprobe.exe")) {
+              [IO.File]::WriteAllBytes((Join-Path $bin $tool), [byte[]]@(77,90))
+            }
+            $log = Join-Path $data "startup_log.txt"
+            if (Test-Path $log) { Remove-Item $log -Force }
+            $coldRoot = Join-Path $env:RUNNER_TEMP ("AllDownloadWebViewCold-" + $label)
+            if (Test-Path $coldRoot) { Remove-Item $coldRoot -Force -Recurse }
+            New-Item -ItemType Directory -Force -Path $coldRoot | Out-Null
+            $env:LOCALAPPDATA = $coldRoot
+            $started = [System.Diagnostics.Stopwatch]::StartNew()
+            try {
+              $proc = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe -Parent) -PassThru
+            } finally {
+              $env:LOCALAPPDATA = $originalLocal
+            }
+            $good = $false
+            $recovered = $false
+            $guiPID = $null
+            try {
+              for ($i=0; $i -lt 110; $i++) {
+                Start-Sleep -Milliseconds 500
+                if (-not (Test-Path $log)) { continue }
+                $entries = @(Get-Content $log -Tail 70)
+                $recovered = @($entries | Where-Object { $_.Contains("nouvelle tentative automatique unique") }).Count -gt 0
+                if ($recovered) { break }
+                $matches = @($entries | Where-Object { $_ -match 'PID=([0-9]+) Interface HTML chargee' })
+                if ($matches.Count -gt 0) {
+                  $parsed = [regex]::Match($matches[-1], 'PID=([0-9]+) Interface HTML chargee')
+                  $guiPID = [int]$parsed.Groups[1].Value
+                  $gui = Get-Process -Id $guiPID -ErrorAction SilentlyContinue
+                  if ($gui -and $gui.MainWindowHandle -ne [IntPtr]::Zero) {
+                    $probeResult = [IntPtr]::Zero
+                    $responsive = [WebViewColdProbe]::SendMessageTimeout($gui.MainWindowHandle,0,[IntPtr]::Zero,[IntPtr]::Zero,2,3000,[ref]$probeResult)
+                    if ($responsive -ne [IntPtr]::Zero) { $good = $true; break }
+                  }
+                }
+              }
+              $started.Stop()
+              if (-not $good -or $recovered) {
+                if (Test-Path $log) { Get-Content $log -Tail 50 }
+                throw "Premier lancement froid $label non reactif ou ayant necessite une relance (duree $([math]::Round($started.Elapsed.TotalSeconds,1))s)"
+              }
+              Write-Output "OK : premier lancement froid $label reactif, sans relance, en $([math]::Round($started.Elapsed.TotalSeconds,1))s"
+            } finally {
+              $active = @(Get-Process -Name "All_Media_Download" -ErrorAction SilentlyContinue)
+              foreach ($p in $active) {
+                try { [void]$p.CloseMainWindow() } catch {}
+              }
+              Start-Sleep -Seconds 2
+              Get-Process -Name "All_Media_Download" -ErrorAction SilentlyContinue |
+                Stop-Process -Force -ErrorAction SilentlyContinue
+              Start-Sleep -Seconds 3
+            }
+          }
+
       - name: Diagnostiquer les demarrages Windows WebView2 (4+2 automatiques, 8+4 en stress manuel)
         id: webview_startup_diagnostic
         # Garder tous les essais reels et leur statut sans bloquer les
