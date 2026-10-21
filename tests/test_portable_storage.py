@@ -2,6 +2,7 @@
 import json
 import os
 import faulthandler
+import logging
 import runpy
 import tempfile
 import unittest
@@ -37,6 +38,10 @@ class PortableStorageTests(unittest.TestCase):
         crash_stream = app.get("_CRASH_STREAM")
         if crash_stream is not None:
             crash_stream.close()
+        webview_handler = app.get("_WEBVIEW_LOG_HANDLER")
+        if webview_handler is not None:
+            logging.getLogger("pywebview").removeHandler(webview_handler)
+            webview_handler.close()
         return app
 
     def selected_folder(self, app):
