@@ -1,4 +1,4 @@
-name: Diagnostic du premier lancement WebView2 (sans publication)
+name: Comparer WebView2 constructeur vs Form.Shown (sans publication)
 
 on:
   push:
@@ -26,22 +26,22 @@ jobs:
           python -m pip install pywebview==6.2.1 pythonnet==3.2.1 pyinstaller==6.22.3 "psutil>=6.1,<8"
       - name: Tests Python
         run: python -m unittest discover -s tests -q
-      - name: Compiler les deux moteurs sans changement d'application
+      - name: Compiler WebView2 original puis WebView2 initialise apres Form.Shown
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          python -m PyInstaller --clean --noconfirm --workpath build/onefile --distpath dist/onefile All_Media_Download-Portable.spec
-          if ($LASTEXITCODE -ne 0) { throw "Build monofichier invalide" }
-          python -m PyInstaller --clean --noconfirm --workpath build/onedir --distpath dist/onedir All_Media_Download-Stable.spec
-          if ($LASTEXITCODE -ne 0) { throw "Build en dossier invalide" }
-          $folder = "dist/onedir/All_Media_Download"
-          $runtime = "$folder/Runtime"
-          if (-not (Test-Path "$runtime/python312.dll")) {
-            Get-ChildItem $folder -Recurse -Filter python312.dll | Select-Object -ExpandProperty FullName
-            throw "L'EXE en dossier n'utilise pas le runtime permanent prevu"
+          python -m PyInstaller --clean --noconfirm --workpath build/baseline --distpath dist/baseline All_Media_Download-Portable.spec
+          if ($LASTEXITCODE -ne 0) { throw "Compilation pywebview original echouee" }
+          python scripts/patch_webview_startup.py
+          if ($LASTEXITCODE -ne 0) { throw "Impossible de corriger le cycle d'initialisation WebView2" }
+          python -m PyInstaller --clean --noconfirm --workpath build/patched --distpath dist/patched All_Media_Download-Portable.spec
+          if ($LASTEXITCODE -ne 0) { throw "Compilation WinForms Shown echouee" }
+          python scripts/patch_webview_startup.py --check-only
+          if ($LASTEXITCODE -ne 0) { throw "Verification du correctif WebView2 echouee" }
+          foreach ($path in @("dist/baseline/All_Media_Download.exe", "dist/patched/All_Media_Download.exe")) {
+            if (-not (Test-Path $path)) { throw "Exe de diagnostic manquant: $path" }
           }
-          if (Test-Path "$folder/_internal") { throw "Ancien _internal inattendu" }
-          Write-Output "DIAG EXE persistant : $runtime"
+          Write-Output "DIAG compare : meme EXE monofichier avec initialisation WinForms avant/apres Form.Shown"
 
       - name: Mesurer le premier lancement froid et les relances
         shell: pwsh
@@ -56,8 +56,8 @@ jobs:
           }
           "@
 
-          $oneFile = (Resolve-Path "dist/onefile/All_Media_Download.exe").Path
-          $oneDir = (Resolve-Path "dist/onedir/All_Media_Download/All_Media_Download.exe").Path
+          $oneFile = (Resolve-Path "dist/baseline/All_Media_Download.exe").Path
+          $oneDir = (Resolve-Path "dist/patched/All_Media_Download.exe").Path
           $results = New-Object System.Collections.Generic.List[object]
           $profilesRoot = Join-Path $env:LOCALAPPDATA "AllMediaDownload"
 
@@ -145,21 +145,8 @@ jobs:
 
           # Each series performs genuine first (empty WebView2 profile)
           # and later starts; a watchdog restart counts as a failure.
-          for ($i=1; $i -le 5; $i++) { Probe "monofichier" $oneFile $i ($i -eq 1 -or $i -eq 4) }
-          for ($i=1; $i -le 8; $i++) { Probe "runtime-persistant" $oneDir $i ($i -eq 1 -or $i -eq 4 -or $i -eq 7) }
-
-          # Reproduce Mark-of-the-Web propagation from a browser-downloaded ZIP.
-          $markedDir = Join-Path $env:RUNNER_TEMP "AllDownloadMarkedRuntime"
-          Copy-Item -Path "dist/onedir/All_Media_Download" -Destination $markedDir -Recurse -Force
-          $markedExe = Join-Path $markedDir "All_Media_Download.exe"
-          foreach ($f in (Get-ChildItem -Path $markedDir -File -Recurse -Include "*.exe","*.dll")) {
-            try {
-              Set-Content -Path $f.FullName -Stream Zone.Identifier -Value "[ZoneTransfer]`r`nZoneId=3" -ErrorAction Stop
-            } catch {
-              Write-Output ("Impossible de marquer pour le test : " + $f.FullName)
-            }
-          }
-          for ($i=1; $i -le 3; $i++) { Probe "runtime-marque-web" $markedExe $i ($i -eq 1) }
+          for ($i=1; $i -le 5; $i++) { Probe "WebView2-constructeur" $oneFile $i ($i -eq 1 -or $i -eq 4) }
+          for ($i=1; $i -le 9; $i++) { Probe "WebView2-Form-Shown" $oneDir $i ($i -eq 1 -or $i -eq 4 -or $i -eq 7) }
 
           $report = Join-Path $env:GITHUB_WORKSPACE "webview-startup-comparison.json"
           $results | ConvertTo-Json -Depth 3 | Set-Content -Path $report -Encoding UTF8
