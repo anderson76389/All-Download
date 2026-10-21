@@ -45,7 +45,7 @@ jobs:
       - name: Executer un vrai yt-dlp Windows x64 et confirmer sa version
         shell: pwsh
         run: |
-          python scripts/verify_ytdlp_runtime.py
+          python -m scripts.verify_ytdlp_runtime
           if ($LASTEXITCODE -ne 0) {
             throw "Un vrai yt-dlp.exe valide ne peut pas s'executer sur Windows : aucune Release autorisee"
           }
