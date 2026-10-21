@@ -50,18 +50,22 @@ class DownloadFolderTests(unittest.TestCase):
         ):
             self.assertEqual(yt_app.choose_initial_download_folder({}), self.root)
 
-    def test_installed_version_saves_downloads_outside_application_folder(self):
-        # Les six dossiers presents a cote de l'EXE installe ne doivent pas
-        # recevoir les medias : le desinstalleur pourrait les supprimer.
+    def test_installed_version_saves_downloads_next_to_application(self):
         yt_app.ensure_media_directories(self.root)
         with open(os.path.join(self.root, ".all-download-installed"), "w", encoding="utf-8") as f:
             f.write("installed\n")
         with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
             yt_app.sys, "executable", os.path.join(self.root, "All_Media_Download.exe")
         ):
-            self.assertEqual(
-                yt_app.choose_initial_download_folder({}), yt_app.DEFAULT_DOWNLOAD_BASE
-            )
+            self.assertEqual(yt_app.choose_initial_download_folder({}), self.root)
+
+    def test_installed_version_falls_back_when_application_is_read_only(self):
+        with open(os.path.join(self.root, ".all-download-installed"), "w", encoding="utf-8") as f:
+            f.write("installed")
+        with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
+            yt_app.sys, "executable", os.path.join(self.root, "All_Media_Download.exe")
+        ), patch.object(yt_app, "portable_root_is_writable", return_value=False):
+            self.assertEqual(yt_app.choose_initial_download_folder({}), yt_app.DEFAULT_DOWNLOAD_BASE)
 
     def test_custom_destination_is_preserved(self):
         yt_app.ensure_media_directories(self.root)
@@ -147,6 +151,9 @@ class DownloadFolderTests(unittest.TestCase):
         old_dir = os.path.join(self.root, "MediaDownloader")
         new_dir = os.path.join(self.root, "All-Download-Medias")
         config_file = os.path.join(self.root, "config.json")
+        os.makedirs(os.path.join(self.root, "installed"), exist_ok=True)
+        with open(os.path.join(self.root, "installed", ".all-download-installed"), "w") as marker:
+            marker.write("installed")
         original = {
             "download_folder": old_dir,
             "settings": {"theme": "dark_pure", "video_format": "MKV"},
@@ -163,10 +170,11 @@ class DownloadFolderTests(unittest.TestCase):
             yt_app.sys, "executable", os.path.join(self.root, "installed", "All_Media_Download.exe")
         ):
             api = yt_app.DownloaderAPI()
-            self.assertEqual(api.download_folder, new_dir)
+            installed_dir = os.path.join(self.root, "installed")
+            self.assertEqual(api.download_folder, installed_dir)
             with open(config_file, encoding="utf-8") as f:
                 migrated = json.load(f)
-            self.assertEqual(migrated["download_folder"], new_dir)
+            self.assertEqual(migrated["download_folder"], installed_dir)
             self.assertEqual(migrated["settings"], original["settings"])
             self.assertEqual(migrated["cookie_browser"], "firefox")
 
@@ -222,7 +230,7 @@ class DownloadFolderTests(unittest.TestCase):
         self.assertFalse(relative["success"])
         self.assertEqual(api.download_folder, self.root)
 
-    def test_two_editions_have_separate_automatic_destinations(self):
+    def test_two_editions_have_separate_local_automatic_destinations(self):
         portable = os.path.join(self.root, "portable")
         classic = os.path.join(self.root, "installed")
         destination = os.path.join(self.root, "All-Download-Medias")
@@ -238,7 +246,7 @@ class DownloadFolderTests(unittest.TestCase):
         with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
             yt_app, "DEFAULT_DOWNLOAD_BASE", destination
         ), patch.object(yt_app.sys, "executable", os.path.join(classic, "All_Media_Download.exe")):
-            self.assertEqual(yt_app.choose_initial_download_folder(saved_auto), destination)
+            self.assertEqual(yt_app.choose_initial_download_folder(saved_auto), classic)
 
     def test_browse_folder_uses_native_windows_dialog_and_cancel_preserves_folder(self):
         api = self.create_api()
