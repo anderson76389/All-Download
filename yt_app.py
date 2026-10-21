@@ -3702,6 +3702,7 @@ if __name__ == '__main__':
         else:
             try:
                 webview.start(
+                    gui="qt",
                     debug=False,
                     private_mode=True,
                     storage_path=get_gui_webview_storage_path(),
