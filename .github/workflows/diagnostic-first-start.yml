@@ -1,0 +1,178 @@
+name: Diagnostic du premier lancement WebView2 (sans publication)
+
+on:
+  push:
+    branches: [diagnostic-webview-first-start]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Sources
+        uses: actions/checkout@v4
+      - name: Python x64
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Dependencies
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          python -m pip install pywebview==6.2.1 pythonnet==3.2.1 pyinstaller==6.22.3 "psutil>=6.1,<8"
+      - name: Tests Python
+        run: python -m unittest discover -s tests -q
+      - name: Compiler les deux moteurs sans changement d'application
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          python -m PyInstaller --clean --noconfirm --workpath build/onefile --distpath dist/onefile All_Media_Download-Portable.spec
+          if ($LASTEXITCODE -ne 0) { throw "Build monofichier invalide" }
+          python -m PyInstaller --clean --noconfirm --workpath build/onedir --distpath dist/onedir All_Media_Download-Stable.spec
+          if ($LASTEXITCODE -ne 0) { throw "Build en dossier invalide" }
+          $folder = "dist/onedir/All_Media_Download"
+          $runtime = "$folder/Donnees/Runtime"
+          if (-not (Test-Path "$runtime/python312.dll")) {
+            Get-ChildItem $folder -Recurse -Filter python312.dll | Select-Object -ExpandProperty FullName
+            throw "L'EXE en dossier n'utilise pas le runtime permanent prevu"
+          }
+          if (Test-Path "$folder/_internal") { throw "Ancien _internal inattendu" }
+          Write-Output "DIAG EXE persistant : $runtime"
+
+      - name: Mesurer le premier lancement froid et les relances
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Add-Type @"
+          using System;
+          using System.Runtime.InteropServices;
+          public static class AllDownloadDiag {
+            [DllImport("user32.dll", SetLastError=true)]
+            public static extern IntPtr SendMessageTimeout(IntPtr wnd, uint msg, IntPtr w, IntPtr l, uint flags, uint timeout, out IntPtr result);
+          }
+          "@
+
+          $oneFile = (Resolve-Path "dist/onefile/All_Media_Download.exe").Path
+          $oneDir = (Resolve-Path "dist/onedir/All_Media_Download/All_Media_Download.exe").Path
+          $results = New-Object System.Collections.Generic.List[object]
+          $profilesRoot = Join-Path $env:LOCALAPPDATA "AllMediaDownload"
+
+          function Clean-ChildProcesses {
+            $apps = @(Get-Process -Name "All_Media_Download" -ErrorAction SilentlyContinue)
+            foreach ($p in $apps) {
+              try { [void]$p.CloseMainWindow() } catch {}
+            }
+            Start-Sleep -Seconds 2
+            @(Get-Process -Name "All_Media_Download" -ErrorAction SilentlyContinue) |
+              Stop-Process -Force -ErrorAction SilentlyContinue
+            # Dedicated CI runner; these Edge children belong to this test.
+            @(Get-Process -Name "msedgewebview2" -ErrorAction SilentlyContinue) |
+              Stop-Process -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 2
+          }
+
+          function Prepare-TestData([string]$exe) {
+            $data = Join-Path (Split-Path $exe -Parent) "Donnees"
+            $bin = Join-Path $data "bin"
+            New-Item -ItemType Directory -Force -Path $bin | Out-Null
+            foreach ($tool in @("yt-dlp.exe", "ffmpeg.exe", "ffprobe.exe")) {
+              [IO.File]::WriteAllBytes((Join-Path $bin $tool), [byte[]]@(77,90))
+            }
+            return $data
+          }
+
+          function Probe([string]$label, [string]$exe, [int]$attempt, [bool]$cold) {
+            Clean-ChildProcesses
+            if ($cold -and (Test-Path $profilesRoot)) {
+              Remove-Item -Path $profilesRoot -Force -Recurse -ErrorAction SilentlyContinue
+            }
+            $data = Prepare-TestData $exe
+            $log = Join-Path $data "startup_log.txt"
+            if (Test-Path $log) { Remove-Item $log -Force -ErrorAction SilentlyContinue }
+            $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+            $proc = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe -Parent) -PassThru
+            $success = $false
+            $responsive = $false
+            $restarted = $false
+            $reason = ""
+            $guiPid = 0
+            try {
+              for ($tick=0; $tick -lt 140; $tick++) {
+                Start-Sleep -Milliseconds 500
+                if (Test-Path $log) {
+                  $logData = @(Get-Content $log -Tail 70)
+                  $restarted = @($logData | Where-Object { $_ -match "nouvelle tentative automatique unique" }).Count -gt 0
+                  $loaded = @($logData | Where-Object { $_ -match "PID=(\d+) Interface HTML chargee" })
+                  if ($loaded.Count -gt 0) {
+                    $match = [regex]::Match($loaded[-1], "PID=(\d+) Interface HTML chargee")
+                    $guiPid = [int]$match.Groups[1].Value
+                    break
+                  }
+                }
+              }
+              if ($guiPid -eq 0) {
+                $reason = "HTML non charge apres 70s"
+              } else {
+                $gui = Get-Process -Id $guiPid -ErrorAction SilentlyContinue
+                if ($gui -and $gui.MainWindowHandle -ne [IntPtr]::Zero) {
+                  $out = [IntPtr]::Zero
+                  $response = [AllDownloadDiag]::SendMessageTimeout($gui.MainWindowHandle,0,[IntPtr]::Zero,[IntPtr]::Zero,2,3000,[ref]$out)
+                  $responsive = $response -ne [IntPtr]::Zero
+                }
+                $success = $responsive -and (-not $restarted)
+                $reason = if ($restarted) { "Relance automatique necessaire" } elseif (-not $responsive) { "Fenetre non reactive" } else { "HTML charge, WM_NULL OK" }
+              }
+            } finally {
+              $stopwatch.Stop()
+              $result = [pscustomobject]@{
+                type=$label; attempt=$attempt; cold=$cold; seconds=[math]::Round($stopwatch.Elapsed.TotalSeconds,1);
+                no_recovery=$success; responsive=$responsive; retry=$restarted; note=$reason
+              }
+              $results.Add($result)
+              Write-Output ("DIAG RESULT: " + ($result | ConvertTo-Json -Compress))
+              if (-not $success) {
+                if (Test-Path $log) { Get-Content $log -Tail 18 }
+                $crash = Join-Path $data "crash_log.txt"
+                if (Test-Path $crash) { Get-Content $crash -Tail 12 }
+              }
+              Clean-ChildProcesses
+            }
+          }
+
+          # Each series performs genuine first (empty WebView2 profile)
+          # and later starts; a watchdog restart counts as a failure.
+          for ($i=1; $i -le 5; $i++) { Probe "monofichier" $oneFile $i ($i -eq 1 -or $i -eq 4) }
+          for ($i=1; $i -le 8; $i++) { Probe "runtime-persistant" $oneDir $i ($i -eq 1 -or $i -eq 4 -or $i -eq 7) }
+
+          # Reproduce Mark-of-the-Web propagation from a browser-downloaded ZIP.
+          $markedDir = Join-Path $env:RUNNER_TEMP "AllDownloadMarkedRuntime"
+          Copy-Item -Path "dist/onedir/All_Media_Download" -Destination $markedDir -Recurse -Force
+          $markedExe = Join-Path $markedDir "All_Media_Download.exe"
+          foreach ($f in (Get-ChildItem -Path $markedDir -File -Recurse -Include "*.exe","*.dll")) {
+            try {
+              Set-Content -Path $f.FullName -Stream Zone.Identifier -Value "[ZoneTransfer]`r`nZoneId=3" -ErrorAction Stop
+            } catch {
+              Write-Output ("Impossible de marquer pour le test : " + $f.FullName)
+            }
+          }
+          for ($i=1; $i -le 3; $i++) { Probe "runtime-marque-web" $markedExe $i ($i -eq 1) }
+
+          $report = Join-Path $env:GITHUB_WORKSPACE "webview-startup-comparison.json"
+          $results | ConvertTo-Json -Depth 3 | Set-Content -Path $report -Encoding UTF8
+          $results | Format-Table -AutoSize | Out-String | Write-Output
+          $summary = "## First-start comparison (no watchdog retry allowed)"
+          $summary | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          $results | ConvertTo-Json -Depth 3 | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          Write-Output ("DIAG FINISHED. Comparisons: " + $results.Count)
+
+      - name: Sauvegarder le rapport A-B
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: webview-startup-comparison
+          path: webview-startup-comparison.json
+          if-no-files-found: warn
