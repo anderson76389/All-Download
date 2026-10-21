@@ -13,8 +13,8 @@ public static class StartupProbe {
 }
 "@
 $exes = @{
-  onefile = Join-Path $workspace "dist/onefile/All_Media_Download.exe"
-  onedir = Join-Path $workspace "dist/onedir/All_Media_Download/All_Media_Download.exe"
+  onefile = (Join-Path $workspace "dist/onefile/All_Media_Download.exe")
+  onedir = (Join-Path $workspace "dist/onedir/All_Media_Download/All_Media_Download.exe")
 }
 foreach ($mode in @("onefile","onedir")) {
   if (-not (Test-Path $exes[$mode] -PathType Leaf)) { throw "EXE $mode absent" }
