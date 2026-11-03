@@ -35,6 +35,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node tests/test_ui_responsive.cjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Télécharger et exécuter le vrai moteur Deno Windows x64
+        run: python -m scripts.verify_deno_runtime
       - name: Construire une version Portable de prévisualisation
         shell: pwsh
         run: |
