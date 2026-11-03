@@ -44,7 +44,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python scripts/patch_webview_startup.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python -m PyInstaller --clean --noconfirm --workpath build/twitch-preview --distpath preview-build All_Media_Download-Portable.spec
+          python -m PyInstaller --clean --noconfirm --workpath build/youtube-twitch-preview --distpath preview-build All_Media_Download-Portable.spec
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $root = "preview/All-Download-Preview"
           New-Item -ItemType Directory -Force -Path $root | Out-Null
@@ -57,6 +57,6 @@ jobs:
       - name: Déposer le programme de test sans publier de Release
         uses: actions/upload-artifact@v4
         with:
-          name: All-Download-Twitch-Preview-Windows
+          name: All-Download-YouTube-Twitch-Preview-Windows
           path: preview/All-Download-Preview/
           retention-days: 7
