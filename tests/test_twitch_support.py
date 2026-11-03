@@ -108,7 +108,7 @@ class TwitchDownloadTests(unittest.TestCase):
             return process
         with patch.object(yt_app, "ensure_ytdlp_ready", return_value=True), patch.object(
             yt_app.threading, "Thread", ImmediateThread
-        ), patch.object(yt_app.subprocess, "Popen", side_effect=popen):
+        ), patch.object(yt_app, "get_youtube_js_args", return_value=[]), patch.object(yt_app.subprocess, "Popen", side_effect=popen):
             self.api.start_downloads([item])
         return commands[0]
 
