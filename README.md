@@ -59,7 +59,7 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 
 **Important :** la version Classique actuelle utilise le même moteur autonome que la Portable. Elle **ne repose plus sur l'ancien dossier `_internal`** qui pouvait provoquer l'erreur `Python.Runtime.dll` sur certains PC.
 
-**Configuration requise :** Windows 10/11 **x64 (64 bits)** et WebView2. La compilation utilise Python et un EXE x64 ; **x86 (32 bits) n'est pas pris en charge**. Une connexion Internet est nécessaire pour récupérer les contenus et, au besoin, yt-dlp et FFmpeg au premier lancement.
+**Configuration requise :** Windows 10/11 **x64 (64 bits)** et WebView2. La compilation utilise Python et un EXE x64 ; **x86 (32 bits) n'est pas pris en charge**. Une connexion Internet est nécessaire pour récupérer les contenus et, au besoin, yt-dlp et FFmpeg au premier lancement. **Pour YouTube**, All-Download installe automatiquement le moteur JavaScript Deno x64 à la première analyse d'un lien YouTube, dans `Donnees/bin/`, sans l'ajouter au PATH de Windows.
 
 ---
 
@@ -86,7 +86,7 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 ├── 📦 AUTRES/        Autres médias et plateformes
 └── 📁 Donnees/       Données personnelles des deux éditions
     ├── config.json   Réglages du logiciel
-    ├── bin/          yt-dlp, FFmpeg et ffprobe
+    ├── bin/          yt-dlp, FFmpeg, ffprobe et Deno (pour YouTube)
     ├── startup_log.txt
     └── crash_log.txt
 ```
@@ -160,6 +160,7 @@ Le fichier `dist/All_Media_Download.exe` déjà présent dans le dépôt est une
 - **Crash CLR / pythonnet au démarrage :** All-Download tente automatiquement **une seule relance propre** lors de l'erreur connue `Python.Runtime.Loader.Initialize`. Si celle-ci échoue aussi, la boîte d'erreur et le journal restent disponibles.
 - **Problème de démarrage :** ouvrez `Donnees/crash_log.txt` ou `Donnees/startup_log.txt` dans le dossier de l'application et partagez la dernière erreur dans une [issue](https://github.com/anderson76389/All-Download/issues), après avoir masqué les données personnelles. Si le dossier de l'application n'est pas modifiable, les journaux peuvent se trouver dans `%LOCALAPPDATA%\AllMediaDownload`.
 - **Média non disponible :** contrôlez l'URL, les autorisations, les cookies éventuels et la compatibilité yt-dlp.
+- **YouTube (vidéos, Shorts, chaînes, playlists, musique) :** le moteur JavaScript **Deno 2.3+** est téléchargé automatiquement depuis sa Release officielle à la première analyse d'un lien YouTube et utilisé via `--js-runtimes deno:<chemin local>`. L'EXE officiel `yt-dlp.exe` intègre déjà `yt-dlp-ejs`. L'installation vérifie la structure PE x64 et l'exécution de `deno --version`, puis ne remplace l'exécutable qu'après validation. Si Deno ne peut pas être récupéré, yt-dlp conserve son comportement habituel, mais certains formats YouTube peuvent manquer. En cas de difficulté, vérifiez l'accès à GitHub et utilisez le bouton **Vérifier et mettre à jour yt-dlp** dans **Paramètres → Réseau**. Aucun moteur JavaScript n'est ajouté aux commandes Twitch et autres plateformes.
 - **VOD Twitch impossible à télécharger :** dans **Paramètres → Réseau**, utilisez **Vérifier et mettre à jour yt-dlp**. Essayez ensuite une VOD publique accessible dans votre navigateur. Pour une VOD réservée, configurez les cookies dans **Authentification** avec un navigateur autorisé à lire la vidéo. Si le téléchargement échoue, ouvrez **Journaux** : la dernière erreur de yt-dlp est maintenant affichée. Une erreur 403 ne signifie pas toujours que les cookies sont manquants.
 - **Mises à jour du moteur :** elles sont volontaires et séparées de la mise à jour d'All-Download. Le binaire officiel est téléchargé dans un fichier temporaire et exécuté avec `--version` avant de remplacer l'ancien. En cas d'échec, l'ancien est conservé. Aucune mise à jour n'est lancée pendant un téléchargement en cours.
 - **Conversion impossible :** vérifiez FFmpeg, l'espace disque et le format source.
