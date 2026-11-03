@@ -363,6 +363,25 @@ def normalize_media_url(url):
 
     return url
 
+
+def is_twitch_vod_url(url):
+    """Identifier une VOD Twitch, sans modifier les clips ni les lives."""
+    try:
+        parsed = urllib.parse.urlparse(str(url))
+        host = (parsed.hostname or "").lower()
+        if host not in ("twitch.tv", "www.twitch.tv", "m.twitch.tv"):
+            return False
+        path = parsed.path.rstrip("/")
+        return bool(
+            re.fullmatch(r"/videos/\d+", path, flags=re.IGNORECASE)
+            or re.fullmatch(r"/[^/]+/v/\d+", path, flags=re.IGNORECASE)
+            or (path.endswith("/schedule")
+                and re.search(r"(?:^|&)vodID=\d+(?:&|$)", parsed.query, re.IGNORECASE))
+        )
+    except (ValueError, TypeError):
+        return False
+
+
 # Extracteur universel Pinterest (Évite le blocage RGPD 'Pinterest - France')
 def extract_pinterest_direct(url):
     clean_url = normalize_media_url(url)
@@ -1597,6 +1616,11 @@ HTML_PAGE = """<!DOCTYPE html>
           <div class="setting-label">Arguments d'extracteur :</div>
           <textarea class="setting-textarea" id="setExtractorArgs" placeholder="youtube:player_js_variant=main"></textarea>
         </div>
+        <div class="setting-field">
+          <div class="setting-label">Moteur de téléchargement yt-dlp :</div>
+          <button type="button" id="updateYtdlpBtn" class="btn-add" style="border-radius: 8px; padding: 9px 16px;" onclick="updateYtdlpSafe()">Vérifier et mettre à jour yt-dlp</button>
+          <div class="setting-subtext" id="updateYtdlpStatus">La mise à jour est manuelle : aucune modification du moteur pendant vos téléchargements.</div>
+        </div>
       </div>
     </div>
   </div>
@@ -2135,6 +2159,24 @@ HTML_PAGE = """<!DOCTYPE html>
       switchSettingsTab('telech');
       setDownloadFolderError("Impossible d'enregistrer les paramètres.");
     });
+  }
+
+  function updateYtdlpSafe() {
+    const button = document.getElementById('updateYtdlpBtn');
+    const status = document.getElementById('updateYtdlpStatus');
+    if (!button || button.disabled) return;
+    button.disabled = true;
+    status.textContent = 'Vérification du moteur officiel en cours...';
+    callApi('update_ytdlp').then(result => {
+      const message = result && result.success
+        ? (result.updated ? 'yt-dlp mis à jour : ' : 'yt-dlp déjà à jour : ') + result.version
+        : (result && result.error ? result.error : 'Mise à jour impossible.');
+      status.textContent = message;
+      showAppToast(message);
+    }).catch(() => {
+      status.textContent = 'Mise à jour impossible. Moteur actuel conservé.';
+      showAppToast(status.textContent);
+    }).finally(() => { button.disabled = false; });
   }
 
   function showAuthView() {
@@ -2927,6 +2969,59 @@ class DownloaderAPI:
             return ["--cookies-from-browser", c_browser]
         return []
 
+    def update_ytdlp(self):
+        """Mise à jour volontaire, vérifiée, sans remplacer un binaire fonctionnel en cas d'échec."""
+        if getattr(self, "_active_download_process", None) is not None:
+            return {"success": False, "error": "Terminez le téléchargement en cours avant la mise à jour."}
+        with _BINARIES_LOCK:
+            if getattr(self, "_active_download_process", None) is not None:
+                return {"success": False, "error": "Un téléchargement est en cours."}
+            candidate = YTDLP_PATH + ".update.exe"
+            previous_version = ""
+            try:
+                if is_valid_windows_executable(YTDLP_PATH):
+                    try:
+                        previous = subprocess.run(
+                            [YTDLP_PATH, "--version"], capture_output=True,
+                            text=True, timeout=30,
+                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)
+                        )
+                        if previous.returncode == 0:
+                            previous_version = previous.stdout.strip()
+                    except (OSError, subprocess.SubprocessError):
+                        pass
+
+                if not safe_download_file(YTDLP_URL, candidate):
+                    return {"success": False, "error": "Téléchargement de yt-dlp impossible. Ancien moteur conservé."}
+
+                checked = subprocess.run(
+                    [candidate, "--version"], capture_output=True,
+                    text=True, timeout=30,
+                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)
+                )
+                new_version = checked.stdout.strip()
+                if checked.returncode != 0 or not re.fullmatch(
+                    r"\d{4}\.\d{2}\.\d{2}(?:[.\w-]*)?", new_version
+                ):
+                    return {"success": False, "error": "La version téléchargée ne s'exécute pas correctement. Ancien moteur conservé."}
+                if previous_version == new_version:
+                    return {"success": True, "updated": False, "version": new_version}
+                old_date = re.match(r"^(\d{4})\.(\d{2})\.(\d{2})", previous_version)
+                new_date = re.match(r"^(\d{4})\.(\d{2})\.(\d{2})", new_version)
+                if old_date and new_date and tuple(map(int, new_date.groups())) < tuple(map(int, old_date.groups())):
+                    return {"success": False, "error": "La version proposée est plus ancienne. Moteur actuel conservé."}
+                os.replace(candidate, YTDLP_PATH)
+                return {"success": True, "updated": True, "version": new_version}
+            except (OSError, subprocess.SubprocessError) as exc:
+                _log_binary_setup_error(exc)
+                return {"success": False, "error": "Mise à jour impossible. Ancien moteur conservé : " + str(exc)}
+            finally:
+                if os.path.isfile(candidate):
+                    try:
+                        os.remove(candidate)
+                    except OSError:
+                        pass
+
     def open_folder(self):
         try:
             ensure_media_directories(self.download_folder)
@@ -3100,7 +3195,7 @@ class DownloaderAPI:
                 errors='replace',
                 creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
             )
-            stdout, stderr = proc.communicate(timeout=60)
+            stdout, stderr = proc.communicate(timeout=120 if is_twitch_vod_url(url) else 60)
             
             if proc.returncode != 0:
                 err_lower = stderr.lower()
@@ -3112,7 +3207,12 @@ class DownloaderAPI:
                     err_clean = "Contenu privé : Accès réservé. Connectez vos cookies pour y accéder."
                     is_restricted = True
                 elif "403" in stderr:
-                    err_clean = "Accès refusé (Erreur 403) : Authentification ou cookies requis."
+                    err_clean = (
+                        "VOD Twitch : erreur 403. Vérifiez que la VOD est lisible dans votre "
+                        "navigateur, votre accès à la chaîne, vos cookies et la version de yt-dlp."
+                        if is_twitch_vod_url(url) else
+                        "Accès refusé (Erreur 403) : vérifiez l'accès au contenu, les cookies et votre connexion."
+                    )
                     is_restricted = True
                 elif "could not copy" in err_lower or "database is locked" in err_lower:
                     err_clean = "Base de données navigateur verrouillée : Fermez complètement votre navigateur pour lire les cookies."
@@ -3289,6 +3389,11 @@ class DownloaderAPI:
                     "-o", f"{sanitize_filename(item.get('title', 'Media'))}.%(ext)s" if "v.pinimg.com" in url else "%(title)s.%(ext)s"
                 ] + self._get_cookie_args()
 
+                if is_twitch_vod_url(url):
+                    # Les VOD Twitch sont des flux HLS longs, souvent déjà multiplexés.
+                    # Les autres plateformes gardent exactement leurs paramètres.
+                    cmd.extend(["--fragment-retries", "15", "--retry-sleep", "fragment:exp=1:12"])
+
                 if "twitter.com" in url or "x.com" in url:
                     cmd.extend(["--extractor-args", "twitter:api=syndication"])
 
@@ -3396,18 +3501,22 @@ class DownloaderAPI:
 
                     target_ext = settings.get("video_format", "MP4").lower()
 
+                    twitch_vod = is_twitch_vod_url(url)
+                    default_format = "best/bestvideo+bestaudio" if twitch_vod else "bestvideo+bestaudio/best"
                     if quality == "Meilleure qualité (Auto)" or not quality:
-                        cmd.extend(["-f", "bestvideo+bestaudio/best"])
+                        cmd.extend(["-f", default_format])
                     else:
                         h_match = re.search(r'(\d+)p?', str(quality))
                         if h_match:
                             h = h_match.group(1)
-                            cmd.extend([
-                                "-f", f"bestvideo[height<=?{h}]+bestaudio/best[height<=?{h}]/best",
-                                "--format-sort", f"res:{h},fps"
-                            ])
+                            format_rule = (
+                                f"best[height<=?{h}]/bestvideo[height<=?{h}]+bestaudio/best"
+                                if twitch_vod else
+                                f"bestvideo[height<=?{h}]+bestaudio/best[height<=?{h}]/best"
+                            )
+                            cmd.extend(["-f", format_rule, "--format-sort", f"res:{h},fps"])
                         else:
-                            cmd.extend(["-f", "bestvideo+bestaudio/best"])
+                            cmd.extend(["-f", default_format])
                     
                     if not settings.get("video_origin_stream", False):
                         cmd.extend(["--merge-output-format", target_ext])
@@ -3431,8 +3540,13 @@ class DownloaderAPI:
 
                 last_pct = -1
                 last_time = 0
+                last_errors = []
                 for line in iter(proc.stdout.readline, ""):
                     clean = line.strip()
+                    if clean.startswith("ERROR:"):
+                        # Conserver seulement les dernières erreurs utiles, sans log géant.
+                        last_errors.append(clean)
+                        last_errors = last_errors[-5:]
                     if "[download]" in clean and "%" in clean:
                         m = re.search(r"(\d+\.\d+)%", clean)
                         if m:
@@ -3449,6 +3563,32 @@ class DownloaderAPI:
 
                 proc.communicate()
                 self._active_download_process = None
+
+                if not self.is_cancelled and getattr(proc, "returncode", None) != 0:
+                    detail = last_errors[-1] if last_errors else (
+                        "yt-dlp s'est arrêté avec le code " + str(getattr(proc, "returncode", "?"))
+                    )
+                    # Eviter d'afficher des clés de session figurant dans une URL d'erreur.
+                    detail = re.sub(
+                        r"(?i)((?:access_token|oauth|token|sig|signature|key)=)[^&\s]+",
+                        r"\1[masqué]", detail
+                    )
+                    hint = (
+                        " Vérifiez que la VOD est toujours accessible dans Twitch, "
+                        "mettez à jour yt-dlp et utilisez vos cookies si nécessaire."
+                        if is_twitch_vod_url(url) else ""
+                    )
+                    msg = "Échec [" + str(idx) + "/" + str(total) + "] : " + detail + hint
+                    if self._window:
+                        try:
+                            self._window.evaluate_js(
+                                f"updateDownloadProgress(0, {json.dumps(msg)})"
+                            )
+                            self._window.evaluate_js(
+                                f"showAppToast({json.dumps(msg[:240])})"
+                            )
+                        except Exception:
+                            pass
 
                 if not self.is_cancelled and getattr(proc, "returncode", None) == 0:
                     completed += 1
