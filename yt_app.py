@@ -68,6 +68,9 @@ PORTABLE_DATA_LOCAL = bool(APP_DATA_LOCAL and get_portable_root())
 APP_DIR = (os.path.join(APP_ROOT, "Donnees")
            if APP_DATA_LOCAL else LEGACY_APP_DIR)
 BIN_DIR = os.path.join(APP_DIR, "bin")
+CACHE_DIR = os.path.join(APP_DIR, "cache")
+YTDLP_CACHE_DIR = os.path.join(CACHE_DIR, "yt-dlp")
+DENO_CACHE_DIR = os.path.join(CACHE_DIR, "deno")
 CONFIG_FILE = os.path.join(APP_DIR, "config.json")
 HTML_FILE = os.path.join(APP_DIR, "index.html")
 CRASH_LOG = os.path.join(APP_DIR, "crash_log.txt")
@@ -75,6 +78,21 @@ STARTUP_LOG = os.path.join(APP_DIR, "startup_log.txt")
 
 os.makedirs(APP_DIR, exist_ok=True)
 os.makedirs(BIN_DIR, exist_ok=True)
+
+
+def get_media_runtime_env():
+    """Isoler les caches des moteurs dans Donnees, sans modifier Windows."""
+    env = os.environ.copy()
+    os.makedirs(YTDLP_CACHE_DIR, exist_ok=True)
+    os.makedirs(DENO_CACHE_DIR, exist_ok=True)
+    env["DENO_DIR"] = DENO_CACHE_DIR
+    env["XDG_CACHE_HOME"] = CACHE_DIR
+    return env
+
+
+def get_ytdlp_local_args():
+    """Ignorer la configuration globale Windows et garder le cache yt-dlp local."""
+    return ["--ignore-config", "--cache-dir", YTDLP_CACHE_DIR]
 
 
 def import_legacy_portable_settings():
@@ -3173,6 +3191,7 @@ class DownloaderAPI:
 
         cmd = [
             YTDLP_PATH, "-J",
+            *get_ytdlp_local_args(),
             "--no-warnings",
             "--force-ipv4",
             "--socket-timeout", "15",
@@ -3212,7 +3231,8 @@ class DownloaderAPI:
                 universal_newlines=True,
                 encoding='utf-8',
                 errors='replace',
-                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
+                env=get_media_runtime_env()
             )
             stdout, stderr = proc.communicate(timeout=120 if is_twitch_vod_url(url) else 60)
             
@@ -3331,6 +3351,7 @@ class DownloaderAPI:
         def _worker():
             total = len(items)
             completed = 0
+            failures = []
             if any(not item.get("is_direct_download") for item in items):
                 if not ensure_ytdlp_ready():
                     error_text = ("yt-dlp est absent ou invalide. "
@@ -3399,6 +3420,7 @@ class DownloaderAPI:
                 # Téléchargement universel via yt-dlp
                 cmd = [
                     YTDLP_PATH,
+                    *get_ytdlp_local_args(),
                     "--ffmpeg-location", BIN_DIR,
                     "--windows-filenames",
                     "--newline",
@@ -3551,7 +3573,8 @@ class DownloaderAPI:
                     encoding='utf-8',
                     errors='replace',
                     bufsize=1,
-                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
+                    env=get_media_runtime_env()
                 )
 
                 self._active_download_process = proc
@@ -3599,6 +3622,7 @@ class DownloaderAPI:
                         if is_twitch_vod_url(url) else ""
                     )
                     msg = "Échec [" + str(idx) + "/" + str(total) + "] : " + detail + hint
+                    failures.append(msg)
                     if self._window:
                         try:
                             self._window.evaluate_js(
@@ -3625,9 +3649,15 @@ class DownloaderAPI:
                 if self._window:
                     if self.is_cancelled:
                         status = f"Annulé – {completed}/{total} élément(s) téléchargé(s)."
+                    elif failures:
+                        # Garder la cause visible plutôt que masquer « 403 » sous un succès fictif.
+                        status = (
+                            f"Échec ({completed}/{total} téléchargé(s)) – "
+                            + failures[-1]
+                        )
                     else:
                         status = f"Traitement terminé – {completed}/{total} élément(s) téléchargé(s)."
-                    self._window.evaluate_js(f"updateDownloadProgress(100, {json.dumps(status)})")
+                    self._window.evaluate_js(f"updateDownloadProgress({100 if not failures else 0}, {json.dumps(status)})")
                     if settings.get("notify") in ("finish", "always"):
                         self._window.evaluate_js(f"showAppToast({json.dumps(status)})")
             except Exception:
@@ -3676,7 +3706,8 @@ def is_supported_deno(executable):
     try:
         result = subprocess.run(
             [executable, "--version"], capture_output=True, text=True,
-            timeout=20, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)
+            timeout=20, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            env=get_media_runtime_env()
         )
         if result.returncode != 0:
             return False
