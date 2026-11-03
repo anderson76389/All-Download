@@ -174,9 +174,11 @@ except Exception:
 
 YTDLP_PATH = os.path.join(BIN_DIR, "yt-dlp.exe")
 FFMPEG_PATH = os.path.join(BIN_DIR, "ffmpeg.exe")
+DENO_PATH = os.path.join(BIN_DIR, "deno.exe")
 
 YTDLP_URL = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
 FFMPEG_URL = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
+DENO_URL = "https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip"
 
 # Un ancien workflow avait malencontreusement publie des fichiers MZ de
 # DEUX octets a la place des vrais EXE. Ne plus considerer "existe et non
@@ -362,6 +364,19 @@ def normalize_media_url(url):
             return f"https://www.pinterest.com/pin/{pin_id}/"
 
     return url
+
+
+def is_youtube_url(url):
+    """Reconnaître les vrais domaines YouTube, pas leurs imitateurs."""
+    try:
+        host = (urllib.parse.urlparse(str(url)).hostname or "").lower()
+        return host in (
+            "youtube.com", "www.youtube.com", "m.youtube.com",
+            "music.youtube.com", "youtube-nocookie.com", "www.youtube-nocookie.com",
+            "youtu.be", "www.youtu.be"
+        )
+    except (TypeError, ValueError):
+        return False
 
 
 def is_twitch_vod_url(url):
@@ -3163,6 +3178,10 @@ class DownloaderAPI:
             "--socket-timeout", "15",
             "--retries", "3"
         ] + self._get_cookie_args()
+        # Le JS est préparé localement uniquement pour YouTube (vidéos, playlists,
+        # chaînes, Shorts et audio). Aucun changement pour les autres sites.
+        js_args = get_youtube_js_args(url)
+        cmd.extend(js_args)
 
         imp_val = settings.get("impersonation", "none")
         if imp_val == "random":
@@ -3388,6 +3407,7 @@ class DownloaderAPI:
                     "-P", target_dir,
                     "-o", f"{sanitize_filename(item.get('title', 'Media'))}.%(ext)s" if "v.pinimg.com" in url else "%(title)s.%(ext)s"
                 ] + self._get_cookie_args()
+                cmd.extend(get_youtube_js_args(url))
 
                 if is_twitch_vod_url(url):
                     # Les VOD Twitch sont des flux HLS longs, souvent déjà multiplexés.
@@ -3647,6 +3667,78 @@ def safe_download_file(url, target_path):
                 os.remove(tmp_path)
             except OSError:
                 pass
+
+
+def is_supported_deno(executable):
+    """Exiger un PE x64 fonctionnel, Deno 2.3+ (minimum actuel de yt-dlp)."""
+    if not is_valid_windows_executable(executable):
+        return False
+    try:
+        result = subprocess.run(
+            [executable, "--version"], capture_output=True, text=True,
+            timeout=20, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        )
+        if result.returncode != 0:
+            return False
+        version = re.search(r"(?m)^deno (\d+)\.(\d+)\.(\d+)", result.stdout)
+        return bool(version and tuple(map(int, version.groups())) >= (2, 3, 0))
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return False
+
+
+def ensure_deno_ready():
+    """Installer Deno dans Donnees/bin uniquement à la première utilisation YouTube.
+
+    Téléchargement atomique depuis la Release officielle. Ni PATH global ni
+    registre Windows modifiés. Ne jamais remplacer un exécutable valide en cas
+    d'échec de téléchargement, d'extraction ou de vérification.
+    """
+    if is_supported_deno(DENO_PATH):
+        return True
+    with _BINARIES_LOCK:
+        if is_supported_deno(DENO_PATH):
+            return True
+        archive_path = DENO_PATH + ".download.zip"
+        candidate_path = DENO_PATH + ".candidate.exe"
+        try:
+            if not safe_download_file(DENO_URL, archive_path):
+                return False
+            with zipfile.ZipFile(archive_path) as archive:
+                members = [
+                    member for member in archive.infolist()
+                    if member.filename.lower() == "deno.exe" and not member.is_dir()
+                ]
+                if (len(members) != 1 or not 65536 <= members[0].file_size <= 500 * 1024 * 1024):
+                    raise ValueError("Archive officielle Deno inattendue")
+                with archive.open(members[0]) as source, open(candidate_path, "wb") as destination:
+                    shutil.copyfileobj(source, destination, length=1024 * 1024)
+            if not is_supported_deno(candidate_path):
+                raise ValueError("deno.exe ne fonctionne pas ou version inférieure à 2.3")
+            os.replace(candidate_path, DENO_PATH)
+            return True
+        except (OSError, ValueError, zipfile.BadZipFile, subprocess.SubprocessError) as exc:
+            _log_binary_setup_error(exc)
+            return False
+        finally:
+            for temporary in (archive_path, candidate_path):
+                try:
+                    if os.path.isfile(temporary):
+                        os.remove(temporary)
+                except OSError:
+                    pass
+
+
+def get_youtube_js_args(url):
+    """Injecter Deno explicitement uniquement pour YouTube.
+
+    L'EXE officiel yt-dlp embarque déjà yt-dlp-ejs. Si l'installation
+    est impossible (hors réseau), yt-dlp conserve son comportement habituel.
+    """
+    if not is_youtube_url(url):
+        return []
+    if ensure_deno_ready():
+        return ["--js-runtimes", "deno:" + DENO_PATH]
+    return []
 
 
 def import_legacy_portable_tools():
