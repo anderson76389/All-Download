@@ -60,6 +60,7 @@ const backend = {
   pause_downloads: () => {events.push(['pause_downloads']);return {success:true,mode:'active'};},
   resume_downloads: () => {events.push(['resume_downloads']);return {success:true};},
   start_downloads: items => {events.push(['start_downloads',JSON.parse(JSON.stringify(items))]);return true;},
+  update_ytdlp: () => {events.push(['update_ytdlp']);return {success:true,updated:true,version:'2026.10.26'};},
   extract_info: url => {
     events.push(['extract_info',url]);
     if(url.includes('denied')) return {success:false,error:'Accès refusé'};
@@ -132,6 +133,10 @@ async function run() {
   assert.equal(doc.getElementById('setSectionAppli').style.display,'flex');
   action('#tabBtnReseau');
   assert.equal(doc.getElementById('setSectionReseau').style.display,'flex');
+  action('#updateYtdlpBtn');
+  await flush();
+  assert.ok(events.some(x=>x[0]==='update_ytdlp'));
+  assert.match(doc.getElementById('updateYtdlpStatus').textContent,/2026\.10\.26/);
   action('#tabBtnTelech');
   action('#btnSortieAudio');
   assert.equal(doc.getElementById('sortieAudioFields').style.display,'block');
