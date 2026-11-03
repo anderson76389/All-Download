@@ -35,3 +35,26 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node tests/test_ui_responsive.cjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Construire une version Portable de prévisualisation
+        shell: pwsh
+        run: |
+          python -m pip install pyinstaller==6.22.3
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/patch_webview_startup.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m PyInstaller --clean --noconfirm --workpath build/twitch-preview --distpath preview-build All_Media_Download-Portable.spec
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $root = "preview/All-Download-Preview"
+          New-Item -ItemType Directory -Force -Path $root | Out-Null
+          Copy-Item "preview-build/All_Media_Download.exe" "$root/All_Media_Download.exe"
+          Copy-Item "logo.ico" "$root/logo.ico"
+          Copy-Item "logo.jpg" "$root/logo.jpg"
+          foreach ($dir in @("AUDIOS", "AUTRES", "CHAÎNES", "GIFS", "PLAYLIST", "VIDÉOS")) {
+            New-Item -ItemType Directory -Force -Path "$root/$dir" | Out-Null
+          }
+      - name: Déposer le programme de test sans publier de Release
+        uses: actions/upload-artifact@v4
+        with:
+          name: All-Download-Twitch-Preview-Windows
+          path: preview/All-Download-Preview/
+          retention-days: 7
