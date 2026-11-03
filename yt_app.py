@@ -2761,7 +2761,8 @@ HTML_PAGE = """<!DOCTYPE html>
     document.getElementById('statusBar').innerText = statusText;
     appendTerminal(statusText);
 
-    if (pct >= 100 || statusText.toLowerCase().includes('terminé')) {
+    if (pct >= 100 || statusText.toLowerCase().includes('terminé')
+        || statusText.startsWith('Échec (') || statusText.startsWith('Annulé')) {
       resetDownloadUIState();
     }
   }
