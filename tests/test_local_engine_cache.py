@@ -123,7 +123,8 @@ class LocalCacheTests(unittest.TestCase):
         final = [x for x in self.api._window.scripts if x.startswith("updateDownloadProgress(")]
         self.assertTrue(final, "Aucun état final renvoyé à l'interface")
         self.assertIn("403", final[-1], final[-1])
-        self.assertIn("Échec", final[-1], final[-1])
+        message = json.loads(final[-1][len("updateDownloadProgress(0, "):-1])
+        self.assertIn("Échec", message)
         self.assertNotIn("Traitement terminé", final[-1])
 
 
