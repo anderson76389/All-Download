@@ -187,6 +187,7 @@ async function run() {
   win.addVideo();
   await flush();
   assert.ok(doc.querySelector('[onclick="downloadTwitchStreamlink(0)"]'));
+  assert.ok(doc.querySelector('[onclick="startChromeAutoImport(0)"]'));
   assert.ok(doc.querySelector('[onclick="downloadSingle(0)"]'));
   action('[onclick="downloadTwitchStreamlink(0)"]');
   await flush();
