@@ -25,6 +25,7 @@ from pathlib import Path
 import public_archive
 import twitch_streamlink_engine
 import twitch_chrome_bridge
+import twitch_native_extension
 import webview
 
 # 1. Protection PyInstaller
@@ -3329,6 +3330,65 @@ class DownloaderAPI:
         except (OSError, webbrowser.Error):
             return False
 
+    def get_native_twitch_extension_status(self):
+        installed = twitch_native_extension.existing_native_extension(APP_DIR)
+        return {
+            "installed": bool(installed),
+            "enabled": bool(self.config.get("twitch_native_extension_enabled")),
+            "version": installed["version"] if installed else "",
+            "state": os.environ.get("ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE", "off"),
+        }
+
+    def open_twitch_native_extension(self, url):
+        """Copier l'extension locale installée dans Chrome, puis ouvrir WebView2."""
+        if not twitch_streamlink_engine.parse_twitch_vod_id(url):
+            return {"success": False, "error": "Lien Twitch VOD non valide."}
+        installed = twitch_native_extension.existing_native_extension(APP_DIR)
+        if not installed:
+            try:
+                installed = twitch_native_extension.install_local_chrome_extension(APP_DIR)
+            except (OSError, ValueError, twitch_native_extension.NativeExtensionError) as exc:
+                return {"success": False, "error": str(exc)}
+        if not self.config.get("twitch_native_extension_enabled"):
+            previous = self.config.get("twitch_native_extension_enabled")
+            self.config["twitch_native_extension_enabled"] = True
+            if not self._save_config():
+                if previous is None:
+                    self.config.pop("twitch_native_extension_enabled", None)
+                else:
+                    self.config["twitch_native_extension_enabled"] = previous
+                return {"success": False, "error": "Impossible d'enregistrer l'activation."}
+            return {
+                "success": True, "restart_required": True,
+                "message": ("Extension Twitch " + installed["version"] +
+                            " copiée dans Donnees. Fermez puis relancez All-Download "
+                            "pour l'activer dans le navigateur intégré."),
+            }
+        state = os.environ.get("ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE")
+        if state != "ready":
+            return {
+                "success": False,
+                "error": ("Extension non active dans WebView2 (" + str(state or "hors mode natif") +
+                          "). Redémarrez All-Download ou consultez crash_log.txt."),
+            }
+        try:
+            view = webview.create_window(
+                "All-Download · Twitch VOD Downloader",
+                url=url, width=1150, height=800, min_size=(940, 650),
+            )
+            if view is None:
+                return {"success": False, "error": "Impossible d'ouvrir la fenêtre Twitch."}
+            return {"success": True, "opened_in_app": True}
+        except Exception as exc:
+            return {"success": False, "error": "Navigateur Twitch intégré indisponible : " + str(exc)}
+
+    def disable_twitch_native_extension(self):
+        """Désactiver le profil à extensions au prochain redémarrage."""
+        self.config["twitch_native_extension_enabled"] = False
+        if not self._save_config():
+            return {"success": False, "error": "Impossible d'enregistrer la désactivation."}
+        return {"success": True, "restart_required": True}
+
     def open_twitch_in_chrome(self, url):
         """Ouvrir une vraie VOD Twitch dans Chrome, où l'extension est installée."""
         if not is_twitch_vod_url(url):
@@ -4445,6 +4505,8 @@ def get_gui_webview_storage_path(argv=None):
     """
     arguments = list(sys.argv[1:] if argv is None else argv)
     name = "webview" if get_portable_root() else "webview-classique"
+    if os.environ.get("ALL_DOWNLOAD_WEBVIEW_EXTENSION_PATH"):
+        name += "-extensions"
     if WEBVIEW_RETRY_FLAG in arguments or STARTUP_RETRY_FLAG in arguments:
         name += "-recuperation"
     return os.path.join(LEGACY_APP_DIR, name)
@@ -4554,6 +4616,15 @@ if __name__ == '__main__':
     try:
         log_startup_phase("Debut: preparation des reglages et dossiers")
         api = DownloaderAPI()
+        native_installed = twitch_native_extension.existing_native_extension(APP_DIR)
+        native_mode = bool(api.config.get("twitch_native_extension_enabled") and native_installed)
+        if native_mode:
+            os.environ["ALL_DOWNLOAD_WEBVIEW_EXTENSION_PATH"] = native_installed["path"]
+            os.environ["ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE"] = "loading"
+            log_startup_phase("Extension Twitch WebView2: activation demandee")
+        else:
+            os.environ.pop("ALL_DOWNLOAD_WEBVIEW_EXTENSION_PATH", None)
+            os.environ.pop("ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE", None)
         log_startup_phase("Reglages prepares: creation de la fenetre")
         window = webview.create_window(
             'All Media Download',
@@ -4617,7 +4688,7 @@ if __name__ == '__main__':
             try:
                 webview.start(
                     debug=False,
-                    private_mode=True,
+                    private_mode=not native_mode,
                     storage_path=get_gui_webview_storage_path(),
                 )
             finally:
