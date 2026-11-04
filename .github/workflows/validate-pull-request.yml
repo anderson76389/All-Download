@@ -43,6 +43,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Vérifier le vrai moteur Streamlink (HLS local et Twitch réel)
         run: python -m scripts.verify_streamlink_engine
+      - name: Télécharger une vidéo HLS complète, vérifier MP4, audio et vidéo
+        shell: pwsh
+        run: |
+          python -m pip install imageio-ffmpeg==0.6.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m scripts.verify_streamlink_full_video
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Télécharger et exécuter le vrai moteur Deno Windows x64
         run: python -m scripts.verify_deno_runtime
       - name: Construire une version Portable de prévisualisation
