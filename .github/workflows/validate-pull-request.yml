@@ -85,9 +85,14 @@ jobs:
               if (Test-Path $log) {
                 $loaded = @(Get-Content $log -Tail 45 |
                   Where-Object { $_ -match "PID=$($p.Id) Interface HTML chargee" })
-                if ($loaded.Count -gt 0) {
+                # GitHub Actions Windows peut masquer MainWindowHandle dans une session
+                # non interactive. Tester les événements NATIFS shown et loaded,
+                # pour le MEME PID et vérifier que le processus est vivant.
+                $shown = @(Get-Content $log -Tail 45 |
+                  Where-Object { $_ -match "PID=$($p.Id) Fenetre native affichee" })
+                if ($loaded.Count -gt 0 -and $shown.Count -gt 0) {
                   $gui = Get-Process -Id $p.Id -ErrorAction SilentlyContinue
-                  if ($gui -and $gui.MainWindowHandle -ne [IntPtr]::Zero) {
+                  if ($gui) {
                     $ready = $true
                     break
                   }
@@ -98,7 +103,7 @@ jobs:
               if (Test-Path $log) { Get-Content $log -Tail 60 }
               throw "L'EXE compilé ne charge pas l'interface HTML avec une fenêtre réelle"
             }
-            Write-Output "EXE Portable réel : ouverture de fenêtre + HTML chargé, données locales intactes."
+            Write-Output "EXE Portable reel : evenement fenetre native affichee + interface HTML chargee, pour le meme processus."
           } finally {
             Get-Process -Name All_Media_Download -ErrorAction SilentlyContinue |
               Stop-Process -Force -ErrorAction SilentlyContinue
