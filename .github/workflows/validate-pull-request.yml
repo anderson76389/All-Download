@@ -50,6 +50,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m scripts.verify_streamlink_full_video
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Vérifier un vrai fragment de VOD Twitch publique (réseau facultatif)
+        continue-on-error: true
+        run: python -m scripts.verify_public_twitch_sample
       - name: Télécharger et exécuter le vrai moteur Deno Windows x64
         run: python -m scripts.verify_deno_runtime
       - name: Construire une version Portable de prévisualisation
