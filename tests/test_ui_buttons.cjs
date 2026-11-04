@@ -58,6 +58,20 @@ const backend = {
   open_external: url => {events.push(['open_external',url]);return true;},
   open_twitch_in_chrome: url => {events.push(['open_twitch_in_chrome',url]);return {success:true};},
   import_twitch_video: () => {events.push(['import_twitch_video']);return {success:true,started:true};},
+  find_public_twitch_archives: url => {
+    events.push(['find_public_twitch_archives',url]);
+    return {success:true,candidates:[{
+      token:'testArchiveToken', title:'VOD archivées 2905228526',
+      file:'vod-2905228526.mp4', size:1048576,
+      provider:'Internet Archive',
+      license:'https://creativecommons.org/licenses/by/4.0/',
+      archive_page:'https://archive.org/details/sample'
+    }]};
+  },
+  start_public_archive_download: (token, confirmed) => {
+    events.push(['start_public_archive_download',token,confirmed]);
+    return {success:true,started:true};
+  },
   cancel_downloads: () => {events.push(['cancel_downloads']);return true;},
   pause_downloads: () => {events.push(['pause_downloads']);return {success:true,mode:'active'};},
   resume_downloads: () => {events.push(['resume_downloads']);return {success:true};},
@@ -132,7 +146,19 @@ async function run() {
   action('[onclick="importTwitchVideo()"]');
   await flush();
   assert.ok(events.some(e=>e[0]==='import_twitch_video'));
+  assert.deepEqual(events.findLast(e=>e[0]==='find_public_twitch_archives'),
+    ['find_public_twitch_archives','https://www.twitch.tv/videos/2905228526']);
+  assert.match(doc.getElementById('cardList').textContent,/vod-2905228526\.mp4/);
+  action('[onclick="downloadTwitchArchive(0, 0)"]');
+  await flush();
+  assert.equal(events.some(e=>e[0]==='start_public_archive_download'),false);
+  doc.getElementById('archiveRights_0_0').checked=true;
+  action('[onclick="downloadTwitchArchive(0, 0)"]');
+  await flush();
+  assert.deepEqual(events.findLast(e=>e[0]==='start_public_archive_download'),
+    ['start_public_archive_download','testArchiveToken',true]);
   win.clearQueue();
+  win.resetDownloadUIState();
 
   // Paramètres : le bouton doit charger les valeurs enregistrées.
   action('.btn-settings');
