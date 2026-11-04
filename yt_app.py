@@ -397,6 +397,90 @@ def is_youtube_url(url):
         return False
 
 
+def is_twitch_subscriber_error(stderr):
+    """Reconnaître le refus d'abonnement Twitch, pas un banal échec réseau."""
+    message = str(stderr).lower()
+    return any(needle in message for needle in (
+        "subscriber-only content", "subscriber only content",
+        "subscribers-only", "vod_manifest_restricted",
+        "unauthorized_entitlements",
+    ))
+
+
+def locate_google_chrome():
+    """Chercher Chrome installé sans changer le navigateur Windows par défaut."""
+    paths = [
+        shutil.which("chrome.exe"),
+        os.path.join(os.environ.get("LOCALAPPDATA", ""), "Google", "Chrome", "Application", "chrome.exe"),
+        os.path.join(os.environ.get("PROGRAMFILES", ""), "Google", "Chrome", "Application", "chrome.exe"),
+        os.path.join(os.environ.get("PROGRAMFILES(X86)", ""), "Google", "Chrome", "Application", "chrome.exe"),
+    ]
+    if sys.platform == "win32":
+        try:
+            import winreg
+            for hive in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+                try:
+                    path = winreg.QueryValue(
+                        hive, r"Software\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe"
+                    )
+                    paths.append(path)
+                except OSError:
+                    pass
+        except ImportError:
+            pass
+    for path in paths:
+        if path and os.path.isfile(path):
+            return path
+    return None
+
+
+TWITCH_IMPORT_EXTENSIONS = frozenset((".mp4", ".mkv", ".ts", ".webm", ".mov"))
+
+
+def copy_twitch_recording(source_path, destination_root, progress_callback=None):
+    """Copier une vidéo locale depuis Chrome vers AUTRES sans écraser ni déplacer l'original."""
+    from pathlib import Path
+    source = Path(source_path)
+    if not source.is_file() or source.suffix.lower() not in TWITCH_IMPORT_EXTENSIONS:
+        raise ValueError("Sélectionnez un fichier vidéo local MP4, MKV, TS, WEBM ou MOV.")
+    size = source.stat().st_size
+    if size <= 0:
+        raise ValueError("Le fichier vidéo sélectionné est vide.")
+    destination_dir = Path(destination_root) / "AUTRES"
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    if source.resolve().parent == destination_dir.resolve():
+        return {"path": str(source), "already_present": True}
+    name = sanitize_filename(source.stem)[:160]
+    extension = source.suffix.lower()
+    for n in range(10000):
+        proposed = destination_dir / (name + (f" ({n})" if n else "") + extension)
+        try:
+            output = proposed.open("xb")
+            break
+        except FileExistsError:
+            continue
+    else:
+        raise OSError("Impossible de trouver un nom libre pour ce fichier.")
+    written = 0
+    try:
+        with source.open("rb") as inp, output as out:
+            while True:
+                block = inp.read(1024 * 1024)
+                if not block:
+                    break
+                out.write(block)
+                written += len(block)
+                if progress_callback:
+                    progress_callback(int(written * 100 / size))
+        return {"path": str(proposed), "already_present": False}
+    except Exception:
+        try:
+            proposed.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
+
+
 def is_twitch_vod_url(url):
     """Identifier une VOD Twitch, sans modifier les clips ni les lives."""
     try:
@@ -2385,7 +2469,8 @@ HTML_PAGE = """<!DOCTYPE html>
           url: url,
           error: errMsg,
           isError: true,
-          isRestricted: res && res.is_restricted
+          isRestricted: res && res.is_restricted,
+          errorCode: res && res.error_code
         });
         appendTerminal(`[error] ${errMsg}`);
       }
@@ -2420,7 +2505,9 @@ HTML_PAGE = """<!DOCTYPE html>
       const thumbImg = item.thumbnail ? `<img class="thumb" src="${item.thumbnail}" onerror="this.style.display='none'">` : '';
 
       if (item.isError) {
-        const badgeText = item.isRestricted ? "🔒 Contenu Restreint (+18 / Privé)" : "Erreur d'accès";
+        const twitchRestricted = item.errorCode === 'twitch_subscriber_only';
+        const badgeText = twitchRestricted ? "🔒 VOD réservée aux abonnés"
+          : (item.isRestricted ? "🔒 Contenu restreint" : "Erreur d'accès");
         card.innerHTML = `
           <div class="thumb-container" style="background:#ff4d4f;">${thumbImg}</div>
           <div class="card-body">
@@ -2432,7 +2519,10 @@ HTML_PAGE = """<!DOCTYPE html>
                 <svg style="width:12px;height:12px;fill:#fff;" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
                 ${badgeText}
               </div>
-              <button class="btn-logs-card" onclick="showAuthView()">Importer cookies</button>
+              ${twitchRestricted
+                ? `<button class="btn-logs-card" onclick="openTwitchInChrome(${index})">Ouvrir dans Chrome</button>
+                   <button class="btn-logs-card" onclick="importTwitchVideo()">Importer une vidéo</button>`
+                : `<button class="btn-logs-card" onclick="showAuthView()">Importer cookies</button>`}
               <button class="btn-logs-card" onclick="showLogsView()">Voir logs</button>
             </div>
           </div>
@@ -2735,6 +2825,27 @@ HTML_PAGE = """<!DOCTYPE html>
     if (queue[idx].is_playlist || queue[idx].is_channel) updatePlaylistRange(idx);
     startDownloadUIState();
     callApi('start_downloads', [queue[idx]]);
+  }
+
+  function openTwitchInChrome(index) {
+    const item = queue[index];
+    if (!item || !item.url) return;
+    callApi('open_twitch_in_chrome', item.url).then(result => {
+      if (!result || !result.success) {
+        showAppToast(result && result.error ? result.error : "Chrome indisponible.");
+      }
+    }).catch(() => showAppToast("Impossible d'ouvrir Chrome."));
+  }
+
+  function importTwitchVideo() {
+    callApi('import_twitch_video').then(result => {
+      if (result && result.cancelled) return;
+      if (!result || !result.success) {
+        showAppToast(result && result.error ? result.error : "Importation impossible.");
+      } else {
+        showAppToast("Copie de la vidéo dans AUTRES en cours...");
+      }
+    }).catch(() => showAppToast("Impossible d'importer ce fichier."));
   }
 
   function openExternal(url) {
@@ -3073,6 +3184,69 @@ class DownloaderAPI:
         except (OSError, webbrowser.Error):
             return False
 
+    def open_twitch_in_chrome(self, url):
+        """Ouvrir une vraie VOD Twitch dans Chrome, où l'extension est installée."""
+        if not is_twitch_vod_url(url):
+            return {"success": False, "error": "L'adresse ne correspond pas à une VOD Twitch."}
+        chrome = locate_google_chrome()
+        if not chrome:
+            return {"success": False, "error": "Chrome introuvable sur ce PC."}
+        try:
+            subprocess.Popen(
+                [chrome, "--new-tab", url],
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+            return {"success": True}
+        except OSError as exc:
+            return {"success": False, "error": "Impossible d'ouvrir Chrome : " + str(exc)}
+
+    def import_twitch_video(self):
+        """Sélectionner un fichier déjà récupéré, et le COPIER vers AUTRES."""
+        if self._window is None:
+            return {"success": False, "error": "Fenêtre indisponible."}
+        try:
+            selected = self._window.create_file_dialog(
+                webview.OPEN_DIALOG,
+                allow_multiple=False,
+                file_types=(
+                    "Vidéos (*.mp4;*.mkv;*.ts;*.webm;*.mov)",
+                    "Tous les fichiers (*.*)",
+                ),
+            )
+            if not selected:
+                return {"success": False, "cancelled": True}
+            source_path = selected[0]
+            if (not os.path.isfile(source_path)
+                    or os.path.splitext(source_path)[1].lower() not in TWITCH_IMPORT_EXTENSIONS):
+                return {"success": False, "error": "Choisissez un fichier vidéo MP4, MKV, TS, WEBM ou MOV."}
+        except (OSError, AttributeError, TypeError) as exc:
+            return {"success": False, "error": "Impossible de sélectionner la vidéo : " + str(exc)}
+
+        def worker():
+            try:
+                def report(percent):
+                    if self._window and percent % 10 == 0:
+                        self._window.evaluate_js(
+                            f"updateDownloadProgress({percent}, {json.dumps('Importation dans AUTRES…')})"
+                        )
+                result = copy_twitch_recording(source_path, self.download_folder, report)
+                status = ("Fichier déjà dans AUTRES : " if result["already_present"]
+                          else "Vidéo importée dans AUTRES : ") + os.path.basename(result["path"])
+                if self._window:
+                    self._window.evaluate_js(
+                        f"updateDownloadProgress(100, {json.dumps(status)})"
+                    )
+                    self._window.evaluate_js(f"showAppToast({json.dumps(status)})")
+            except (OSError, ValueError) as exc:
+                if self._window:
+                    message = "Échec de l'importation : " + str(exc)
+                    self._window.evaluate_js(f"updateDownloadProgress(0, {json.dumps(message)})")
+                    self._window.evaluate_js(f"showAppToast({json.dumps(message)})")
+        threading.Thread(target=worker, name="AllDownload-Import-Twitch", daemon=True).start()
+        return {"success": True, "started": True}
+
     def get_auth_config(self):
         return {
             "cookie_file": self.config.get("cookie_file", ""),
@@ -3240,6 +3414,17 @@ class DownloaderAPI:
             if proc.returncode != 0:
                 err_lower = stderr.lower()
                 is_restricted = False
+                if is_twitch_vod_url(url) and is_twitch_subscriber_error(stderr):
+                    return {
+                        "success": False, "is_restricted": True,
+                        "error_code": "twitch_subscriber_only",
+                        "error": (
+                            "VOD Twitch réservée aux abonnés : yt-dlp ne reçoit pas le flux "
+                            "sans un compte autorisé. Si votre extension Chrome possède déjà "
+                            "une copie accessible, ouvrez la VOD dans Chrome puis importez "
+                            "la vidéo enregistrée dans AUTRES."
+                        ),
+                    }
                 if any(k in err_lower for k in ["sign in", "confirm your age", "age-restricted", "age restricted", "inappropriate"]):
                     err_clean = "Contenu restreint (+18 ans) : Connectez vos cookies via l'icône clé en bas à gauche."
                     is_restricted = True
