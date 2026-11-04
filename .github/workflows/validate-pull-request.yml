@@ -83,16 +83,19 @@ jobs:
               $p.Refresh()
               if ($p.HasExited) { throw "L'EXE a quitté avant le chargement HTML ($($p.ExitCode))" }
               if (Test-Path $log) {
-                $loaded = @(Get-Content $log -Tail 45 |
-                  Where-Object { $_ -match "PID=$($p.Id) Interface HTML chargee" })
-                # GitHub Actions Windows peut masquer MainWindowHandle dans une session
-                # non interactive. Tester les événements NATIFS shown et loaded,
-                # pour le MEME PID et vérifier que le processus est vivant.
-                $shown = @(Get-Content $log -Tail 45 |
-                  Where-Object { $_ -match "PID=$($p.Id) Fenetre native affichee" })
-                if ($loaded.Count -gt 0 -and $shown.Count -gt 0) {
-                  $gui = Get-Process -Id $p.Id -ErrorAction SilentlyContinue
-                  if ($gui) {
+                # Un EXE PyInstaller onefile peut posséder un processus parent
+                # et un processus enfant : ne PAS confondre le PID de Start-Process
+                # avec le PID de la fenêtre réelle. Utiliser les événements
+                # "shown" et "loaded" pour le MÊME PID issu du journal.
+                $entries = @(Get-Content $log -Tail 45)
+                $loaded = @($entries | Where-Object { $_ -match 'PID=([0-9]+) Interface HTML chargee' })
+                foreach ($line in $loaded) {
+                  $match = [regex]::Match($line, 'PID=([0-9]+) Interface HTML chargee')
+                  if (-not $match.Success) { continue }
+                  $guiPidInLog = [int]$match.Groups[1].Value
+                  $shown = @($entries | Where-Object { $_.Contains("PID=$guiPidInLog Fenetre native affichee") })
+                  if ($shown.Count -gt 0) {
+                    Write-Output "GUI Python PID=$guiPidInLog : fenêtre native affichée et HTML chargé."
                     $ready = $true
                     break
                   }
