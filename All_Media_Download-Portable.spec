@@ -5,12 +5,19 @@
 # plutot que d'executer des DLL .NET portant le marquage web du ZIP telecharge.
 # Aucune compression UPX ; conserve l'icone Windows.
 
+# Inclure le moteur Twitch alternatif et ses plugins dans l'EXE autonome.
+# Le chargement des plugins Streamlink est dynamique : leurs ressources et
+# imports doivent être collectés explicitement par PyInstaller.
+from PyInstaller.utils.hooks import collect_all
+
+streamlink_datas, streamlink_binaries, streamlink_hiddenimports = collect_all('streamlink')
+
 a = Analysis(
     ['yt_app.py'],
     pathex=[],
-    binaries=[],
-    datas=[],
-    hiddenimports=[],
+    binaries=streamlink_binaries,
+    datas=streamlink_datas,
+    hiddenimports=streamlink_hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

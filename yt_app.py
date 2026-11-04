@@ -20,7 +20,12 @@ import ctypes
 from ctypes import wintypes
 import multiprocessing
 import tempfile
+import secrets
 from pathlib import Path
+import public_archive
+import twitch_streamlink_engine
+import twitch_chrome_bridge
+import twitch_native_extension
 import webview
 
 # 1. Protection PyInstaller
@@ -68,6 +73,9 @@ PORTABLE_DATA_LOCAL = bool(APP_DATA_LOCAL and get_portable_root())
 APP_DIR = (os.path.join(APP_ROOT, "Donnees")
            if APP_DATA_LOCAL else LEGACY_APP_DIR)
 BIN_DIR = os.path.join(APP_DIR, "bin")
+CACHE_DIR = os.path.join(APP_DIR, "cache")
+YTDLP_CACHE_DIR = os.path.join(CACHE_DIR, "yt-dlp")
+DENO_CACHE_DIR = os.path.join(CACHE_DIR, "deno")
 CONFIG_FILE = os.path.join(APP_DIR, "config.json")
 HTML_FILE = os.path.join(APP_DIR, "index.html")
 CRASH_LOG = os.path.join(APP_DIR, "crash_log.txt")
@@ -75,6 +83,21 @@ STARTUP_LOG = os.path.join(APP_DIR, "startup_log.txt")
 
 os.makedirs(APP_DIR, exist_ok=True)
 os.makedirs(BIN_DIR, exist_ok=True)
+
+
+def get_media_runtime_env():
+    """Isoler les caches des moteurs dans Donnees, sans modifier Windows."""
+    env = os.environ.copy()
+    os.makedirs(YTDLP_CACHE_DIR, exist_ok=True)
+    os.makedirs(DENO_CACHE_DIR, exist_ok=True)
+    env["DENO_DIR"] = DENO_CACHE_DIR
+    env["XDG_CACHE_HOME"] = CACHE_DIR
+    return env
+
+
+def get_ytdlp_local_args():
+    """Ignorer la configuration globale Windows et garder le cache yt-dlp local."""
+    return ["--ignore-config", "--cache-dir", YTDLP_CACHE_DIR]
 
 
 def import_legacy_portable_settings():
@@ -174,9 +197,11 @@ except Exception:
 
 YTDLP_PATH = os.path.join(BIN_DIR, "yt-dlp.exe")
 FFMPEG_PATH = os.path.join(BIN_DIR, "ffmpeg.exe")
+DENO_PATH = os.path.join(BIN_DIR, "deno.exe")
 
 YTDLP_URL = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
 FFMPEG_URL = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
+DENO_URL = "https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip"
 
 # Un ancien workflow avait malencontreusement publie des fichiers MZ de
 # DEUX octets a la place des vrais EXE. Ne plus considerer "existe et non
@@ -362,6 +387,122 @@ def normalize_media_url(url):
             return f"https://www.pinterest.com/pin/{pin_id}/"
 
     return url
+
+
+def is_youtube_url(url):
+    """Reconnaître les vrais domaines YouTube, pas leurs imitateurs."""
+    try:
+        host = (urllib.parse.urlparse(str(url)).hostname or "").lower()
+        return host in (
+            "youtube.com", "www.youtube.com", "m.youtube.com",
+            "music.youtube.com", "youtube-nocookie.com", "www.youtube-nocookie.com",
+            "youtu.be", "www.youtu.be"
+        )
+    except (TypeError, ValueError):
+        return False
+
+
+def is_twitch_subscriber_error(stderr):
+    """Reconnaître le refus d'abonnement Twitch, pas un banal échec réseau."""
+    message = str(stderr).lower()
+    return any(needle in message for needle in (
+        "subscriber-only content", "subscriber only content",
+        "subscribers-only", "vod_manifest_restricted",
+        "unauthorized_entitlements",
+    ))
+
+
+def locate_google_chrome():
+    """Chercher Chrome installé sans changer le navigateur Windows par défaut."""
+    paths = [
+        shutil.which("chrome.exe"),
+        os.path.join(os.environ.get("LOCALAPPDATA", ""), "Google", "Chrome", "Application", "chrome.exe"),
+        os.path.join(os.environ.get("PROGRAMFILES", ""), "Google", "Chrome", "Application", "chrome.exe"),
+        os.path.join(os.environ.get("PROGRAMFILES(X86)", ""), "Google", "Chrome", "Application", "chrome.exe"),
+    ]
+    if sys.platform == "win32":
+        try:
+            import winreg
+            for hive in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+                try:
+                    path = winreg.QueryValue(
+                        hive, r"Software\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe"
+                    )
+                    paths.append(path)
+                except OSError:
+                    pass
+        except ImportError:
+            pass
+    for path in paths:
+        if path and os.path.isfile(path):
+            return path
+    return None
+
+
+TWITCH_IMPORT_EXTENSIONS = twitch_chrome_bridge.VIDEO_EXTENSIONS
+
+
+def copy_twitch_recording(source_path, destination_root, progress_callback=None):
+    """Copier une vidéo locale depuis Chrome vers AUTRES sans écraser ni déplacer l'original."""
+    from pathlib import Path
+    source = Path(source_path)
+    if not source.is_file() or source.suffix.lower() not in TWITCH_IMPORT_EXTENSIONS:
+        raise ValueError("Sélectionnez un fichier vidéo local MP4, MKV, TS, WEBM ou MOV.")
+    size = source.stat().st_size
+    if size <= 0:
+        raise ValueError("Le fichier vidéo sélectionné est vide.")
+    destination_dir = Path(destination_root) / "AUTRES"
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    if source.resolve().parent == destination_dir.resolve():
+        return {"path": str(source), "already_present": True}
+    name = sanitize_filename(source.stem)[:160]
+    extension = source.suffix.lower()
+    for n in range(10000):
+        proposed = destination_dir / (name + (f" ({n})" if n else "") + extension)
+        try:
+            output = proposed.open("xb")
+            break
+        except FileExistsError:
+            continue
+    else:
+        raise OSError("Impossible de trouver un nom libre pour ce fichier.")
+    written = 0
+    try:
+        with source.open("rb") as inp, output as out:
+            while True:
+                block = inp.read(1024 * 1024)
+                if not block:
+                    break
+                out.write(block)
+                written += len(block)
+                if progress_callback:
+                    progress_callback(int(written * 100 / size))
+        return {"path": str(proposed), "already_present": False}
+    except Exception:
+        try:
+            proposed.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
+
+
+def is_twitch_vod_url(url):
+    """Identifier une VOD Twitch, sans modifier les clips ni les lives."""
+    try:
+        parsed = urllib.parse.urlparse(str(url))
+        host = (parsed.hostname or "").lower()
+        if host not in ("twitch.tv", "www.twitch.tv", "m.twitch.tv"):
+            return False
+        path = parsed.path.rstrip("/")
+        return bool(
+            re.fullmatch(r"/videos/\d+", path, flags=re.IGNORECASE)
+            or re.fullmatch(r"/[^/]+/v/\d+", path, flags=re.IGNORECASE)
+            or (path.endswith("/schedule")
+                and re.search(r"(?:^|&)vodID=\d+(?:&|$)", parsed.query, re.IGNORECASE))
+        )
+    except (ValueError, TypeError):
+        return False
+
 
 # Extracteur universel Pinterest (Évite le blocage RGPD 'Pinterest - France')
 def extract_pinterest_direct(url):
@@ -1597,6 +1738,16 @@ HTML_PAGE = """<!DOCTYPE html>
           <div class="setting-label">Arguments d'extracteur :</div>
           <textarea class="setting-textarea" id="setExtractorArgs" placeholder="youtube:player_js_variant=main"></textarea>
         </div>
+        <div class="setting-field">
+          <div class="setting-label">Moteur de téléchargement yt-dlp :</div>
+          <button type="button" id="updateYtdlpBtn" class="btn-add" style="border-radius: 8px; padding: 9px 16px;" onclick="updateYtdlpSafe()">Vérifier et mettre à jour yt-dlp</button>
+          <div class="setting-subtext" id="updateYtdlpStatus">La mise à jour est manuelle : aucune modification du moteur pendant vos téléchargements.</div>
+        </div>
+        <div class="setting-field">
+          <div class="setting-label">Extension Twitch native WebView2 :</div>
+          <button type="button" class="btn-add" onclick="disableTwitchNative()">Désactiver l’extension intégrée</button>
+          <div class="setting-subtext">Cliquer sur « Extension intégrée » depuis une VOD : importer l’extension déjà installée dans Chrome. Redémarrage nécessaire. Compatibilité de ses fonctions avec WebView2 à vérifier.</div>
+        </div>
       </div>
     </div>
   </div>
@@ -2137,6 +2288,24 @@ HTML_PAGE = """<!DOCTYPE html>
     });
   }
 
+  function updateYtdlpSafe() {
+    const button = document.getElementById('updateYtdlpBtn');
+    const status = document.getElementById('updateYtdlpStatus');
+    if (!button || button.disabled) return;
+    button.disabled = true;
+    status.textContent = 'Vérification du moteur officiel en cours...';
+    callApi('update_ytdlp').then(result => {
+      const message = result && result.success
+        ? (result.updated ? 'yt-dlp mis à jour : ' : 'yt-dlp déjà à jour : ') + result.version
+        : (result && result.error ? result.error : 'Mise à jour impossible.');
+      status.textContent = message;
+      showAppToast(message);
+    }).catch(() => {
+      status.textContent = 'Mise à jour impossible. Moteur actuel conservé.';
+      showAppToast(status.textContent);
+    }).finally(() => { button.disabled = false; });
+  }
+
   function showAuthView() {
     openView('viewAuth');
     callApi('get_auth_config').then(cfg => {
@@ -2257,6 +2426,12 @@ HTML_PAGE = """<!DOCTYPE html>
     }
   }
 
+  function escapeArchiveHtml(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[c]);
+  }
+
   function addVideo() {
     const input = document.getElementById('urlInput');
     const url = input.value.trim();
@@ -2310,12 +2485,16 @@ HTML_PAGE = """<!DOCTYPE html>
           url: url,
           error: errMsg,
           isError: true,
-          isRestricted: res && res.is_restricted
+          isRestricted: res && res.is_restricted,
+          errorCode: res && res.error_code
         });
         appendTerminal(`[error] ${errMsg}`);
       }
       renderCards();
       updateView();
+      if (res && !res.success && res.error_code === 'twitch_subscriber_only') {
+        findTwitchArchives(queue.length - 1);
+      }
     }).catch(err => {
       const el = document.getElementById(tempId);
       if (el) el.remove();
@@ -2345,7 +2524,9 @@ HTML_PAGE = """<!DOCTYPE html>
       const thumbImg = item.thumbnail ? `<img class="thumb" src="${item.thumbnail}" onerror="this.style.display='none'">` : '';
 
       if (item.isError) {
-        const badgeText = item.isRestricted ? "🔒 Contenu Restreint (+18 / Privé)" : "Erreur d'accès";
+        const twitchRestricted = item.errorCode === 'twitch_subscriber_only';
+        const badgeText = twitchRestricted ? "🔒 VOD réservée aux abonnés"
+          : (item.isRestricted ? "🔒 Contenu restreint" : "Erreur d'accès");
         card.innerHTML = `
           <div class="thumb-container" style="background:#ff4d4f;">${thumbImg}</div>
           <div class="card-body">
@@ -2357,9 +2538,36 @@ HTML_PAGE = """<!DOCTYPE html>
                 <svg style="width:12px;height:12px;fill:#fff;" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
                 ${badgeText}
               </div>
-              <button class="btn-logs-card" onclick="showAuthView()">Importer cookies</button>
+              ${twitchRestricted
+                ? `<button class="btn-logs-card" onclick="openTwitchNative(${index})" title="Charger l’extension locale dans WebView2">Extension intégrée</button>
+                   <button class="btn-logs-card" onclick="openTwitchInChrome(${index})">Ouvrir dans Chrome</button>
+                   <button class="btn-logs-card" onclick="startChromeAutoImport(${index})" title="Utiliser l’extension Chrome puis ranger automatiquement ses vidéos dans AUTRES">Chrome + import auto</button>
+                   <button class="btn-logs-card" onclick="chooseChromeFolder()">Dossier Chrome</button>
+                   <button class="btn-logs-card" onclick="stopChromeAutoImport()">Arrêter import</button>
+                   <button class="btn-logs-card" onclick="importTwitchVideo()">Importer une vidéo</button>
+                   <button class="btn-logs-card" onclick="downloadTwitchStreamlink(${index})">Télécharger avec Streamlink</button>
+                   <button class="btn-logs-card" onclick="findTwitchArchives(${index})">Rechercher archive</button>`
+                : `<button class="btn-logs-card" onclick="showAuthView()">Importer cookies</button>`}
               <button class="btn-logs-card" onclick="showLogsView()">Voir logs</button>
             </div>
+            ${twitchRestricted ? `
+              <div style="font-size:12px; padding:8px 0;" aria-live="polite">
+                ${escapeArchiveHtml(item.archiveMessage || '')}
+                ${Array.isArray(item.archiveMatches) && item.archiveMatches.length
+                  ? `<div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+                      ${item.archiveMatches.map((match, matchIdx) => `
+                        <div style="border:1px solid var(--ui-divider); border-radius:8px; padding:8px;">
+                          <div>${escapeArchiveHtml(match.title)} — ${escapeArchiveHtml(match.file)}</div>
+                          <div style="font-size:11px; opacity:.75;">${escapeArchiveHtml(match.provider)} · ${(match.size / 1048576).toFixed(1)} Mo · Licence ouverte</div>
+                          <label style="display:flex; align-items:center; gap:6px; margin:5px 0;">
+                            <input type="checkbox" id="archiveRights_${index}_${matchIdx}">
+                            Je confirme avoir le droit de télécharger cette copie
+                          </label>
+                          <button class="btn-logs-card" onclick="downloadTwitchArchive(${index}, ${matchIdx})">Télécharger dans AUTRES</button>
+                        </div>`).join('')}
+                    </div>`
+                  : ''}
+              </div>` : ''}
           </div>
           <div class="v-separator"></div>
           <div class="card-actions">
@@ -2500,6 +2708,13 @@ HTML_PAGE = """<!DOCTYPE html>
             <div class="card-bottom-row">
               <div class="card-meta">Durée : ${item.duration} &nbsp;•&nbsp; ${destInfo}</div>
               <div class="card-controls">
+                ${isTwitchVodClient(item.url)
+                  ? `<button class="btn-logs-card" onclick="openTwitchNative(${index})" title="Charger l’extension locale dans WebView2">Extension intégrée</button>
+                     <button class="btn-logs-card" onclick="downloadTwitchStreamlink(${index})" title="Moteur Twitch indépendant de yt-dlp">Streamlink Twitch</button>
+                     <button class="btn-logs-card" onclick="startChromeAutoImport(${index})" title="Ouvrir Chrome et importer automatiquement les fichiers téléchargés par votre extension">Chrome + import auto</button>
+                     <button class="btn-logs-card" onclick="chooseChromeFolder()">Dossier Chrome</button>
+                     <button class="btn-logs-card" onclick="stopChromeAutoImport()">Arrêter import</button>`
+                  : ''}
                 <div class="pill-dropdown" onclick="toggleDropdown('card_mode_pop_${index}', event)">
                   <span>${item.mode}</span>
                   <svg class="svg-icon" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
@@ -2662,6 +2877,147 @@ HTML_PAGE = """<!DOCTYPE html>
     callApi('start_downloads', [queue[idx]]);
   }
 
+  function isTwitchVodClient(url) {
+    try {
+      const parsed = new URL(url);
+      return ['twitch.tv', 'www.twitch.tv', 'm.twitch.tv'].includes(parsed.hostname.toLowerCase())
+        && /^\/videos\/\d+\/?$/.test(parsed.pathname);
+    } catch (_) { return false; }
+  }
+
+  function downloadTwitchStreamlink(index) {
+    const item = queue[index];
+    if (!item || !item.url || !isTwitchVodClient(item.url)) return;
+    startDownloadUIState();
+    callApi('start_twitch_streamlink', item.url, item.selectedQuality || 'best').then(result => {
+      if (!result || !result.success) {
+        resetDownloadUIState();
+        showAppToast(result && result.error ? result.error : 'Streamlink indisponible.');
+      }
+    }).catch(() => {
+      resetDownloadUIState();
+      showAppToast('Impossible de démarrer le deuxième moteur Twitch.');
+    });
+  }
+
+  function findTwitchArchives(index) {
+    const item = queue[index];
+    if (!item || item.errorCode !== 'twitch_subscriber_only' || item.archiveSearching) return;
+    item.archiveSearching = true;
+    item.archiveMessage = 'Recherche des archives publiques portant le même identifiant Twitch…';
+    item.archiveMatches = [];
+    renderCards();
+    callApi('find_public_twitch_archives', item.url).then(result => {
+      if (!queue.includes(item)) return;
+      item.archiveSearching = false;
+      item.archiveMatches = result && result.success && Array.isArray(result.candidates)
+        ? result.candidates : [];
+      item.archiveMessage = !result || !result.success
+        ? 'Archives momentanément indisponibles : ' + (result && result.error ? result.error : 'Erreur inconnue')
+        : item.archiveMatches.length
+          ? item.archiveMatches.length + ' copie(s) avec une licence ouverte trouvée(s).'
+          : 'Aucune archive publique correspondante avec licence ouverte trouvée pour cette VOD.';
+      renderCards();
+    }).catch(() => {
+      if (!queue.includes(item)) return;
+      item.archiveSearching = false;
+      item.archiveMessage = 'Recherche des archives momentanément indisponible.';
+      renderCards();
+    });
+  }
+
+  function downloadTwitchArchive(index, matchIndex) {
+    const item = queue[index];
+    const match = item && item.archiveMatches && item.archiveMatches[matchIndex];
+    if (!match) return;
+    const checkbox = document.getElementById('archiveRights_' + index + '_' + matchIndex);
+    if (!checkbox || !checkbox.checked) {
+      showAppToast('Confirmez vos droits sur la copie avant de télécharger.');
+      return;
+    }
+    startDownloadUIState();
+    callApi('start_public_archive_download', match.token, true).then(result => {
+      if (!result || !result.success) {
+        resetDownloadUIState();
+        showAppToast(result && result.error ? result.error : 'Archive indisponible.');
+      }
+    }).catch(() => {
+      resetDownloadUIState();
+      showAppToast('Impossible de démarrer le téléchargement de cette archive.');
+    });
+  }
+
+  function openTwitchNative(index) {
+    const item = queue[index];
+    if (!item || !item.url || !isTwitchVodClient(item.url)) return;
+    callApi('open_twitch_native_extension', item.url).then(result => {
+      if (!result || !result.success) {
+        showAppToast(result && result.error ? result.error : 'Extension WebView2 indisponible.');
+      } else if (result.restart_required) {
+        showAppToast(result.message || 'Redémarrez All-Download pour activer l’extension.');
+      } else if (result.opened_in_app) {
+        showAppToast('Fenêtre Twitch intégrée ouverte.');
+      }
+    }).catch(() => showAppToast('Impossible de charger l’extension native.'));
+  }
+
+  function disableTwitchNative() {
+    callApi('disable_twitch_native_extension').then(result => {
+      showAppToast(result && result.success
+        ? 'Extension désactivée. Redémarrez All-Download.'
+        : (result && result.error ? result.error : 'Désactivation impossible.'));
+    }).catch(() => showAppToast('Désactivation impossible.'));
+  }
+
+  function startChromeAutoImport(index) {
+    const item = queue[index];
+    if (!item || !item.url || !isTwitchVodClient(item.url)) return;
+    callApi('start_chrome_extension_bridge', item.url).then(result => {
+      if (!result || !result.success) {
+        showAppToast(result && result.error ? result.error : 'Pont Chrome indisponible.');
+      } else {
+        showAppToast('Chrome ouvert : lancez votre extension. Les vidéos terminées seront automatiquement rangées dans AUTRES.');
+      }
+    }).catch(() => showAppToast('Impossible de démarrer le pont Chrome.'));
+  }
+
+  function stopChromeAutoImport() {
+    callApi('stop_chrome_extension_bridge').then(() => {
+      showAppToast('Arrêt de la surveillance Chrome demandé.');
+    }).catch(() => showAppToast('Impossible d’arrêter la surveillance Chrome.'));
+  }
+
+  function chooseChromeFolder() {
+    callApi('choose_chrome_download_folder').then(result => {
+      if (result && result.success) {
+        showAppToast('Dossier Chrome configuré : ' + result.path);
+      } else if (!(result && result.cancelled)) {
+        showAppToast(result && result.error ? result.error : 'Choix du dossier annulé.');
+      }
+    }).catch(() => showAppToast('Impossible de configurer le dossier Chrome.'));
+  }
+
+  function openTwitchInChrome(index) {
+    const item = queue[index];
+    if (!item || !item.url) return;
+    callApi('open_twitch_in_chrome', item.url).then(result => {
+      if (!result || !result.success) {
+        showAppToast(result && result.error ? result.error : "Chrome indisponible.");
+      }
+    }).catch(() => showAppToast("Impossible d'ouvrir Chrome."));
+  }
+
+  function importTwitchVideo() {
+    callApi('import_twitch_video').then(result => {
+      if (result && result.cancelled) return;
+      if (!result || !result.success) {
+        showAppToast(result && result.error ? result.error : "Importation impossible.");
+      } else {
+        showAppToast("Copie de la vidéo dans AUTRES en cours...");
+      }
+    }).catch(() => showAppToast("Impossible d'importer ce fichier."));
+  }
+
   function openExternal(url) {
     callApi('open_external', url).then(opened => {
       if (opened !== true) showAppToast("Impossible d'ouvrir ce lien dans le navigateur.");
@@ -2686,7 +3042,8 @@ HTML_PAGE = """<!DOCTYPE html>
     document.getElementById('statusBar').innerText = statusText;
     appendTerminal(statusText);
 
-    if (pct >= 100 || statusText.toLowerCase().includes('terminé')) {
+    if (pct >= 100 || statusText.toLowerCase().includes('terminé')
+        || statusText.startsWith('Échec (') || statusText.startsWith('Annulé')) {
       resetDownloadUIState();
     }
   }
@@ -2763,6 +3120,11 @@ class DownloaderAPI:
         self.is_paused = False
         self._active_download_process = None
         self._suspended_download_pids = []
+        self._public_archive_candidates = {}
+        self._archive_download_active = False
+        self._streamlink_download_active = False
+        self._chrome_bridge_active = False
+        self._chrome_bridge_stop = threading.Event()
 
     def _load_config(self):
         if os.path.exists(CONFIG_FILE):
@@ -2927,6 +3289,59 @@ class DownloaderAPI:
             return ["--cookies-from-browser", c_browser]
         return []
 
+    def update_ytdlp(self):
+        """Mise à jour volontaire, vérifiée, sans remplacer un binaire fonctionnel en cas d'échec."""
+        if getattr(self, "_active_download_process", None) is not None:
+            return {"success": False, "error": "Terminez le téléchargement en cours avant la mise à jour."}
+        with _BINARIES_LOCK:
+            if getattr(self, "_active_download_process", None) is not None:
+                return {"success": False, "error": "Un téléchargement est en cours."}
+            candidate = YTDLP_PATH + ".update.exe"
+            previous_version = ""
+            try:
+                if is_valid_windows_executable(YTDLP_PATH):
+                    try:
+                        previous = subprocess.run(
+                            [YTDLP_PATH, "--version"], capture_output=True,
+                            text=True, timeout=30,
+                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)
+                        )
+                        if previous.returncode == 0:
+                            previous_version = previous.stdout.strip()
+                    except (OSError, subprocess.SubprocessError):
+                        pass
+
+                if not safe_download_file(YTDLP_URL, candidate):
+                    return {"success": False, "error": "Téléchargement de yt-dlp impossible. Ancien moteur conservé."}
+
+                checked = subprocess.run(
+                    [candidate, "--version"], capture_output=True,
+                    text=True, timeout=30,
+                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)
+                )
+                new_version = checked.stdout.strip()
+                if checked.returncode != 0 or not re.fullmatch(
+                    r"\d{4}\.\d{2}\.\d{2}(?:[.\w-]*)?", new_version
+                ):
+                    return {"success": False, "error": "La version téléchargée ne s'exécute pas correctement. Ancien moteur conservé."}
+                if previous_version == new_version:
+                    return {"success": True, "updated": False, "version": new_version}
+                old_date = re.match(r"^(\d{4})\.(\d{2})\.(\d{2})", previous_version)
+                new_date = re.match(r"^(\d{4})\.(\d{2})\.(\d{2})", new_version)
+                if old_date and new_date and tuple(map(int, new_date.groups())) < tuple(map(int, old_date.groups())):
+                    return {"success": False, "error": "La version proposée est plus ancienne. Moteur actuel conservé."}
+                os.replace(candidate, YTDLP_PATH)
+                return {"success": True, "updated": True, "version": new_version}
+            except (OSError, subprocess.SubprocessError) as exc:
+                _log_binary_setup_error(exc)
+                return {"success": False, "error": "Mise à jour impossible. Ancien moteur conservé : " + str(exc)}
+            finally:
+                if os.path.isfile(candidate):
+                    try:
+                        os.remove(candidate)
+                    except OSError:
+                        pass
+
     def open_folder(self):
         try:
             ensure_media_directories(self.download_folder)
@@ -2943,6 +3358,368 @@ class DownloaderAPI:
             return bool(webbrowser.open(url))
         except (OSError, webbrowser.Error):
             return False
+
+    def get_native_twitch_extension_status(self):
+        installed = twitch_native_extension.existing_native_extension(APP_DIR)
+        return {
+            "installed": bool(installed),
+            "enabled": bool(self.config.get("twitch_native_extension_enabled")),
+            "version": installed["version"] if installed else "",
+            "state": os.environ.get("ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE", "off"),
+        }
+
+    def open_twitch_native_extension(self, url):
+        """Copier l'extension locale installée dans Chrome, puis ouvrir WebView2."""
+        if not twitch_streamlink_engine.parse_twitch_vod_id(url):
+            return {"success": False, "error": "Lien Twitch VOD non valide."}
+        installed = twitch_native_extension.existing_native_extension(APP_DIR)
+        if not installed:
+            try:
+                installed = twitch_native_extension.install_local_chrome_extension(APP_DIR)
+            except (OSError, ValueError, twitch_native_extension.NativeExtensionError) as exc:
+                return {"success": False, "error": str(exc)}
+        if not self.config.get("twitch_native_extension_enabled"):
+            previous = self.config.get("twitch_native_extension_enabled")
+            self.config["twitch_native_extension_enabled"] = True
+            if not self._save_config():
+                if previous is None:
+                    self.config.pop("twitch_native_extension_enabled", None)
+                else:
+                    self.config["twitch_native_extension_enabled"] = previous
+                return {"success": False, "error": "Impossible d'enregistrer l'activation."}
+            return {
+                "success": True, "restart_required": True,
+                "message": ("Extension Twitch " + installed["version"] +
+                            " copiée dans Donnees. Fermez puis relancez All-Download "
+                            "pour l'activer dans le navigateur intégré."),
+            }
+        state = os.environ.get("ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE")
+        if state != "ready":
+            return {
+                "success": False,
+                "error": ("Extension non active dans WebView2 (" + str(state or "hors mode natif") +
+                          "). Redémarrez All-Download ou consultez crash_log.txt."),
+            }
+        try:
+            view = webview.create_window(
+                "All-Download · Twitch VOD Downloader",
+                url=url, width=1150, height=800, min_size=(940, 650),
+            )
+            if view is None:
+                return {"success": False, "error": "Impossible d'ouvrir la fenêtre Twitch."}
+            return {"success": True, "opened_in_app": True}
+        except Exception as exc:
+            return {"success": False, "error": "Navigateur Twitch intégré indisponible : " + str(exc)}
+
+    def disable_twitch_native_extension(self):
+        """Désactiver le profil à extensions au prochain redémarrage."""
+        self.config["twitch_native_extension_enabled"] = False
+        if not self._save_config():
+            return {"success": False, "error": "Impossible d'enregistrer la désactivation."}
+        return {"success": True, "restart_required": True}
+
+    def open_twitch_in_chrome(self, url):
+        """Ouvrir une vraie VOD Twitch dans Chrome, où l'extension est installée."""
+        if not is_twitch_vod_url(url):
+            return {"success": False, "error": "L'adresse ne correspond pas à une VOD Twitch."}
+        chrome = locate_google_chrome()
+        if not chrome:
+            return {"success": False, "error": "Chrome introuvable sur ce PC."}
+        try:
+            subprocess.Popen(
+                [chrome, "--new-tab", url],
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+            return {"success": True}
+        except OSError as exc:
+            return {"success": False, "error": "Impossible d'ouvrir Chrome : " + str(exc)}
+
+    def get_chrome_download_folder(self):
+        """Dossier que Chrome utilise pour ses téléchargements terminés."""
+        return self.config.get("chrome_download_folder") or twitch_chrome_bridge.default_chrome_download_folder()
+
+    def choose_chrome_download_folder(self):
+        """Facultatif : choisir le même dossier que dans les paramètres Chrome."""
+        if self._window is None:
+            return {"success": False, "error": "Fenêtre indisponible."}
+        folder = self.get_chrome_download_folder()
+        try:
+            choice = self._window.create_file_dialog(
+                webview.FileDialog.FOLDER,
+                directory=folder if os.path.isdir(folder) else os.path.expanduser("~")
+            )
+            if not choice:
+                return {"success": False, "cancelled": True}
+            selected = os.path.abspath(os.path.expanduser(str(choice[0])))
+            twitch_chrome_bridge.snapshot_downloads(selected)
+            previous = self.config.get("chrome_download_folder")
+            self.config["chrome_download_folder"] = selected
+            if not self._save_config():
+                if previous is None:
+                    self.config.pop("chrome_download_folder", None)
+                else:
+                    self.config["chrome_download_folder"] = previous
+                return {"success": False, "error": "Impossible d'enregistrer le dossier Chrome."}
+            return {"success": True, "path": selected}
+        except (OSError, ValueError, TypeError, twitch_chrome_bridge.ChromeBridgeError) as exc:
+            return {"success": False, "error": "Dossier Chrome invalide : " + str(exc)}
+
+    def stop_chrome_extension_bridge(self):
+        """Arrêter uniquement l'import Chrome, jamais yt-dlp/Streamlink."""
+        if not getattr(self, "_chrome_bridge_active", False):
+            return {"success": True, "active": False}
+        self._chrome_bridge_stop.set()
+        return {"success": True, "active": False}
+
+    def start_chrome_extension_bridge(self, url):
+        """Ouvrir Chrome puis copier ses futurs fichiers vidéo dans AUTRES.
+
+        La vraie extension Chrome doit être activée PAR L'UTILISATEUR ; ce
+        pont n'interroge aucune base privée et n'obtient aucune clé Twitch.
+        """
+        if not is_twitch_vod_url(url):
+            return {"success": False, "error": "Cette option nécessite une URL de VOD Twitch."}
+        if getattr(self, "_chrome_bridge_active", False):
+            return {"success": False, "error": "La surveillance Chrome est déjà active. Arrêtez-la avant de relancer."}
+        folder = self.get_chrome_download_folder()
+        try:
+            original_files = twitch_chrome_bridge.snapshot_downloads(folder)
+        except twitch_chrome_bridge.ChromeBridgeError as exc:
+            return {"success": False, "error": str(exc)}
+        opened = self.open_twitch_in_chrome(url)
+        if not opened.get("success"):
+            return opened
+
+        self._chrome_bridge_stop.clear()
+        self._chrome_bridge_active = True
+        def notify(message, percent=0):
+            if self._window:
+                try:
+                    self._window.evaluate_js(
+                        f"updateDownloadProgress({percent}, {json.dumps(message)})"
+                    )
+                    self._window.evaluate_js(f"showAppToast({json.dumps(message[:210])})")
+                except Exception:
+                    pass
+
+        def worker():
+            copied = 0
+            try:
+                notify(
+                    "Chrome : ouvrez l'extension Andre Bradshaw et cliquez sur télécharger. "
+                    "Les fichiers terminés seront copiés dans AUTRES."
+                )
+
+                def on_video(source_path):
+                    nonlocal copied
+                    notify("Chrome : importation de " + os.path.basename(source_path) + " dans AUTRES…")
+                    result = copy_twitch_recording(source_path, self.download_folder)
+                    if not result["already_present"]:
+                        copied += 1
+                        notify("Chrome : vidéo enregistrée dans AUTRES : " +
+                               os.path.basename(result["path"]), 100)
+
+                twitch_chrome_bridge.monitor_chrome_downloads(
+                    folder, original_files, on_video,
+                    cancelled=self._chrome_bridge_stop.is_set,
+                )
+                reason = "Arrêtée" if self._chrome_bridge_stop.is_set() else "Terminée (délai écoulé)"
+                notify(f"Surveillance Chrome : {reason}. {copied} vidéo(s) importée(s) dans AUTRES.")
+            except (OSError, ValueError, twitch_chrome_bridge.ChromeBridgeError) as exc:
+                notify("Échec (pont Chrome) : " + str(exc))
+            finally:
+                self._chrome_bridge_active = False
+
+        threading.Thread(target=worker, name="AllDownload-Pont-Chrome", daemon=True).start()
+        return {"success": True, "started": True, "folder": folder}
+
+    def import_twitch_video(self):
+        """Sélectionner un fichier déjà récupéré, et le COPIER vers AUTRES."""
+        if self._window is None:
+            return {"success": False, "error": "Fenêtre indisponible."}
+        try:
+            selected = self._window.create_file_dialog(
+                webview.OPEN_DIALOG,
+                allow_multiple=False,
+                file_types=(
+                    "Vidéos (*.mp4;*.mkv;*.ts;*.webm;*.mov)",
+                    "Tous les fichiers (*.*)",
+                ),
+            )
+            if not selected:
+                return {"success": False, "cancelled": True}
+            source_path = selected[0]
+            if (not os.path.isfile(source_path)
+                    or os.path.splitext(source_path)[1].lower() not in TWITCH_IMPORT_EXTENSIONS):
+                return {"success": False, "error": "Choisissez un fichier vidéo MP4, MKV, TS, WEBM ou MOV."}
+        except (OSError, AttributeError, TypeError) as exc:
+            return {"success": False, "error": "Impossible de sélectionner la vidéo : " + str(exc)}
+
+        def worker():
+            try:
+                def report(percent):
+                    if self._window and percent % 10 == 0:
+                        self._window.evaluate_js(
+                            f"updateDownloadProgress({percent}, {json.dumps('Importation dans AUTRES…')})"
+                        )
+                result = copy_twitch_recording(source_path, self.download_folder, report)
+                status = ("Fichier déjà dans AUTRES : " if result["already_present"]
+                          else "Vidéo importée dans AUTRES : ") + os.path.basename(result["path"])
+                if self._window:
+                    self._window.evaluate_js(
+                        f"updateDownloadProgress(100, {json.dumps(status)})"
+                    )
+                    self._window.evaluate_js(f"showAppToast({json.dumps(status)})")
+            except (OSError, ValueError) as exc:
+                if self._window:
+                    message = "Échec de l'importation : " + str(exc)
+                    self._window.evaluate_js(f"updateDownloadProgress(0, {json.dumps(message)})")
+                    self._window.evaluate_js(f"showAppToast({json.dumps(message)})")
+        threading.Thread(target=worker, name="AllDownload-Import-Twitch", daemon=True).start()
+        return {"success": True, "started": True}
+
+    def start_twitch_streamlink(self, url, quality="best"):
+        """Deuxième moteur Twitch indépendant : téléchargement dans AUTRES."""
+        if not twitch_streamlink_engine.parse_twitch_vod_id(url):
+            return {"success": False, "error": "Cette option fonctionne seulement avec les VOD Twitch."}
+        if (getattr(self, "_streamlink_download_active", False)
+                or getattr(self, "_archive_download_active", False)
+                or getattr(self, "_active_download_process", None) is not None):
+            return {"success": False, "error": "Un téléchargement est déjà en cours."}
+        self._streamlink_download_active = True
+        self.is_cancelled = False
+        self.is_paused = False
+
+        def worker():
+            try:
+                last_megabytes = -1
+
+                def progress(size):
+                    nonlocal last_megabytes
+                    megabytes = int(size / (1024 * 1024))
+                    if megabytes != last_megabytes:
+                        last_megabytes = megabytes
+                        if self._window:
+                            self._window.evaluate_js(
+                                f"updateDownloadProgress(0, {json.dumps('Streamlink Twitch : ' + str(megabytes) + ' Mo téléchargés…')})"
+                            )
+
+                path = twitch_streamlink_engine.download_twitch_vod(
+                    url, self.download_folder, quality=quality,
+                    progress=progress, cancelled=lambda: self.is_cancelled,
+                    paused=lambda: self.is_paused,
+                    ffmpeg_path=FFMPEG_PATH,
+                )
+                status = "Terminé – Streamlink Twitch : " + os.path.basename(path) + " dans AUTRES"
+                if self._window:
+                    self._window.evaluate_js(f"updateDownloadProgress(100, {json.dumps(status)})")
+                    self._window.evaluate_js(f"showAppToast({json.dumps(status)})")
+            except twitch_streamlink_engine.TwitchEngineCancelled:
+                if self._window:
+                    self._window.evaluate_js(
+                        f"updateDownloadProgress(0, {json.dumps('Annulé – téléchargement Streamlink arrêté.')})"
+                    )
+            except (OSError, twitch_streamlink_engine.TwitchEngineError) as exc:
+                status = "Échec (Streamlink Twitch) : " + str(exc)
+                if self._window:
+                    self._window.evaluate_js(f"updateDownloadProgress(0, {json.dumps(status)})")
+                    self._window.evaluate_js(f"showAppToast({json.dumps(status[:220])})")
+            finally:
+                self._streamlink_download_active = False
+
+        threading.Thread(target=worker, name="AllDownload-Twitch-Streamlink", daemon=True).start()
+        return {"success": True, "started": True}
+
+    def find_public_twitch_archives(self, url):
+        """Recherche explicite de fichiers publics correspondants à l'identifiant Twitch."""
+        try:
+            matches = public_archive.search_twitch_public_archives(url)
+            if not isinstance(getattr(self, "_public_archive_candidates", None), dict):
+                self._public_archive_candidates = {}
+            results = []
+            for match in matches:
+                token = secrets.token_urlsafe(18)
+                self._public_archive_candidates[token] = match
+                results.append({
+                    "token": token,
+                    "title": match["title"],
+                    "file": match["file"],
+                    "size": match["size"],
+                    "archive_page": match["archive_page"],
+                    "license": match["license"],
+                    "provider": match["provider"],
+                })
+            # Ne pas conserver de jetons de recherche indéfiniment.
+            if len(self._public_archive_candidates) > 32:
+                self._public_archive_candidates = {
+                    entry["token"]: self._public_archive_candidates[entry["token"]]
+                    for entry in results
+                }
+            return {"success": True, "candidates": results}
+        except (ValueError, public_archive.ArchiveError) as exc:
+            return {"success": False, "error": str(exc), "candidates": []}
+
+    def start_public_archive_download(self, token, rights_confirmed=False):
+        """Déclencher un vrai téléchargement Internet Archive après confirmation explicite."""
+        if rights_confirmed is not True:
+            return {"success": False, "error": "Vous devez confirmer vos droits sur cette copie."}
+        candidate = getattr(self, "_public_archive_candidates", {}).get(str(token))
+        if not candidate:
+            return {"success": False, "error": "Archive expirée : relancez la recherche."}
+        if getattr(self, "_archive_download_active", False) or getattr(self, "_active_download_process", None):
+            return {"success": False, "error": "Un autre téléchargement est déjà en cours."}
+        self._archive_download_active = True
+        self.is_cancelled = False
+
+        def worker():
+            last_pct = -1
+            try:
+                def cancelled():
+                    while self.is_paused and not self.is_cancelled:
+                        time.sleep(0.2)
+                    return self.is_cancelled
+
+                def progress(pct):
+                    nonlocal last_pct
+                    if pct == last_pct:
+                        return
+                    last_pct = pct
+                    if self._window:
+                        try:
+                            self._window.evaluate_js(
+                                f"updateDownloadProgress({pct}, {json.dumps('Archive publique : ' + str(pct) + '%')})"
+                            )
+                        except Exception:
+                            pass
+
+                path = public_archive.download_public_archive(
+                    candidate, self.download_folder, progress=progress, cancelled=cancelled
+                )
+                status = "Archive téléchargée dans AUTRES : " + os.path.basename(path)
+                if self._window:
+                    self._window.evaluate_js(
+                        f"updateDownloadProgress(100, {json.dumps(status)})"
+                    )
+                    self._window.evaluate_js(f"showAppToast({json.dumps(status)})")
+            except public_archive.ArchiveCancelled:
+                if self._window:
+                    self._window.evaluate_js(
+                        f"updateDownloadProgress(0, {json.dumps('Annulé – archive non conservée.')})"
+                    )
+            except (OSError, ValueError, public_archive.ArchiveError) as exc:
+                status = "Échec (archive publique) : " + str(exc)
+                if self._window:
+                    self._window.evaluate_js(
+                        f"updateDownloadProgress(0, {json.dumps(status)})"
+                    )
+                    self._window.evaluate_js(f"showAppToast({json.dumps(status[:220])})")
+            finally:
+                self._archive_download_active = False
+
+        threading.Thread(target=worker, name="AllDownload-ArchivePublique", daemon=True).start()
+        return {"success": True, "started": True}
 
     def get_auth_config(self):
         return {
@@ -3063,11 +3840,16 @@ class DownloaderAPI:
 
         cmd = [
             YTDLP_PATH, "-J",
+            *get_ytdlp_local_args(),
             "--no-warnings",
             "--force-ipv4",
             "--socket-timeout", "15",
             "--retries", "3"
         ] + self._get_cookie_args()
+        # Le JS est préparé localement uniquement pour YouTube (vidéos, playlists,
+        # chaînes, Shorts et audio). Aucun changement pour les autres sites.
+        js_args = get_youtube_js_args(url)
+        cmd.extend(js_args)
 
         imp_val = settings.get("impersonation", "none")
         if imp_val == "random":
@@ -3098,13 +3880,25 @@ class DownloaderAPI:
                 universal_newlines=True,
                 encoding='utf-8',
                 errors='replace',
-                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
+                env=get_media_runtime_env()
             )
-            stdout, stderr = proc.communicate(timeout=60)
+            stdout, stderr = proc.communicate(timeout=120 if is_twitch_vod_url(url) else 60)
             
             if proc.returncode != 0:
                 err_lower = stderr.lower()
                 is_restricted = False
+                if is_twitch_vod_url(url) and is_twitch_subscriber_error(stderr):
+                    return {
+                        "success": False, "is_restricted": True,
+                        "error_code": "twitch_subscriber_only",
+                        "error": (
+                            "VOD Twitch réservée aux abonnés : yt-dlp ne reçoit pas le flux "
+                            "sans un compte autorisé. Si votre extension Chrome possède déjà "
+                            "une copie accessible, ouvrez la VOD dans Chrome puis importez "
+                            "la vidéo enregistrée dans AUTRES."
+                        ),
+                    }
                 if any(k in err_lower for k in ["sign in", "confirm your age", "age-restricted", "age restricted", "inappropriate"]):
                     err_clean = "Contenu restreint (+18 ans) : Connectez vos cookies via l'icône clé en bas à gauche."
                     is_restricted = True
@@ -3112,7 +3906,12 @@ class DownloaderAPI:
                     err_clean = "Contenu privé : Accès réservé. Connectez vos cookies pour y accéder."
                     is_restricted = True
                 elif "403" in stderr:
-                    err_clean = "Accès refusé (Erreur 403) : Authentification ou cookies requis."
+                    err_clean = (
+                        "VOD Twitch : erreur 403. Vérifiez que la VOD est lisible dans votre "
+                        "navigateur, votre accès à la chaîne, vos cookies et la version de yt-dlp."
+                        if is_twitch_vod_url(url) else
+                        "Accès refusé (Erreur 403) : vérifiez l'accès au contenu, les cookies et votre connexion."
+                    )
                     is_restricted = True
                 elif "could not copy" in err_lower or "database is locked" in err_lower:
                     err_clean = "Base de données navigateur verrouillée : Fermez complètement votre navigateur pour lire les cookies."
@@ -3212,6 +4011,7 @@ class DownloaderAPI:
         def _worker():
             total = len(items)
             completed = 0
+            failures = []
             if any(not item.get("is_direct_download") for item in items):
                 if not ensure_ytdlp_ready():
                     error_text = ("yt-dlp est absent ou invalide. "
@@ -3280,6 +4080,7 @@ class DownloaderAPI:
                 # Téléchargement universel via yt-dlp
                 cmd = [
                     YTDLP_PATH,
+                    *get_ytdlp_local_args(),
                     "--ffmpeg-location", BIN_DIR,
                     "--windows-filenames",
                     "--newline",
@@ -3288,6 +4089,12 @@ class DownloaderAPI:
                     "-P", target_dir,
                     "-o", f"{sanitize_filename(item.get('title', 'Media'))}.%(ext)s" if "v.pinimg.com" in url else "%(title)s.%(ext)s"
                 ] + self._get_cookie_args()
+                cmd.extend(get_youtube_js_args(url))
+
+                if is_twitch_vod_url(url):
+                    # Les VOD Twitch sont des flux HLS longs, souvent déjà multiplexés.
+                    # Les autres plateformes gardent exactement leurs paramètres.
+                    cmd.extend(["--fragment-retries", "15", "--retry-sleep", "fragment:exp=1:12"])
 
                 if "twitter.com" in url or "x.com" in url:
                     cmd.extend(["--extractor-args", "twitter:api=syndication"])
@@ -3396,18 +4203,22 @@ class DownloaderAPI:
 
                     target_ext = settings.get("video_format", "MP4").lower()
 
+                    twitch_vod = is_twitch_vod_url(url)
+                    default_format = "best/bestvideo+bestaudio" if twitch_vod else "bestvideo+bestaudio/best"
                     if quality == "Meilleure qualité (Auto)" or not quality:
-                        cmd.extend(["-f", "bestvideo+bestaudio/best"])
+                        cmd.extend(["-f", default_format])
                     else:
                         h_match = re.search(r'(\d+)p?', str(quality))
                         if h_match:
                             h = h_match.group(1)
-                            cmd.extend([
-                                "-f", f"bestvideo[height<=?{h}]+bestaudio/best[height<=?{h}]/best",
-                                "--format-sort", f"res:{h},fps"
-                            ])
+                            format_rule = (
+                                f"best[height<=?{h}]/bestvideo[height<=?{h}]+bestaudio/best"
+                                if twitch_vod else
+                                f"bestvideo[height<=?{h}]+bestaudio/best[height<=?{h}]/best"
+                            )
+                            cmd.extend(["-f", format_rule, "--format-sort", f"res:{h},fps"])
                         else:
-                            cmd.extend(["-f", "bestvideo+bestaudio/best"])
+                            cmd.extend(["-f", default_format])
                     
                     if not settings.get("video_origin_stream", False):
                         cmd.extend(["--merge-output-format", target_ext])
@@ -3422,7 +4233,8 @@ class DownloaderAPI:
                     encoding='utf-8',
                     errors='replace',
                     bufsize=1,
-                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
+                    env=get_media_runtime_env()
                 )
 
                 self._active_download_process = proc
@@ -3431,8 +4243,13 @@ class DownloaderAPI:
 
                 last_pct = -1
                 last_time = 0
+                last_errors = []
                 for line in iter(proc.stdout.readline, ""):
                     clean = line.strip()
+                    if clean.startswith("ERROR:"):
+                        # Conserver seulement les dernières erreurs utiles, sans log géant.
+                        last_errors.append(clean)
+                        last_errors = last_errors[-5:]
                     if "[download]" in clean and "%" in clean:
                         m = re.search(r"(\d+\.\d+)%", clean)
                         if m:
@@ -3450,6 +4267,33 @@ class DownloaderAPI:
                 proc.communicate()
                 self._active_download_process = None
 
+                if not self.is_cancelled and getattr(proc, "returncode", None) != 0:
+                    detail = last_errors[-1] if last_errors else (
+                        "yt-dlp s'est arrêté avec le code " + str(getattr(proc, "returncode", "?"))
+                    )
+                    # Eviter d'afficher des clés de session figurant dans une URL d'erreur.
+                    detail = re.sub(
+                        r"(?i)((?:access_token|oauth|token|sig|signature|key)=)[^&\s]+",
+                        r"\1[masqué]", detail
+                    )
+                    hint = (
+                        " Vérifiez que la VOD est toujours accessible dans Twitch, "
+                        "mettez à jour yt-dlp et utilisez vos cookies si nécessaire."
+                        if is_twitch_vod_url(url) else ""
+                    )
+                    msg = "Échec [" + str(idx) + "/" + str(total) + "] : " + detail + hint
+                    failures.append(msg)
+                    if self._window:
+                        try:
+                            self._window.evaluate_js(
+                                f"updateDownloadProgress(0, {json.dumps(msg)})"
+                            )
+                            self._window.evaluate_js(
+                                f"showAppToast({json.dumps(msg[:240])})"
+                            )
+                        except Exception:
+                            pass
+
                 if not self.is_cancelled and getattr(proc, "returncode", None) == 0:
                     completed += 1
                     try:
@@ -3465,9 +4309,15 @@ class DownloaderAPI:
                 if self._window:
                     if self.is_cancelled:
                         status = f"Annulé – {completed}/{total} élément(s) téléchargé(s)."
+                    elif failures:
+                        # Garder la cause visible plutôt que masquer « 403 » sous un succès fictif.
+                        status = (
+                            f"Échec ({completed}/{total} téléchargé(s)) – "
+                            + failures[-1]
+                        )
                     else:
                         status = f"Traitement terminé – {completed}/{total} élément(s) téléchargé(s)."
-                    self._window.evaluate_js(f"updateDownloadProgress(100, {json.dumps(status)})")
+                    self._window.evaluate_js(f"updateDownloadProgress({100 if not failures else 0}, {json.dumps(status)})")
                     if settings.get("notify") in ("finish", "always"):
                         self._window.evaluate_js(f"showAppToast({json.dumps(status)})")
             except Exception:
@@ -3507,6 +4357,79 @@ def safe_download_file(url, target_path):
                 os.remove(tmp_path)
             except OSError:
                 pass
+
+
+def is_supported_deno(executable):
+    """Exiger un PE x64 fonctionnel, Deno 2.3+ (minimum actuel de yt-dlp)."""
+    if not is_valid_windows_executable(executable):
+        return False
+    try:
+        result = subprocess.run(
+            [executable, "--version"], capture_output=True, text=True,
+            timeout=20, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            env=get_media_runtime_env()
+        )
+        if result.returncode != 0:
+            return False
+        version = re.search(r"(?m)^deno (\d+)\.(\d+)\.(\d+)", result.stdout)
+        return bool(version and tuple(map(int, version.groups())) >= (2, 3, 0))
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return False
+
+
+def ensure_deno_ready():
+    """Installer Deno dans Donnees/bin uniquement à la première utilisation YouTube.
+
+    Téléchargement atomique depuis la Release officielle. Ni PATH global ni
+    registre Windows modifiés. Ne jamais remplacer un exécutable valide en cas
+    d'échec de téléchargement, d'extraction ou de vérification.
+    """
+    if is_supported_deno(DENO_PATH):
+        return True
+    with _BINARIES_LOCK:
+        if is_supported_deno(DENO_PATH):
+            return True
+        archive_path = DENO_PATH + ".download.zip"
+        candidate_path = DENO_PATH + ".candidate.exe"
+        try:
+            if not safe_download_file(DENO_URL, archive_path):
+                return False
+            with zipfile.ZipFile(archive_path) as archive:
+                members = [
+                    member for member in archive.infolist()
+                    if member.filename.lower() == "deno.exe" and not member.is_dir()
+                ]
+                if (len(members) != 1 or not 65536 <= members[0].file_size <= 500 * 1024 * 1024):
+                    raise ValueError("Archive officielle Deno inattendue")
+                with archive.open(members[0]) as source, open(candidate_path, "wb") as destination:
+                    shutil.copyfileobj(source, destination, length=1024 * 1024)
+            if not is_supported_deno(candidate_path):
+                raise ValueError("deno.exe ne fonctionne pas ou version inférieure à 2.3")
+            os.replace(candidate_path, DENO_PATH)
+            return True
+        except (OSError, ValueError, zipfile.BadZipFile, subprocess.SubprocessError) as exc:
+            _log_binary_setup_error(exc)
+            return False
+        finally:
+            for temporary in (archive_path, candidate_path):
+                try:
+                    if os.path.isfile(temporary):
+                        os.remove(temporary)
+                except OSError:
+                    pass
+
+
+def get_youtube_js_args(url):
+    """Injecter Deno explicitement uniquement pour YouTube.
+
+    L'EXE officiel yt-dlp embarque déjà yt-dlp-ejs. Si l'installation
+    est impossible (hors réseau), yt-dlp conserve son comportement habituel.
+    """
+    if not is_youtube_url(url):
+        return []
+    if ensure_deno_ready():
+        return ["--js-runtimes", "deno:" + DENO_PATH]
+    return []
 
 
 def import_legacy_portable_tools():
@@ -3611,6 +4534,8 @@ def get_gui_webview_storage_path(argv=None):
     """
     arguments = list(sys.argv[1:] if argv is None else argv)
     name = "webview" if get_portable_root() else "webview-classique"
+    if os.environ.get("ALL_DOWNLOAD_WEBVIEW_EXTENSION_PATH"):
+        name += "-extensions"
     if WEBVIEW_RETRY_FLAG in arguments or STARTUP_RETRY_FLAG in arguments:
         name += "-recuperation"
     return os.path.join(LEGACY_APP_DIR, name)
@@ -3720,6 +4645,21 @@ if __name__ == '__main__':
     try:
         log_startup_phase("Debut: preparation des reglages et dossiers")
         api = DownloaderAPI()
+        native_installed = twitch_native_extension.existing_native_extension(APP_DIR)
+        native_mode = bool(api.config.get("twitch_native_extension_enabled") and native_installed)
+        if native_mode:
+            os.environ["ALL_DOWNLOAD_WEBVIEW_EXTENSION_PATH"] = native_installed["path"]
+            os.environ["ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE"] = "loading"
+            os.environ["ALL_DOWNLOAD_EXTENSION_STATUS_FILE"] = os.path.join(APP_DIR, "extension_webview_status.txt")
+            try:
+                os.remove(os.environ["ALL_DOWNLOAD_EXTENSION_STATUS_FILE"])
+            except OSError:
+                pass
+            log_startup_phase("Extension Twitch WebView2: activation demandee")
+        else:
+            os.environ.pop("ALL_DOWNLOAD_WEBVIEW_EXTENSION_PATH", None)
+            os.environ.pop("ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE", None)
+            os.environ.pop("ALL_DOWNLOAD_EXTENSION_STATUS_FILE", None)
         log_startup_phase("Reglages prepares: creation de la fenetre")
         window = webview.create_window(
             'All Media Download',
@@ -3783,7 +4723,7 @@ if __name__ == '__main__':
             try:
                 webview.start(
                     debug=False,
-                    private_mode=True,
+                    private_mode=not native_mode,
                     storage_path=get_gui_webview_storage_path(),
                 )
             finally:

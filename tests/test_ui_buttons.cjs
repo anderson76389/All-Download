@@ -56,12 +56,48 @@ const backend = {
   get_clipboard_text: () => 'https://example.com/copied',
   open_folder: () => {events.push(['open_folder']);return true;},
   open_external: url => {events.push(['open_external',url]);return true;},
+  open_twitch_in_chrome: url => {events.push(['open_twitch_in_chrome',url]);return {success:true};},
+  import_twitch_video: () => {events.push(['import_twitch_video']);return {success:true,started:true};},
+  start_chrome_extension_bridge: url => {events.push(['start_chrome_extension_bridge',url]);return {success:true,started:true};},
+  stop_chrome_extension_bridge: () => {events.push(['stop_chrome_extension_bridge']);return {success:true};},
+  choose_chrome_download_folder: () => {events.push(['choose_chrome_download_folder']);return {success:true,path:'C:/Users/Test/Downloads'};},
+  start_twitch_streamlink: (url,quality) => {
+    events.push(['start_twitch_streamlink',url,quality]);
+    return {success:true,started:true};
+  },
+  open_twitch_native_extension: url => {
+    events.push(['open_twitch_native_extension',url]);
+    return {success:true,restart_required:true,message:'Extension locale importée : redémarrage nécessaire.'};
+  },
+  disable_twitch_native_extension: () => {
+    events.push(['disable_twitch_native_extension']);
+    return {success:true,restart_required:true};
+  },
+  find_public_twitch_archives: url => {
+    events.push(['find_public_twitch_archives',url]);
+    return {success:true,candidates:[{
+      token:'testArchiveToken', title:'VOD archivées 2905228526',
+      file:'vod-2905228526.mp4', size:1048576,
+      provider:'Internet Archive',
+      license:'https://creativecommons.org/licenses/by/4.0/',
+      archive_page:'https://archive.org/details/sample'
+    }]};
+  },
+  start_public_archive_download: (token, confirmed) => {
+    events.push(['start_public_archive_download',token,confirmed]);
+    return {success:true,started:true};
+  },
   cancel_downloads: () => {events.push(['cancel_downloads']);return true;},
   pause_downloads: () => {events.push(['pause_downloads']);return {success:true,mode:'active'};},
   resume_downloads: () => {events.push(['resume_downloads']);return {success:true};},
   start_downloads: items => {events.push(['start_downloads',JSON.parse(JSON.stringify(items))]);return true;},
+  update_ytdlp: () => {events.push(['update_ytdlp']);return {success:true,updated:true,version:'2026.10.26'};},
   extract_info: url => {
     events.push(['extract_info',url]);
+    if(url.includes('/videos/2905228526')) return {
+      success:false, is_restricted:true, error_code:'twitch_subscriber_only',
+      error:'VOD Twitch réservée aux abonnés'
+    };
     if(url.includes('denied')) return {success:false,error:'Accès refusé'};
     if(url.includes('/playlist?')) return {success:true,data:{...playlist,url}};
     return {success:true,data:{...media,url}};
@@ -113,6 +149,66 @@ function validate() {
 async function run() {
   validate();
 
+  // VOD Twitch réservée : proposer Chrome + import sans forcer l'accès à yt-dlp.
+  doc.getElementById('urlInput').value='https://www.twitch.tv/videos/2905228526';
+  win.addVideo();
+  await flush();
+  assert.match(doc.getElementById('cardList').textContent,/VOD réservée aux abonnés/);
+  action('[onclick="openTwitchInChrome(0)"]');
+  await flush();
+  assert.deepEqual(events.findLast(e=>e[0]==='open_twitch_in_chrome'),
+    ['open_twitch_in_chrome','https://www.twitch.tv/videos/2905228526']);
+  action('[onclick="importTwitchVideo()"]');
+  await flush();
+  assert.ok(events.some(e=>e[0]==='import_twitch_video'));
+  action('[onclick="openTwitchNative(0)"]');
+  await flush();
+  assert.deepEqual(events.findLast(e=>e[0]==='open_twitch_native_extension'),
+    ['open_twitch_native_extension','https://www.twitch.tv/videos/2905228526']);
+  action('[onclick="startChromeAutoImport(0)"]');
+  await flush();
+  assert.deepEqual(events.findLast(e=>e[0]==='start_chrome_extension_bridge'),
+    ['start_chrome_extension_bridge','https://www.twitch.tv/videos/2905228526']);
+  action('[onclick="chooseChromeFolder()"]');
+  await flush();
+  assert.ok(events.some(e=>e[0]==='choose_chrome_download_folder'));
+  action('[onclick="stopChromeAutoImport()"]');
+  await flush();
+  assert.ok(events.some(e=>e[0]==='stop_chrome_extension_bridge'));
+  action('[onclick="downloadTwitchStreamlink(0)"]');
+  await flush();
+  assert.deepEqual(events.findLast(e=>e[0]==='start_twitch_streamlink'),
+    ['start_twitch_streamlink','https://www.twitch.tv/videos/2905228526','best']);
+  assert.deepEqual(events.findLast(e=>e[0]==='find_public_twitch_archives'),
+    ['find_public_twitch_archives','https://www.twitch.tv/videos/2905228526']);
+  assert.match(doc.getElementById('cardList').textContent,/vod-2905228526\.mp4/);
+  action('[onclick="downloadTwitchArchive(0, 0)"]');
+  await flush();
+  assert.equal(events.some(e=>e[0]==='start_public_archive_download'),false);
+  doc.getElementById('archiveRights_0_0').checked=true;
+  action('[onclick="downloadTwitchArchive(0, 0)"]');
+  await flush();
+  assert.deepEqual(events.findLast(e=>e[0]==='start_public_archive_download'),
+    ['start_public_archive_download','testArchiveToken',true]);
+  win.clearQueue();
+  win.resetDownloadUIState();
+
+  // Une VOD dont les métadonnées sont accessibles propose aussi Streamlink
+  // sans supprimer le bouton de téléchargement yt-dlp.
+  doc.getElementById('urlInput').value='https://www.twitch.tv/videos/1234567890';
+  win.addVideo();
+  await flush();
+  assert.ok(doc.querySelector('[onclick="downloadTwitchStreamlink(0)"]'));
+  assert.ok(doc.querySelector('[onclick="openTwitchNative(0)"]'));
+  assert.ok(doc.querySelector('[onclick="startChromeAutoImport(0)"]'));
+  assert.ok(doc.querySelector('[onclick="downloadSingle(0)"]'));
+  action('[onclick="downloadTwitchStreamlink(0)"]');
+  await flush();
+  assert.deepEqual(events.findLast(e=>e[0]==='start_twitch_streamlink'),
+    ['start_twitch_streamlink','https://www.twitch.tv/videos/1234567890','Meilleure qualité (Auto)']);
+  win.clearQueue();
+  win.resetDownloadUIState();
+
   // Paramètres : le bouton doit charger les valeurs enregistrées.
   action('.btn-settings');
   await flush();
@@ -132,6 +228,10 @@ async function run() {
   assert.equal(doc.getElementById('setSectionAppli').style.display,'flex');
   action('#tabBtnReseau');
   assert.equal(doc.getElementById('setSectionReseau').style.display,'flex');
+  action('#updateYtdlpBtn');
+  await flush();
+  assert.ok(events.some(x=>x[0]==='update_ytdlp'));
+  assert.match(doc.getElementById('updateYtdlpStatus').textContent,/2026\.10\.26/);
   action('#tabBtnTelech');
   action('#btnSortieAudio');
   assert.equal(doc.getElementById('sortieAudioFields').style.display,'block');

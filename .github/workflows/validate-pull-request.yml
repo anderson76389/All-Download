@@ -1,0 +1,174 @@
+name: Vérifier les corrections proposées (sans publication)
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  tests-windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Installer les dépendances minimales
+        shell: pwsh
+        run: |
+          python -m pip install pywebview==6.2.1 pythonnet==3.2.1 streamlink==8.6.3 "psutil>=6.1,<8"
+      - name: Vérifier la syntaxe Python
+        run: python -m py_compile yt_app.py
+      - name: Tester tous les comportements Python
+        run: python -m unittest discover -s tests -v
+      - name: Vérifier la recherche réelle Internet Archive (réseau facultatif)
+        continue-on-error: true
+        run: python -m scripts.verify_archive_lookup
+      - name: Vérifier la VOD Twitch avec le vrai yt-dlp (sans télécharger)
+        continue-on-error: true
+        run: python -m scripts.verify_live_twitch_vod
+      - name: Tester les boutons JavaScript (sans créer de Release)
+        shell: pwsh
+        run: |
+          npm install --no-save --no-package-lock --ignore-scripts jsdom@26.1.0 playwright-core@1.56.1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -c 'import yt_app; from pathlib import Path; Path("tests/ui-test.html").write_text(yt_app.HTML_PAGE, encoding="utf-8")'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/test_ui_buttons.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/test_ui_responsive.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Vérifier le vrai moteur Streamlink (HLS local et Twitch réel)
+        run: python -m scripts.verify_streamlink_engine
+      - name: Télécharger une vidéo HLS complète, vérifier MP4, audio et vidéo
+        shell: pwsh
+        run: |
+          python -m pip install imageio-ffmpeg==0.6.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m scripts.verify_streamlink_full_video
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Vérifier un vrai fragment de VOD Twitch publique (réseau facultatif)
+        continue-on-error: true
+        run: python -m scripts.verify_public_twitch_sample
+      - name: Télécharger et exécuter le vrai moteur Deno Windows x64
+        run: python -m scripts.verify_deno_runtime
+      - name: Construire une version Portable de prévisualisation
+        shell: pwsh
+        run: |
+          python -m pip install pyinstaller==6.22.3
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/patch_webview_startup.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m PyInstaller --clean --noconfirm --workpath build/youtube-twitch-preview --distpath preview-build All_Media_Download-Portable.spec
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $root = "preview/All-Download-Preview"
+          New-Item -ItemType Directory -Force -Path $root | Out-Null
+          Copy-Item "preview-build/All_Media_Download.exe" "$root/All_Media_Download.exe"
+          Copy-Item "logo.ico" "$root/logo.ico"
+          Copy-Item "logo.jpg" "$root/logo.jpg"
+          foreach ($dir in @("AUDIOS", "AUTRES", "CHAÎNES", "GIFS", "PLAYLIST", "VIDÉOS")) {
+            New-Item -ItemType Directory -Force -Path "$root/$dir" | Out-Null
+          }
+      - name: Démarrer le vrai EXE Portable et vérifier sa fenêtre HTML
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $exe = (Resolve-Path "preview-build/All_Media_Download.exe").Path
+          $root = Split-Path $exe -Parent
+          $log = Join-Path $root "Donnees/startup_log.txt"
+          $oldLocalAppData = $env:LOCALAPPDATA
+          $env:LOCALAPPDATA = Join-Path $env:RUNNER_TEMP "AllDownloadPreviewColdWebview"
+          New-Item -ItemType Directory -Force -Path $env:LOCALAPPDATA | Out-Null
+          if (Test-Path $log) { Remove-Item $log -Force }
+          try {
+            $p = Start-Process -FilePath $exe -WorkingDirectory $root -PassThru
+          } finally {
+            $env:LOCALAPPDATA = $oldLocalAppData
+          }
+          $ready = $false
+          try {
+            for ($i=0; $i -lt 100; $i++) {
+              Start-Sleep -Milliseconds 500
+              $p.Refresh()
+              if ($p.HasExited) { throw "L'EXE a quitté avant le chargement HTML ($($p.ExitCode))" }
+              if (Test-Path $log) {
+                # Un EXE PyInstaller onefile peut posséder un processus parent
+                # et un processus enfant : ne PAS confondre le PID de Start-Process
+                # avec le PID de la fenêtre réelle. Utiliser les événements
+                # "shown" et "loaded" pour le MÊME PID issu du journal.
+                $entries = @(Get-Content $log -Tail 45)
+                $loaded = @($entries | Where-Object { $_ -match 'PID=([0-9]+) Interface HTML chargee' })
+                foreach ($line in $loaded) {
+                  $match = [regex]::Match($line, 'PID=([0-9]+) Interface HTML chargee')
+                  if (-not $match.Success) { continue }
+                  $guiPidInLog = [int]$match.Groups[1].Value
+                  $shown = @($entries | Where-Object { $_.Contains("PID=$guiPidInLog Fenetre native affichee") })
+                  if ($shown.Count -gt 0) {
+                    Write-Output "GUI Python PID=$guiPidInLog : fenêtre native affichée et HTML chargé."
+                    $ready = $true
+                    break
+                  }
+                }
+              }
+            }
+            if (-not $ready) {
+              if (Test-Path $log) { Get-Content $log -Tail 60 }
+              throw "L'EXE compilé ne charge pas l'interface HTML avec une fenêtre réelle"
+            }
+            Write-Output "EXE Portable reel : evenement fenetre native affichee + interface HTML chargee, pour le meme processus."
+          } finally {
+            Get-Process -Name All_Media_Download -ErrorAction SilentlyContinue |
+              Stop-Process -Force -ErrorAction SilentlyContinue
+          }
+      - name: Tester l'installation d'une extension native WebView2 (fixture locale)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          python -m scripts.prepare_native_extension_smoke "preview-build"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $root = (Resolve-Path "preview-build").Path
+          $exe = Join-Path $root "All_Media_Download.exe"
+          $status = Join-Path $root "Donnees/extension_webview_status.txt"
+          $log = Join-Path $root "Donnees/startup_log.txt"
+          $oldLocalAppData = $env:LOCALAPPDATA
+          $env:LOCALAPPDATA = Join-Path $env:RUNNER_TEMP "AllDownloadNativeExtensionSmoke"
+          New-Item -ItemType Directory -Force -Path $env:LOCALAPPDATA | Out-Null
+          if (Test-Path $status) { Remove-Item $status -Force }
+          try {
+            $p = Start-Process -FilePath $exe -WorkingDirectory $root -PassThru
+            $installed = $false
+            for ($i = 0; $i -lt 100; $i++) {
+              Start-Sleep -Milliseconds 500
+              $p.Refresh()
+              if (Test-Path $status) {
+                $value = (Get-Content $status -Raw).Trim()
+                if ($value -eq "ready") {
+                  $installed = $true
+                  break
+                }
+                if ($value -eq "failed") {
+                  throw "WebView2 a refusé le chargement de l'extension native."
+                }
+              }
+              if ($p.HasExited) { throw "L'EXE est sorti avant chargement de l'extension native" }
+            }
+            if (-not $installed) {
+              if (Test-Path $log) { Get-Content $log -Tail 40 }
+              throw "Aucune confirmation réelle d'installation par WebView2"
+            }
+            Write-Output "WEBVIEW2_NATIVE_EXTENSION=READY (extension factice locale)"
+          } finally {
+            $env:LOCALAPPDATA = $oldLocalAppData
+            Get-Process -Name All_Media_Download -ErrorAction SilentlyContinue |
+              Stop-Process -Force -ErrorAction SilentlyContinue
+            # Cette fixture reste dans preview-build/ et n'est pas livrée.
+          }
+      - name: Déposer le programme de test sans publier de Release
+        uses: actions/upload-artifact@v4
+        with:
+          name: All-Download-YouTube-Twitch-Preview-Windows
+          path: preview/All-Download-Preview/
+          retention-days: 7
