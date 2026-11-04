@@ -2703,7 +2703,8 @@ HTML_PAGE = """<!DOCTYPE html>
               <div class="card-controls">
                 ${isTwitchVodClient(item.url)
                   ? `<button class="btn-logs-card" onclick="downloadTwitchStreamlink(${index})" title="Moteur Twitch indépendant de yt-dlp">Streamlink Twitch</button>
-                     <button class="btn-logs-card" onclick="startChromeAutoImport(${index})" title="Ouvrir Chrome et importer automatiquement les fichiers téléchargés par votre extension">Chrome + import auto</button>`
+                     <button class="btn-logs-card" onclick="startChromeAutoImport(${index})" title="Ouvrir Chrome et importer automatiquement les fichiers téléchargés par votre extension">Chrome + import auto</button>
+                     <button class="btn-logs-card" onclick="stopChromeAutoImport()">Arrêter import</button>`
                   : ''}
                 <div class="pill-dropdown" onclick="toggleDropdown('card_mode_pop_${index}', event)">
                   <span>${item.mode}</span>
