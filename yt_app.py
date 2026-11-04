@@ -1743,6 +1743,11 @@ HTML_PAGE = """<!DOCTYPE html>
           <button type="button" id="updateYtdlpBtn" class="btn-add" style="border-radius: 8px; padding: 9px 16px;" onclick="updateYtdlpSafe()">Vérifier et mettre à jour yt-dlp</button>
           <div class="setting-subtext" id="updateYtdlpStatus">La mise à jour est manuelle : aucune modification du moteur pendant vos téléchargements.</div>
         </div>
+        <div class="setting-field">
+          <div class="setting-label">Extension Twitch native WebView2 :</div>
+          <button type="button" class="btn-add" onclick="disableTwitchNative()">Désactiver l’extension intégrée</button>
+          <div class="setting-subtext">Cliquer sur « Extension intégrée » depuis une VOD : importer l’extension déjà installée dans Chrome. Redémarrage nécessaire. Compatibilité de ses fonctions avec WebView2 à vérifier.</div>
+        </div>
       </div>
     </div>
   </div>
@@ -2534,7 +2539,8 @@ HTML_PAGE = """<!DOCTYPE html>
                 ${badgeText}
               </div>
               ${twitchRestricted
-                ? `<button class="btn-logs-card" onclick="openTwitchInChrome(${index})">Ouvrir dans Chrome</button>
+                ? `<button class="btn-logs-card" onclick="openTwitchNative(${index})" title="Charger l’extension locale dans WebView2">Extension intégrée</button>
+                   <button class="btn-logs-card" onclick="openTwitchInChrome(${index})">Ouvrir dans Chrome</button>
                    <button class="btn-logs-card" onclick="startChromeAutoImport(${index})" title="Utiliser l’extension Chrome puis ranger automatiquement ses vidéos dans AUTRES">Chrome + import auto</button>
                    <button class="btn-logs-card" onclick="chooseChromeFolder()">Dossier Chrome</button>
                    <button class="btn-logs-card" onclick="stopChromeAutoImport()">Arrêter import</button>
@@ -2703,7 +2709,8 @@ HTML_PAGE = """<!DOCTYPE html>
               <div class="card-meta">Durée : ${item.duration} &nbsp;•&nbsp; ${destInfo}</div>
               <div class="card-controls">
                 ${isTwitchVodClient(item.url)
-                  ? `<button class="btn-logs-card" onclick="downloadTwitchStreamlink(${index})" title="Moteur Twitch indépendant de yt-dlp">Streamlink Twitch</button>
+                  ? `<button class="btn-logs-card" onclick="openTwitchNative(${index})" title="Charger l’extension locale dans WebView2">Extension intégrée</button>
+                     <button class="btn-logs-card" onclick="downloadTwitchStreamlink(${index})" title="Moteur Twitch indépendant de yt-dlp">Streamlink Twitch</button>
                      <button class="btn-logs-card" onclick="startChromeAutoImport(${index})" title="Ouvrir Chrome et importer automatiquement les fichiers téléchargés par votre extension">Chrome + import auto</button>
                      <button class="btn-logs-card" onclick="chooseChromeFolder()">Dossier Chrome</button>
                      <button class="btn-logs-card" onclick="stopChromeAutoImport()">Arrêter import</button>`
@@ -2938,6 +2945,28 @@ HTML_PAGE = """<!DOCTYPE html>
       resetDownloadUIState();
       showAppToast('Impossible de démarrer le téléchargement de cette archive.');
     });
+  }
+
+  function openTwitchNative(index) {
+    const item = queue[index];
+    if (!item || !item.url || !isTwitchVodClient(item.url)) return;
+    callApi('open_twitch_native_extension', item.url).then(result => {
+      if (!result || !result.success) {
+        showAppToast(result && result.error ? result.error : 'Extension WebView2 indisponible.');
+      } else if (result.restart_required) {
+        showAppToast(result.message || 'Redémarrez All-Download pour activer l’extension.');
+      } else if (result.opened_in_app) {
+        showAppToast('Fenêtre Twitch intégrée ouverte.');
+      }
+    }).catch(() => showAppToast('Impossible de charger l’extension native.'));
+  }
+
+  function disableTwitchNative() {
+    callApi('disable_twitch_native_extension').then(result => {
+      showAppToast(result && result.success
+        ? 'Extension désactivée. Redémarrez All-Download.'
+        : (result && result.error ? result.error : 'Désactivation impossible.'));
+    }).catch(() => showAppToast('Désactivation impossible.'));
   }
 
   function startChromeAutoImport(index) {
