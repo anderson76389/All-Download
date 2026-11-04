@@ -24,6 +24,7 @@ import secrets
 from pathlib import Path
 import public_archive
 import twitch_streamlink_engine
+import twitch_chrome_bridge
 import webview
 
 # 1. Protection PyInstaller
@@ -437,7 +438,7 @@ def locate_google_chrome():
     return None
 
 
-TWITCH_IMPORT_EXTENSIONS = frozenset((".mp4", ".mkv", ".ts", ".webm", ".mov"))
+TWITCH_IMPORT_EXTENSIONS = twitch_chrome_bridge.VIDEO_EXTENSIONS
 
 
 def copy_twitch_recording(source_path, destination_root, progress_callback=None):
@@ -2533,6 +2534,9 @@ HTML_PAGE = """<!DOCTYPE html>
               </div>
               ${twitchRestricted
                 ? `<button class="btn-logs-card" onclick="openTwitchInChrome(${index})">Ouvrir dans Chrome</button>
+                   <button class="btn-logs-card" onclick="startChromeAutoImport(${index})" title="Utiliser l’extension Chrome puis ranger automatiquement ses vidéos dans AUTRES">Chrome + import auto</button>
+                   <button class="btn-logs-card" onclick="chooseChromeFolder()">Dossier Chrome</button>
+                   <button class="btn-logs-card" onclick="stopChromeAutoImport()">Arrêter import</button>
                    <button class="btn-logs-card" onclick="importTwitchVideo()">Importer une vidéo</button>
                    <button class="btn-logs-card" onclick="downloadTwitchStreamlink(${index})">Télécharger avec Streamlink</button>
                    <button class="btn-logs-card" onclick="findTwitchArchives(${index})">Rechercher archive</button>`
@@ -2698,7 +2702,8 @@ HTML_PAGE = """<!DOCTYPE html>
               <div class="card-meta">Durée : ${item.duration} &nbsp;•&nbsp; ${destInfo}</div>
               <div class="card-controls">
                 ${isTwitchVodClient(item.url)
-                  ? `<button class="btn-logs-card" onclick="downloadTwitchStreamlink(${index})" title="Moteur Twitch indépendant de yt-dlp">Streamlink Twitch</button>`
+                  ? `<button class="btn-logs-card" onclick="downloadTwitchStreamlink(${index})" title="Moteur Twitch indépendant de yt-dlp">Streamlink Twitch</button>
+                     <button class="btn-logs-card" onclick="startChromeAutoImport(${index})" title="Ouvrir Chrome et importer automatiquement les fichiers téléchargés par votre extension">Chrome + import auto</button>`
                   : ''}
                 <div class="pill-dropdown" onclick="toggleDropdown('card_mode_pop_${index}', event)">
                   <span>${item.mode}</span>
@@ -2932,6 +2937,34 @@ HTML_PAGE = """<!DOCTYPE html>
     });
   }
 
+  function startChromeAutoImport(index) {
+    const item = queue[index];
+    if (!item || !item.url || !isTwitchVodClient(item.url)) return;
+    callApi('start_chrome_extension_bridge', item.url).then(result => {
+      if (!result || !result.success) {
+        showAppToast(result && result.error ? result.error : 'Pont Chrome indisponible.');
+      } else {
+        showAppToast('Chrome ouvert : lancez votre extension. Les vidéos terminées seront automatiquement rangées dans AUTRES.');
+      }
+    }).catch(() => showAppToast('Impossible de démarrer le pont Chrome.'));
+  }
+
+  function stopChromeAutoImport() {
+    callApi('stop_chrome_extension_bridge').then(() => {
+      showAppToast('Arrêt de la surveillance Chrome demandé.');
+    }).catch(() => showAppToast('Impossible d’arrêter la surveillance Chrome.'));
+  }
+
+  function chooseChromeFolder() {
+    callApi('choose_chrome_download_folder').then(result => {
+      if (result && result.success) {
+        showAppToast('Dossier Chrome configuré : ' + result.path);
+      } else if (!(result && result.cancelled)) {
+        showAppToast(result && result.error ? result.error : 'Choix du dossier annulé.');
+      }
+    }).catch(() => showAppToast('Impossible de configurer le dossier Chrome.'));
+  }
+
   function openTwitchInChrome(index) {
     const item = queue[index];
     if (!item || !item.url) return;
@@ -3058,6 +3091,8 @@ class DownloaderAPI:
         self._public_archive_candidates = {}
         self._archive_download_active = False
         self._streamlink_download_active = False
+        self._chrome_bridge_active = False
+        self._chrome_bridge_stop = threading.Event()
 
     def _load_config(self):
         if os.path.exists(CONFIG_FILE):
@@ -3309,6 +3344,105 @@ class DownloaderAPI:
             return {"success": True}
         except OSError as exc:
             return {"success": False, "error": "Impossible d'ouvrir Chrome : " + str(exc)}
+
+    def get_chrome_download_folder(self):
+        """Dossier que Chrome utilise pour ses téléchargements terminés."""
+        return self.config.get("chrome_download_folder") or twitch_chrome_bridge.default_chrome_download_folder()
+
+    def choose_chrome_download_folder(self):
+        """Facultatif : choisir le même dossier que dans les paramètres Chrome."""
+        if self._window is None:
+            return {"success": False, "error": "Fenêtre indisponible."}
+        folder = self.get_chrome_download_folder()
+        try:
+            choice = self._window.create_file_dialog(
+                webview.FileDialog.FOLDER,
+                directory=folder if os.path.isdir(folder) else os.path.expanduser("~")
+            )
+            if not choice:
+                return {"success": False, "cancelled": True}
+            selected = os.path.abspath(os.path.expanduser(str(choice[0])))
+            twitch_chrome_bridge.snapshot_downloads(selected)
+            previous = self.config.get("chrome_download_folder")
+            self.config["chrome_download_folder"] = selected
+            if not self._save_config():
+                if previous is None:
+                    self.config.pop("chrome_download_folder", None)
+                else:
+                    self.config["chrome_download_folder"] = previous
+                return {"success": False, "error": "Impossible d'enregistrer le dossier Chrome."}
+            return {"success": True, "path": selected}
+        except (OSError, ValueError, TypeError, twitch_chrome_bridge.ChromeBridgeError) as exc:
+            return {"success": False, "error": "Dossier Chrome invalide : " + str(exc)}
+
+    def stop_chrome_extension_bridge(self):
+        """Arrêter uniquement l'import Chrome, jamais yt-dlp/Streamlink."""
+        if not getattr(self, "_chrome_bridge_active", False):
+            return {"success": True, "active": False}
+        self._chrome_bridge_stop.set()
+        return {"success": True, "active": False}
+
+    def start_chrome_extension_bridge(self, url):
+        """Ouvrir Chrome puis copier ses futurs fichiers vidéo dans AUTRES.
+
+        La vraie extension Chrome doit être activée PAR L'UTILISATEUR ; ce
+        pont n'interroge aucune base privée et n'obtient aucune clé Twitch.
+        """
+        if not is_twitch_vod_url(url):
+            return {"success": False, "error": "Cette option nécessite une URL de VOD Twitch."}
+        if getattr(self, "_chrome_bridge_active", False):
+            return {"success": False, "error": "La surveillance Chrome est déjà active. Arrêtez-la avant de relancer."}
+        folder = self.get_chrome_download_folder()
+        try:
+            original_files = twitch_chrome_bridge.snapshot_downloads(folder)
+        except twitch_chrome_bridge.ChromeBridgeError as exc:
+            return {"success": False, "error": str(exc)}
+        opened = self.open_twitch_in_chrome(url)
+        if not opened.get("success"):
+            return opened
+
+        self._chrome_bridge_stop.clear()
+        self._chrome_bridge_active = True
+        def notify(message, percent=0):
+            if self._window:
+                try:
+                    self._window.evaluate_js(
+                        f"updateDownloadProgress({percent}, {json.dumps(message)})"
+                    )
+                    self._window.evaluate_js(f"showAppToast({json.dumps(message[:210])})")
+                except Exception:
+                    pass
+
+        def worker():
+            copied = 0
+            try:
+                notify(
+                    "Chrome : ouvrez l'extension Andre Bradshaw et cliquez sur télécharger. "
+                    "Les fichiers terminés seront copiés dans AUTRES."
+                )
+
+                def on_video(source_path):
+                    nonlocal copied
+                    notify("Chrome : importation de " + os.path.basename(source_path) + " dans AUTRES…")
+                    result = copy_twitch_recording(source_path, self.download_folder)
+                    if not result["already_present"]:
+                        copied += 1
+                        notify("Chrome : vidéo enregistrée dans AUTRES : " +
+                               os.path.basename(result["path"]), 100)
+
+                twitch_chrome_bridge.monitor_chrome_downloads(
+                    folder, original_files, on_video,
+                    cancelled=self._chrome_bridge_stop.is_set,
+                )
+                reason = "Arrêtée" if self._chrome_bridge_stop.is_set() else "Terminée (délai écoulé)"
+                notify(f"Surveillance Chrome : {reason}. {copied} vidéo(s) importée(s) dans AUTRES.")
+            except (OSError, ValueError, twitch_chrome_bridge.ChromeBridgeError) as exc:
+                notify("Échec (pont Chrome) : " + str(exc))
+            finally:
+                self._chrome_bridge_active = False
+
+        threading.Thread(target=worker, name="AllDownload-Pont-Chrome", daemon=True).start()
+        return {"success": True, "started": True, "folder": folder}
 
     def import_twitch_video(self):
         """Sélectionner un fichier déjà récupéré, et le COPIER vers AUTRES."""
