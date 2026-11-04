@@ -123,6 +123,49 @@ jobs:
             Get-Process -Name All_Media_Download -ErrorAction SilentlyContinue |
               Stop-Process -Force -ErrorAction SilentlyContinue
           }
+      - name: Tester l'installation d'une extension native WebView2 (fixture locale)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          python -m scripts.prepare_native_extension_smoke "preview-build"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $root = (Resolve-Path "preview-build").Path
+          $exe = Join-Path $root "All_Media_Download.exe"
+          $status = Join-Path $root "Donnees/extension_webview_status.txt"
+          $log = Join-Path $root "Donnees/startup_log.txt"
+          $oldLocalAppData = $env:LOCALAPPDATA
+          $env:LOCALAPPDATA = Join-Path $env:RUNNER_TEMP "AllDownloadNativeExtensionSmoke"
+          New-Item -ItemType Directory -Force -Path $env:LOCALAPPDATA | Out-Null
+          if (Test-Path $status) { Remove-Item $status -Force }
+          try {
+            $p = Start-Process -FilePath $exe -WorkingDirectory $root -PassThru
+            $installed = $false
+            for ($i = 0; $i -lt 100; $i++) {
+              Start-Sleep -Milliseconds 500
+              $p.Refresh()
+              if (Test-Path $status) {
+                $value = (Get-Content $status -Raw).Trim()
+                if ($value -eq "ready") {
+                  $installed = $true
+                  break
+                }
+                if ($value -eq "failed") {
+                  throw "WebView2 a refusé le chargement de l'extension native."
+                }
+              }
+              if ($p.HasExited) { throw "L'EXE est sorti avant chargement de l'extension native" }
+            }
+            if (-not $installed) {
+              if (Test-Path $log) { Get-Content $log -Tail 40 }
+              throw "Aucune confirmation réelle d'installation par WebView2"
+            }
+            Write-Output "WEBVIEW2_NATIVE_EXTENSION=READY (extension factice locale)"
+          } finally {
+            $env:LOCALAPPDATA = $oldLocalAppData
+            Get-Process -Name All_Media_Download -ErrorAction SilentlyContinue |
+              Stop-Process -Force -ErrorAction SilentlyContinue
+            # Cette fixture reste dans preview-build/ et n'est pas livrée.
+          }
       - name: Déposer le programme de test sans publier de Release
         uses: actions/upload-artifact@v4
         with:
