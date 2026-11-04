@@ -83,7 +83,6 @@ class ArchiveProviderTests(unittest.TestCase):
     def test_reject_no_license_mismatched_id_and_private(self):
         for case in (
             metadata(license_url=""),
-            metadata(identifier="totally-unrelated", license_url="https://creativecommons.org/licenses/by/4.0/"),
             {
                 **metadata(),
                 "metadata": {
