@@ -153,6 +153,16 @@ async function run() {
   action('[onclick="importTwitchVideo()"]');
   await flush();
   assert.ok(events.some(e=>e[0]==='import_twitch_video'));
+  action('[onclick="startChromeAutoImport(0)"]');
+  await flush();
+  assert.deepEqual(events.findLast(e=>e[0]==='start_chrome_extension_bridge'),
+    ['start_chrome_extension_bridge','https://www.twitch.tv/videos/2905228526']);
+  action('[onclick="chooseChromeFolder()"]');
+  await flush();
+  assert.ok(events.some(e=>e[0]==='choose_chrome_download_folder'));
+  action('[onclick="stopChromeAutoImport()"]');
+  await flush();
+  assert.ok(events.some(e=>e[0]==='stop_chrome_extension_bridge'));
   action('[onclick="downloadTwitchStreamlink(0)"]');
   await flush();
   assert.deepEqual(events.findLast(e=>e[0]==='start_twitch_streamlink'),
