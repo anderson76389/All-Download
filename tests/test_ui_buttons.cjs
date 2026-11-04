@@ -58,6 +58,10 @@ const backend = {
   open_external: url => {events.push(['open_external',url]);return true;},
   open_twitch_in_chrome: url => {events.push(['open_twitch_in_chrome',url]);return {success:true};},
   import_twitch_video: () => {events.push(['import_twitch_video']);return {success:true,started:true};},
+  start_twitch_streamlink: (url,quality) => {
+    events.push(['start_twitch_streamlink',url,quality]);
+    return {success:true,started:true};
+  },
   find_public_twitch_archives: url => {
     events.push(['find_public_twitch_archives',url]);
     return {success:true,candidates:[{
@@ -146,6 +150,10 @@ async function run() {
   action('[onclick="importTwitchVideo()"]');
   await flush();
   assert.ok(events.some(e=>e[0]==='import_twitch_video'));
+  action('[onclick="downloadTwitchStreamlink(0)"]');
+  await flush();
+  assert.deepEqual(events.findLast(e=>e[0]==='start_twitch_streamlink'),
+    ['start_twitch_streamlink','https://www.twitch.tv/videos/2905228526','best']);
   assert.deepEqual(events.findLast(e=>e[0]==='find_public_twitch_archives'),
     ['find_public_twitch_archives','https://www.twitch.tv/videos/2905228526']);
   assert.match(doc.getElementById('cardList').textContent,/vod-2905228526\.mp4/);
@@ -157,6 +165,20 @@ async function run() {
   await flush();
   assert.deepEqual(events.findLast(e=>e[0]==='start_public_archive_download'),
     ['start_public_archive_download','testArchiveToken',true]);
+  win.clearQueue();
+  win.resetDownloadUIState();
+
+  // Une VOD dont les métadonnées sont accessibles propose aussi Streamlink
+  // sans supprimer le bouton de téléchargement yt-dlp.
+  doc.getElementById('urlInput').value='https://www.twitch.tv/videos/1234567890';
+  win.addVideo();
+  await flush();
+  assert.ok(doc.querySelector('[onclick="downloadTwitchStreamlink(0)"]'));
+  assert.ok(doc.querySelector('[onclick="downloadSingle(0)"]'));
+  action('[onclick="downloadTwitchStreamlink(0)"]');
+  await flush();
+  assert.deepEqual(events.findLast(e=>e[0]==='start_twitch_streamlink'),
+    ['start_twitch_streamlink','https://www.twitch.tv/videos/1234567890','Meilleure qualité (Auto)']);
   win.clearQueue();
   win.resetDownloadUIState();
 
