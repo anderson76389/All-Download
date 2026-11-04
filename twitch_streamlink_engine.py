@@ -109,7 +109,7 @@ def _remux_mp4(source_ts, ffmpeg_path, cancelled=None):
             command,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         # Ne jamais laisser une conversion bloquer l'arrêt de l'application.
@@ -213,13 +213,18 @@ def download_twitch_vod(
         os.rename(part, final)
         if progress:
             progress(written)
-        return str(_remux_mp4(final, ffmpeg_path, cancelled=cancelled))
-    except Exception:
+        result = _remux_mp4(final, ffmpeg_path, cancelled=cancelled)
+        if cancelled and cancelled():
+            raise TwitchEngineCancelled("Téléchargement annulé.")
+        return str(result)
+    except Exception as exc:
         try:
             part.unlink(missing_ok=True)
         except OSError:
             pass
-        raise
+        if isinstance(exc, (TwitchEngineError, OSError)):
+            raise
+        raise TwitchEngineError("Streamlink : erreur de lecture du flux : " + str(exc)[:400]) from exc
     finally:
         if source is not None:
             try:
