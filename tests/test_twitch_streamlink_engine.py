@@ -79,7 +79,7 @@ class StreamlinkEngineTests(unittest.TestCase):
         self.assertEqual(engine.select_video_stream(streams, "480p")[0], "360p")
         self.assertEqual(engine.select_video_stream(streams, "1440p")[0], "1080p60")
         with self.assertRaises(engine.TwitchEngineError):
-            engine.select_video_streams if False else engine.select_video_stream({})
+            engine.select_video_stream({})
 
     def test_streaming_download_creates_autres_and_preserves_names(self):
         stream = FakeStream(b"test-hls-payload" * 200)
@@ -136,7 +136,6 @@ class StreamlinkEngineTests(unittest.TestCase):
                 self.assertIn("AUTRES", "".join(api._window.scripts))
                 self.assertEqual(fn.call_args.kwargs["quality"], "720p")
                 self.assertFalse(api._streamlink_download_active)
-            self.assertFalse(api.start_twitch_streamlink(URL, "best")["success"] if False else False)
 
 
 if __name__ == "__main__":
