@@ -27,6 +27,9 @@ jobs:
       - name: Vérifier la recherche réelle Internet Archive (réseau facultatif)
         continue-on-error: true
         run: python -m scripts.verify_archive_lookup
+      - name: Vérifier la VOD Twitch avec le vrai yt-dlp (sans télécharger)
+        continue-on-error: true
+        run: python -m scripts.verify_live_twitch_vod
       - name: Tester les boutons JavaScript (sans créer de Release)
         shell: pwsh
         run: |
@@ -56,6 +59,49 @@ jobs:
           Copy-Item "logo.jpg" "$root/logo.jpg"
           foreach ($dir in @("AUDIOS", "AUTRES", "CHAÎNES", "GIFS", "PLAYLIST", "VIDÉOS")) {
             New-Item -ItemType Directory -Force -Path "$root/$dir" | Out-Null
+          }
+      - name: Démarrer le vrai EXE Portable et vérifier sa fenêtre HTML
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $exe = (Resolve-Path "preview-build/All_Media_Download.exe").Path
+          $root = Split-Path $exe -Parent
+          $log = Join-Path $root "Donnees/startup_log.txt"
+          $oldLocalAppData = $env:LOCALAPPDATA
+          $env:LOCALAPPDATA = Join-Path $env:RUNNER_TEMP "AllDownloadPreviewColdWebview"
+          New-Item -ItemType Directory -Force -Path $env:LOCALAPPDATA | Out-Null
+          if (Test-Path $log) { Remove-Item $log -Force }
+          try {
+            $p = Start-Process -FilePath $exe -WorkingDirectory $root -PassThru
+          } finally {
+            $env:LOCALAPPDATA = $oldLocalAppData
+          }
+          $ready = $false
+          try {
+            for ($i=0; $i -lt 100; $i++) {
+              Start-Sleep -Milliseconds 500
+              $p.Refresh()
+              if ($p.HasExited) { throw "L'EXE a quitté avant le chargement HTML ($($p.ExitCode))" }
+              if (Test-Path $log) {
+                $loaded = @(Get-Content $log -Tail 45 |
+                  Where-Object { $_ -match "PID=$($p.Id) Interface HTML chargee" })
+                if ($loaded.Count -gt 0) {
+                  $gui = Get-Process -Id $p.Id -ErrorAction SilentlyContinue
+                  if ($gui -and $gui.MainWindowHandle -ne [IntPtr]::Zero) {
+                    $ready = $true
+                    break
+                  }
+                }
+              }
+            }
+            if (-not $ready) {
+              if (Test-Path $log) { Get-Content $log -Tail 60 }
+              throw "L'EXE compilé ne charge pas l'interface HTML avec une fenêtre réelle"
+            }
+            Write-Output "EXE Portable réel : ouverture de fenêtre + HTML chargé, données locales intactes."
+          } finally {
+            Get-Process -Name All_Media_Download -ErrorAction SilentlyContinue |
+              Stop-Process -Force -ErrorAction SilentlyContinue
           }
       - name: Déposer le programme de test sans publier de Release
         uses: actions/upload-artifact@v4
