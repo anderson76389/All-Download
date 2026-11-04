@@ -53,6 +53,7 @@ PATCHED = """        # All-Download: attendre HWND de Form.Shown avant l'initial
         except Exception:
             logger.exception('WebView2: optional extension environment failed')
             os.environ['ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE'] = 'failed'
+            self._all_download_write_extension_status('failed')
             self.webview.EnsureCoreWebView2Async(None)
 
     def _all_download_extension_environment_ready(self, task):
@@ -63,6 +64,7 @@ PATCHED = """        # All-Download: attendre HWND de Form.Shown avant l'initial
         except Exception:
             logger.exception('WebView2: optional extension environment unavailable')
             os.environ['ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE'] = 'failed'
+            self._all_download_write_extension_status('failed')
             self.webview.EnsureCoreWebView2Async(None)
 
     def _all_download_extension_initialized(self, sender, args):
@@ -81,6 +83,7 @@ PATCHED = """        # All-Download: attendre HWND de Form.Shown avant l'initial
         except Exception:
             logger.exception('WebView2: extension listing unavailable')
             os.environ['ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE'] = 'failed'
+            self._all_download_write_extension_status('failed')
 
     def _all_download_extension_list_ready(self, task):
         try:
@@ -89,6 +92,7 @@ PATCHED = """        # All-Download: attendre HWND de Form.Shown avant l'initial
             for extension in task.Result:
                 if 'twitch vod downloader' in str(extension.Name).lower():
                     os.environ['ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE'] = 'ready'
+                    self._all_download_write_extension_status('ready')
                     logger.info('WebView2: Twitch VOD Downloader already enabled')
                     return
             path = os.environ['ALL_DOWNLOAD_WEBVIEW_EXTENSION_PATH']
@@ -100,16 +104,28 @@ PATCHED = """        # All-Download: attendre HWND de Form.Shown avant l'initial
         except Exception:
             logger.exception('WebView2: extension installation could not start')
             os.environ['ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE'] = 'failed'
+            self._all_download_write_extension_status('failed')
 
     def _all_download_extension_installed(self, task):
         try:
             if task.IsFaulted or task.IsCanceled:
                 raise RuntimeError(str(task.Exception))
             os.environ['ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE'] = 'ready'
+            self._all_download_write_extension_status('ready')
             logger.info('WebView2: Twitch extension installed in native profile')
         except Exception:
             logger.exception('WebView2: native extension install failed')
             os.environ['ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE'] = 'failed'
+            self._all_download_write_extension_status('failed')
+
+    def _all_download_write_extension_status(self, state):
+        path = os.environ.get('ALL_DOWNLOAD_EXTENSION_STATUS_FILE', '')
+        if path:
+            try:
+                with open(path, 'w', encoding='utf-8') as output:
+                    output.write(state)
+            except OSError:
+                logger.exception('WebView2: cannot write extension status')
 
     def clear_user_data(self):"""
 
