@@ -58,6 +58,9 @@ const backend = {
   open_external: url => {events.push(['open_external',url]);return true;},
   open_twitch_in_chrome: url => {events.push(['open_twitch_in_chrome',url]);return {success:true};},
   import_twitch_video: () => {events.push(['import_twitch_video']);return {success:true,started:true};},
+  start_chrome_extension_bridge: url => {events.push(['start_chrome_extension_bridge',url]);return {success:true,started:true};},
+  stop_chrome_extension_bridge: () => {events.push(['stop_chrome_extension_bridge']);return {success:true};},
+  choose_chrome_download_folder: () => {events.push(['choose_chrome_download_folder']);return {success:true,path:'C:/Users/Test/Downloads'};},
   start_twitch_streamlink: (url,quality) => {
     events.push(['start_twitch_streamlink',url,quality]);
     return {success:true,started:true};
