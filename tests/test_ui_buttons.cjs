@@ -65,6 +65,14 @@ const backend = {
     events.push(['start_twitch_streamlink',url,quality]);
     return {success:true,started:true};
   },
+  open_twitch_native_extension: url => {
+    events.push(['open_twitch_native_extension',url]);
+    return {success:true,restart_required:true,message:'Extension locale importée : redémarrage nécessaire.'};
+  },
+  disable_twitch_native_extension: () => {
+    events.push(['disable_twitch_native_extension']);
+    return {success:true,restart_required:true};
+  },
   find_public_twitch_archives: url => {
     events.push(['find_public_twitch_archives',url]);
     return {success:true,candidates:[{
@@ -153,6 +161,10 @@ async function run() {
   action('[onclick="importTwitchVideo()"]');
   await flush();
   assert.ok(events.some(e=>e[0]==='import_twitch_video'));
+  action('[onclick="openTwitchNative(0)"]');
+  await flush();
+  assert.deepEqual(events.findLast(e=>e[0]==='open_twitch_native_extension'),
+    ['open_twitch_native_extension','https://www.twitch.tv/videos/2905228526']);
   action('[onclick="startChromeAutoImport(0)"]');
   await flush();
   assert.deepEqual(events.findLast(e=>e[0]==='start_chrome_extension_bridge'),
@@ -187,6 +199,7 @@ async function run() {
   win.addVideo();
   await flush();
   assert.ok(doc.querySelector('[onclick="downloadTwitchStreamlink(0)"]'));
+  assert.ok(doc.querySelector('[onclick="openTwitchNative(0)"]'));
   assert.ok(doc.querySelector('[onclick="startChromeAutoImport(0)"]'));
   assert.ok(doc.querySelector('[onclick="downloadSingle(0)"]'));
   action('[onclick="downloadTwitchStreamlink(0)"]');
