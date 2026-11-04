@@ -37,11 +37,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 
 def main():
-    http = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-    thread = threading.Thread(target=http.serve_forever, daemon=True)
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
-        playlist = f"http://127.0.0.1:{http.server_port}/stream.m3u8"
+        playlist = f"http://127.0.0.1:{server.server_port}/stream.m3u8"
 
         class FixtureSession:
             def __init__(self):
@@ -66,8 +66,8 @@ def main():
             print("STREAMLINK_HLS_LOCAL=OK, lecture réelle HLS+écriture dans AUTRES",
                   output.stat().st_size, "octets")
     finally:
-        http.shutdown()
-        http.server_close()
+        server.shutdown()
+        server.server_close()
 
     session = Streamlink()
     session.set_option("no-plugin-cache", True)
