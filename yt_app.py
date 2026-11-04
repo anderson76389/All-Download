@@ -20,7 +20,9 @@ import ctypes
 from ctypes import wintypes
 import multiprocessing
 import tempfile
+import secrets
 from pathlib import Path
+import public_archive
 import webview
 
 # 1. Protection PyInstaller
@@ -2416,6 +2418,12 @@ HTML_PAGE = """<!DOCTYPE html>
     }
   }
 
+  function escapeArchiveHtml(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[c]);
+  }
+
   function addVideo() {
     const input = document.getElementById('urlInput');
     const url = input.value.trim();
@@ -2476,6 +2484,9 @@ HTML_PAGE = """<!DOCTYPE html>
       }
       renderCards();
       updateView();
+      if (res && !res.success && res.error_code === 'twitch_subscriber_only') {
+        findTwitchArchives(queue.length - 1);
+      }
     }).catch(err => {
       const el = document.getElementById(tempId);
       if (el) el.remove();
@@ -2521,10 +2532,29 @@ HTML_PAGE = """<!DOCTYPE html>
               </div>
               ${twitchRestricted
                 ? `<button class="btn-logs-card" onclick="openTwitchInChrome(${index})">Ouvrir dans Chrome</button>
-                   <button class="btn-logs-card" onclick="importTwitchVideo()">Importer une vidéo</button>`
+                   <button class="btn-logs-card" onclick="importTwitchVideo()">Importer une vidéo</button>
+                   <button class="btn-logs-card" onclick="findTwitchArchives(${index})">Rechercher archive</button>`
                 : `<button class="btn-logs-card" onclick="showAuthView()">Importer cookies</button>`}
               <button class="btn-logs-card" onclick="showLogsView()">Voir logs</button>
             </div>
+            ${twitchRestricted ? `
+              <div style="font-size:12px; padding:8px 0;" aria-live="polite">
+                ${escapeArchiveHtml(item.archiveMessage || '')}
+                ${Array.isArray(item.archiveMatches) && item.archiveMatches.length
+                  ? `<div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+                      ${item.archiveMatches.map((match, matchIdx) => `
+                        <div style="border:1px solid var(--ui-divider); border-radius:8px; padding:8px;">
+                          <div>${escapeArchiveHtml(match.title)} — ${escapeArchiveHtml(match.file)}</div>
+                          <div style="font-size:11px; opacity:.75;">${escapeArchiveHtml(match.provider)} · ${(match.size / 1048576).toFixed(1)} Mo · Licence ouverte</div>
+                          <label style="display:flex; align-items:center; gap:6px; margin:5px 0;">
+                            <input type="checkbox" id="archiveRights_${index}_${matchIdx}">
+                            Je confirme avoir le droit de télécharger cette copie
+                          </label>
+                          <button class="btn-logs-card" onclick="downloadTwitchArchive(${index}, ${matchIdx})">Télécharger dans AUTRES</button>
+                        </div>`).join('')}
+                    </div>`
+                  : ''}
+              </div>` : ''}
           </div>
           <div class="v-separator"></div>
           <div class="card-actions">
@@ -2827,6 +2857,53 @@ HTML_PAGE = """<!DOCTYPE html>
     callApi('start_downloads', [queue[idx]]);
   }
 
+  function findTwitchArchives(index) {
+    const item = queue[index];
+    if (!item || item.errorCode !== 'twitch_subscriber_only' || item.archiveSearching) return;
+    item.archiveSearching = true;
+    item.archiveMessage = 'Recherche des archives publiques portant le même identifiant Twitch…';
+    item.archiveMatches = [];
+    renderCards();
+    callApi('find_public_twitch_archives', item.url).then(result => {
+      if (!queue.includes(item)) return;
+      item.archiveSearching = false;
+      item.archiveMatches = result && result.success && Array.isArray(result.candidates)
+        ? result.candidates : [];
+      item.archiveMessage = !result || !result.success
+        ? 'Archives momentanément indisponibles : ' + (result && result.error ? result.error : 'Erreur inconnue')
+        : item.archiveMatches.length
+          ? item.archiveMatches.length + ' copie(s) avec une licence ouverte trouvée(s).'
+          : 'Aucune archive publique correspondante avec licence ouverte trouvée pour cette VOD.';
+      renderCards();
+    }).catch(() => {
+      if (!queue.includes(item)) return;
+      item.archiveSearching = false;
+      item.archiveMessage = 'Recherche des archives momentanément indisponible.';
+      renderCards();
+    });
+  }
+
+  function downloadTwitchArchive(index, matchIndex) {
+    const item = queue[index];
+    const match = item && item.archiveMatches && item.archiveMatches[matchIndex];
+    if (!match) return;
+    const checkbox = document.getElementById('archiveRights_' + index + '_' + matchIndex);
+    if (!checkbox || !checkbox.checked) {
+      showAppToast('Confirmez vos droits sur la copie avant de télécharger.');
+      return;
+    }
+    startDownloadUIState();
+    callApi('start_public_archive_download', match.token, true).then(result => {
+      if (!result || !result.success) {
+        resetDownloadUIState();
+        showAppToast(result && result.error ? result.error : 'Archive indisponible.');
+      }
+    }).catch(() => {
+      resetDownloadUIState();
+      showAppToast('Impossible de démarrer le téléchargement de cette archive.');
+    });
+  }
+
   function openTwitchInChrome(index) {
     const item = queue[index];
     if (!item || !item.url) return;
@@ -2950,6 +3027,8 @@ class DownloaderAPI:
         self.is_paused = False
         self._active_download_process = None
         self._suspended_download_pids = []
+        self._public_archive_candidates = {}
+        self._archive_download_active = False
 
     def _load_config(self):
         if os.path.exists(CONFIG_FILE):
@@ -3245,6 +3324,95 @@ class DownloaderAPI:
                     self._window.evaluate_js(f"updateDownloadProgress(0, {json.dumps(message)})")
                     self._window.evaluate_js(f"showAppToast({json.dumps(message)})")
         threading.Thread(target=worker, name="AllDownload-Import-Twitch", daemon=True).start()
+        return {"success": True, "started": True}
+
+    def find_public_twitch_archives(self, url):
+        """Recherche explicite de fichiers publics correspondants à l'identifiant Twitch."""
+        try:
+            matches = public_archive.search_twitch_public_archives(url)
+            if not isinstance(getattr(self, "_public_archive_candidates", None), dict):
+                self._public_archive_candidates = {}
+            results = []
+            for match in matches:
+                token = secrets.token_urlsafe(18)
+                self._public_archive_candidates[token] = match
+                results.append({
+                    "token": token,
+                    "title": match["title"],
+                    "file": match["file"],
+                    "size": match["size"],
+                    "archive_page": match["archive_page"],
+                    "license": match["license"],
+                    "provider": match["provider"],
+                })
+            # Ne pas conserver de jetons de recherche indéfiniment.
+            if len(self._public_archive_candidates) > 32:
+                self._public_archive_candidates = {
+                    entry["token"]: self._public_archive_candidates[entry["token"]]
+                    for entry in results
+                }
+            return {"success": True, "candidates": results}
+        except (ValueError, public_archive.ArchiveError) as exc:
+            return {"success": False, "error": str(exc), "candidates": []}
+
+    def start_public_archive_download(self, token, rights_confirmed=False):
+        """Déclencher un vrai téléchargement Internet Archive après confirmation explicite."""
+        if rights_confirmed is not True:
+            return {"success": False, "error": "Vous devez confirmer vos droits sur cette copie."}
+        candidate = getattr(self, "_public_archive_candidates", {}).get(str(token))
+        if not candidate:
+            return {"success": False, "error": "Archive expirée : relancez la recherche."}
+        if getattr(self, "_archive_download_active", False) or getattr(self, "_active_download_process", None):
+            return {"success": False, "error": "Un autre téléchargement est déjà en cours."}
+        self._archive_download_active = True
+        self.is_cancelled = False
+
+        def worker():
+            last_pct = -1
+            try:
+                def cancelled():
+                    while self.is_paused and not self.is_cancelled:
+                        time.sleep(0.2)
+                    return self.is_cancelled
+
+                def progress(pct):
+                    nonlocal last_pct
+                    if pct == last_pct:
+                        return
+                    last_pct = pct
+                    if self._window:
+                        try:
+                            self._window.evaluate_js(
+                                f"updateDownloadProgress({pct}, {json.dumps('Archive publique : ' + str(pct) + '%')})"
+                            )
+                        except Exception:
+                            pass
+
+                path = public_archive.download_public_archive(
+                    candidate, self.download_folder, progress=progress, cancelled=cancelled
+                )
+                status = "Archive téléchargée dans AUTRES : " + os.path.basename(path)
+                if self._window:
+                    self._window.evaluate_js(
+                        f"updateDownloadProgress(100, {json.dumps(status)})"
+                    )
+                    self._window.evaluate_js(f"showAppToast({json.dumps(status)})")
+            except public_archive.ArchiveCancelled:
+                if self._window:
+                    self._window.evaluate_js(
+                        f"updateDownloadProgress(0, {json.dumps('Annulé – archive non conservée.')})"
+                    )
+            except (OSError, ValueError, public_archive.ArchiveError) as exc:
+                status = "Échec (archive publique) : " + str(exc)
+                if self._window:
+                    self._window.evaluate_js(
+                        f"updateDownloadProgress(0, {json.dumps(status)})"
+                    )
+                    self._window.evaluate_js(f"showAppToast({json.dumps(status[:220])})")
+            finally:
+                self._archive_download_active = False
+
+        threading.Thread(target=worker, name="AllDownload-ArchivePublique", daemon=True).start()
         return {"success": True, "started": True}
 
     def get_auth_config(self):
