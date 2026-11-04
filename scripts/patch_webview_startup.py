@@ -20,10 +20,9 @@ ORIGINAL = """        self.webview.EnsureCoreWebView2Async(None)
 
     def clear_user_data(self):"""
 
-PATCHED = """        # All-Download: ne pas initialiser EdgeChromium dans le constructeur.
-        # Le HWND parent et le message loop WinForms sont disponibles apres
-        # Form.Shown. BeginInvoke permet de peindre la fenetre avant l'init.
+PATCHED = """        # All-Download: attendre HWND de Form.Shown avant l'initialisation.
         self.form.Shown += self._initialize_when_shown
+        self.webview.CoreWebView2InitializationCompleted += self._all_download_extension_initialized
 
     def _initialize_when_shown(self, _sender, _args):
         try:
@@ -34,9 +33,83 @@ PATCHED = """        # All-Download: ne pas initialiser EdgeChromium dans le con
 
     def _initialize_after_first_paint(self):
         try:
-            self.webview.EnsureCoreWebView2Async(None)
+            extension_path = os.environ.get('ALL_DOWNLOAD_WEBVIEW_EXTENSION_PATH', '')
+            if not extension_path:
+                self.webview.EnsureCoreWebView2Async(None)
+                return
+            # Environnement explicitement distinct, avec extensions activees.
+            from Microsoft.Web.WebView2.Core import (
+                CoreWebView2Environment, CoreWebView2EnvironmentOptions
+            )
+            options = CoreWebView2EnvironmentOptions()
+            options.AreBrowserExtensionsEnabled = True
+            task = CoreWebView2Environment.CreateAsync(
+                None, self.user_data_folder, options
+            )
+            task.ContinueWith(
+                Action[Task](self._all_download_extension_environment_ready),
+                self.syncContextTaskScheduler
+            )
         except Exception:
-            logger.exception('WebView2: initialization after Shown failed')
+            logger.exception('WebView2: optional extension environment failed')
+            os.environ['ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE'] = 'failed'
+            self.webview.EnsureCoreWebView2Async(None)
+
+    def _all_download_extension_environment_ready(self, task):
+        try:
+            if task.IsFaulted or task.IsCanceled:
+                raise RuntimeError(str(task.Exception))
+            self.webview.EnsureCoreWebView2Async(task.Result)
+        except Exception:
+            logger.exception('WebView2: optional extension environment unavailable')
+            os.environ['ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE'] = 'failed'
+            self.webview.EnsureCoreWebView2Async(None)
+
+    def _all_download_extension_initialized(self, sender, args):
+        path = os.environ.get('ALL_DOWNLOAD_WEBVIEW_EXTENSION_PATH', '')
+        if not path or not args.IsSuccess:
+            return
+        try:
+            if not os.path.isfile(os.path.join(path, 'manifest.json')):
+                raise FileNotFoundError('manifest.json absent')
+            profile = sender.CoreWebView2.Profile
+            task = profile.GetBrowserExtensionsAsync()
+            task.ContinueWith(
+                Action[Task](self._all_download_extension_list_ready),
+                self.syncContextTaskScheduler
+            )
+        except Exception:
+            logger.exception('WebView2: extension listing unavailable')
+            os.environ['ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE'] = 'failed'
+
+    def _all_download_extension_list_ready(self, task):
+        try:
+            if task.IsFaulted or task.IsCanceled:
+                raise RuntimeError(str(task.Exception))
+            for extension in task.Result:
+                if 'twitch vod downloader' in str(extension.Name).lower():
+                    os.environ['ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE'] = 'ready'
+                    logger.info('WebView2: Twitch VOD Downloader already enabled')
+                    return
+            path = os.environ['ALL_DOWNLOAD_WEBVIEW_EXTENSION_PATH']
+            installing = self.webview.CoreWebView2.Profile.AddBrowserExtensionAsync(path)
+            installing.ContinueWith(
+                Action[Task](self._all_download_extension_installed),
+                self.syncContextTaskScheduler
+            )
+        except Exception:
+            logger.exception('WebView2: extension installation could not start')
+            os.environ['ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE'] = 'failed'
+
+    def _all_download_extension_installed(self, task):
+        try:
+            if task.IsFaulted or task.IsCanceled:
+                raise RuntimeError(str(task.Exception))
+            os.environ['ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE'] = 'ready'
+            logger.info('WebView2: Twitch extension installed in native profile')
+        except Exception:
+            logger.exception('WebView2: native extension install failed')
+            os.environ['ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE'] = 'failed'
 
     def clear_user_data(self):"""
 
