@@ -4650,10 +4650,16 @@ if __name__ == '__main__':
         if native_mode:
             os.environ["ALL_DOWNLOAD_WEBVIEW_EXTENSION_PATH"] = native_installed["path"]
             os.environ["ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE"] = "loading"
+            os.environ["ALL_DOWNLOAD_EXTENSION_STATUS_FILE"] = os.path.join(APP_DIR, "extension_webview_status.txt")
+            try:
+                os.remove(os.environ["ALL_DOWNLOAD_EXTENSION_STATUS_FILE"])
+            except OSError:
+                pass
             log_startup_phase("Extension Twitch WebView2: activation demandee")
         else:
             os.environ.pop("ALL_DOWNLOAD_WEBVIEW_EXTENSION_PATH", None)
             os.environ.pop("ALL_DOWNLOAD_WEBVIEW_EXTENSION_STATE", None)
+            os.environ.pop("ALL_DOWNLOAD_EXTENSION_STATUS_FILE", None)
         log_startup_phase("Reglages prepares: creation de la fenetre")
         window = webview.create_window(
             'All Media Download',
