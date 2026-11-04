@@ -23,6 +23,7 @@ import tempfile
 import secrets
 from pathlib import Path
 import public_archive
+import twitch_streamlink_engine
 import webview
 
 # 1. Protection PyInstaller
@@ -2533,6 +2534,7 @@ HTML_PAGE = """<!DOCTYPE html>
               ${twitchRestricted
                 ? `<button class="btn-logs-card" onclick="openTwitchInChrome(${index})">Ouvrir dans Chrome</button>
                    <button class="btn-logs-card" onclick="importTwitchVideo()">Importer une vidéo</button>
+                   <button class="btn-logs-card" onclick="downloadTwitchStreamlink(${index})">Télécharger avec Streamlink</button>
                    <button class="btn-logs-card" onclick="findTwitchArchives(${index})">Rechercher archive</button>`
                 : `<button class="btn-logs-card" onclick="showAuthView()">Importer cookies</button>`}
               <button class="btn-logs-card" onclick="showLogsView()">Voir logs</button>
@@ -2695,6 +2697,9 @@ HTML_PAGE = """<!DOCTYPE html>
             <div class="card-bottom-row">
               <div class="card-meta">Durée : ${item.duration} &nbsp;•&nbsp; ${destInfo}</div>
               <div class="card-controls">
+                ${isTwitchVodClient(item.url)
+                  ? `<button class="btn-logs-card" onclick="downloadTwitchStreamlink(${index})" title="Moteur Twitch indépendant de yt-dlp">Streamlink Twitch</button>`
+                  : ''}
                 <div class="pill-dropdown" onclick="toggleDropdown('card_mode_pop_${index}', event)">
                   <span>${item.mode}</span>
                   <svg class="svg-icon" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
@@ -2855,6 +2860,29 @@ HTML_PAGE = """<!DOCTYPE html>
     if (queue[idx].is_playlist || queue[idx].is_channel) updatePlaylistRange(idx);
     startDownloadUIState();
     callApi('start_downloads', [queue[idx]]);
+  }
+
+  function isTwitchVodClient(url) {
+    try {
+      const parsed = new URL(url);
+      return ['twitch.tv', 'www.twitch.tv', 'm.twitch.tv'].includes(parsed.hostname.toLowerCase())
+        && /^\/videos\/\d+\/?$/.test(parsed.pathname);
+    } catch (_) { return false; }
+  }
+
+  function downloadTwitchStreamlink(index) {
+    const item = queue[index];
+    if (!item || !item.url || !isTwitchVodClient(item.url)) return;
+    startDownloadUIState();
+    callApi('start_twitch_streamlink', item.url, item.selectedQuality || 'best').then(result => {
+      if (!result || !result.success) {
+        resetDownloadUIState();
+        showAppToast(result && result.error ? result.error : 'Streamlink indisponible.');
+      }
+    }).catch(() => {
+      resetDownloadUIState();
+      showAppToast('Impossible de démarrer le deuxième moteur Twitch.');
+    });
   }
 
   function findTwitchArchives(index) {
@@ -3029,6 +3057,7 @@ class DownloaderAPI:
         self._suspended_download_pids = []
         self._public_archive_candidates = {}
         self._archive_download_active = False
+        self._streamlink_download_active = False
 
     def _load_config(self):
         if os.path.exists(CONFIG_FILE):
@@ -3324,6 +3353,58 @@ class DownloaderAPI:
                     self._window.evaluate_js(f"updateDownloadProgress(0, {json.dumps(message)})")
                     self._window.evaluate_js(f"showAppToast({json.dumps(message)})")
         threading.Thread(target=worker, name="AllDownload-Import-Twitch", daemon=True).start()
+        return {"success": True, "started": True}
+
+    def start_twitch_streamlink(self, url, quality="best"):
+        """Deuxième moteur Twitch indépendant : téléchargement dans AUTRES."""
+        if not twitch_streamlink_engine.parse_twitch_vod_id(url):
+            return {"success": False, "error": "Cette option fonctionne seulement avec les VOD Twitch."}
+        if (getattr(self, "_streamlink_download_active", False)
+                or getattr(self, "_archive_download_active", False)
+                or getattr(self, "_active_download_process", None) is not None):
+            return {"success": False, "error": "Un téléchargement est déjà en cours."}
+        self._streamlink_download_active = True
+        self.is_cancelled = False
+        self.is_paused = False
+
+        def worker():
+            try:
+                last_megabytes = -1
+
+                def progress(size):
+                    nonlocal last_megabytes
+                    megabytes = int(size / (1024 * 1024))
+                    if megabytes != last_megabytes:
+                        last_megabytes = megabytes
+                        if self._window:
+                            self._window.evaluate_js(
+                                f"updateDownloadProgress(0, {json.dumps('Streamlink Twitch : ' + str(megabytes) + ' Mo téléchargés…')})"
+                            )
+
+                path = twitch_streamlink_engine.download_twitch_vod(
+                    url, self.download_folder, quality=quality,
+                    progress=progress, cancelled=lambda: self.is_cancelled,
+                    paused=lambda: self.is_paused,
+                    ffmpeg_path=FFMPEG_PATH,
+                )
+                status = "Terminé – Streamlink Twitch : " + os.path.basename(path) + " dans AUTRES"
+                if self._window:
+                    self._window.evaluate_js(f"updateDownloadProgress(100, {json.dumps(status)})")
+                    self._window.evaluate_js(f"showAppToast({json.dumps(status)})")
+            except twitch_streamlink_engine.TwitchEngineCancelled:
+                if self._window:
+                    self._window.evaluate_js(
+                        f"updateDownloadProgress(0, {json.dumps('Annulé – téléchargement Streamlink arrêté.')})"
+                    )
+            except (OSError, twitch_streamlink_engine.TwitchEngineError) as exc:
+                status = "Échec (Streamlink Twitch) : " + str(exc)
+                if self._window:
+                    self._window.evaluate_js(f"updateDownloadProgress(0, {json.dumps(status)})")
+                    self._window.evaluate_js(f"showAppToast({json.dumps(status[:220])})")
+            finally:
+                self._streamlink_download_active = False
+
+        threading.Thread(target=worker, name="AllDownload-Twitch-Streamlink", daemon=True).start()
         return {"success": True, "started": True}
 
     def find_public_twitch_archives(self, url):
