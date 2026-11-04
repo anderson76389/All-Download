@@ -24,6 +24,9 @@ jobs:
         run: python -m py_compile yt_app.py
       - name: Tester tous les comportements Python
         run: python -m unittest discover -s tests -v
+      - name: Vérifier la recherche réelle Internet Archive (réseau facultatif)
+        continue-on-error: true
+        run: python -m scripts.verify_archive_lookup
       - name: Tester les boutons JavaScript (sans créer de Release)
         shell: pwsh
         run: |
