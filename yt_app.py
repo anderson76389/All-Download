@@ -2729,6 +2729,15 @@ HTML_PAGE = """<!DOCTYPE html>
     }
   }
 
+  function markDownloadFailure(url, reason) {
+    const item = queue.find(x => !x.isError && x.url === url && x.status !== 'success');
+    if (!item) return;
+    item.isError = true;
+    item.error = reason || 'Téléchargement impossible. Consultez le journal.';
+    renderCards();
+    const logs = document.getElementById('viewLogs');
+    if (logs && logs.style.display === 'flex') refreshLogsViewData();
+  }
   function clearSuccess() {
     queue = queue.filter(item => item.status !== 'success');
     closeAllPopovers();
