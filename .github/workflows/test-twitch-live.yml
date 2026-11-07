@@ -1,0 +1,31 @@
+name: Test réel VOD Twitch (validation temporaire)
+
+on:
+  pull_request:
+    paths:
+      - "scripts/test_twitch_live.py"
+      - ".github/workflows/test-twitch-live.yml"
+      - "twitch_vod.py"
+      - "yt_app.py"
+
+permissions:
+  contents: read
+
+jobs:
+  live-vod:
+    runs-on: windows-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+      - name: Dependencies
+        run: python -m pip install pywebview==6.2.1 pythonnet==3.2.1 "psutil>=6.1,<8"
+      - name: Validate code and regression tests
+        run: |
+          python -m py_compile yt_app.py twitch_vod.py scripts/test_twitch_live.py
+          python -m unittest discover -s tests -v
+      - name: True Twitch VOD download through All-Download
+        timeout-minutes: 10
+        run: python scripts/test_twitch_live.py
