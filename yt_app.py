@@ -25,6 +25,10 @@ import webview
 from twitch_vod import (twitch_vod_id, fallback_metadata, ensure_cli_ready,
                         build_command as build_twitch_command, progress_percentage,
                         CLI_FILENAME as TWITCH_CLI_FILENAME)
+from twitch_hls import (resolve_hls, media_paths as twitch_hls_paths,
+                        ffmpeg_command as twitch_hls_ffmpeg_command,
+                        progress_from_ffmpeg as twitch_hls_progress,
+                        HLSUnavailable)
 
 # 1. Protection PyInstaller
 if __name__ == '__main__':
@@ -3216,6 +3220,75 @@ class DownloaderAPI:
         finally:
             gc.collect()
 
+    def _download_twitch_hls(self, item, target_dir, quality, idx, total, status):
+        """Secours indépendant : CDN HLS accessible sans cookie + FFmpeg commun.
+
+        Renvoie (succès, raison). Les morceaux incomplets sont nettoyés ;
+        aucune vidéo préexistante n'est supprimée ni écrasée.
+        """
+        process = None
+        temporary = None
+        try:
+            if self.is_cancelled:
+                return False, "Téléchargement annulé."
+            status(0, f"[{idx}/{total}] Recherche d'un flux HLS Twitch accessible…")
+            manifest, label, duration, count = resolve_hls(item["url"], quality)
+            status(0, f"[{idx}/{total}] Flux HLS trouvé : {label}, {count} segments.")
+            temporary, final = twitch_hls_paths(
+                target_dir, item["url"], item.get("title", "VOD Twitch")
+            )
+            command = twitch_hls_ffmpeg_command(FFMPEG_PATH, manifest, temporary)
+            process = subprocess.Popen(
+                command,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                universal_newlines=True,
+                encoding="utf-8",
+                errors="replace",
+                bufsize=1,
+                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+            )
+            self._active_download_process = process
+            if self.is_cancelled:
+                kill_process_tree(process.pid)
+            last_progress = -1
+            for line in iter(process.stdout.readline, ""):
+                pct = twitch_hls_progress(line, duration)
+                if pct is not None and pct > last_progress:
+                    last_progress = pct
+                    status(pct, f"[{idx}/{total}] Twitch HLS {label} : {pct}%")
+            code = process.wait()
+            if self.is_cancelled:
+                return False, "Téléchargement annulé."
+            if code != 0 or not temporary.is_file() or temporary.stat().st_size < 1024:
+                return False, f"FFmpeg n'a pas pu produire le MP4 (code {code})."
+            try:
+                # Crée le nom final exclusivement, sans écraser l'existant,
+                # même si un autre téléchargement a démarré entre-temps.
+                os.link(temporary, final)
+                temporary.unlink()
+            except FileExistsError:
+                return False, "Un fichier portant ce nom existe déjà."
+            except OSError:
+                # Certains volumes Windows ne prennent pas en charge hardlink.
+                if final.exists():
+                    return False, "Un fichier portant ce nom existe déjà."
+                os.rename(temporary, final)  # Windows refuse une cible existante.
+            status(100, f"[{idx}/{total}] Twitch HLS : vidéo enregistrée.")
+            return True, ""
+        except (HLSUnavailable, OSError, ValueError, subprocess.SubprocessError) as exc:
+            return False, str(exc)[:230]
+        finally:
+            if process is not None and process.poll() is None:
+                kill_process_tree(process.pid)
+            self._active_download_process = None
+            if temporary is not None:
+                try:
+                    temporary.unlink(missing_ok=True)
+                except OSError:
+                    pass
+
     def _download_twitch_video(self, item, target_dir, quality, idx, total):
         """Exécuter le CLI officiel en conservant pause, annulation et suivi."""
         def status(pct, message, toast=False):
@@ -3302,9 +3375,19 @@ class DownloaderAPI:
             if self.is_cancelled:
                 return False
             if returncode != 0:
-                status(0, "Erreur Twitch : " + (
-                    last_error or f"TwitchDownloaderCLI a échoué (code {returncode})."
-                ), True)
+                # Un refus "subscriber-only" du CLI ne prouve pas que le CDN
+                # HLS ne propose pas un manifest utilisable. L'essai reste
+                # indépendant de l'extension Chrome et de ses serveurs privés.
+                self._active_download_process = None
+                success, reason = self._download_twitch_hls(
+                    item, target_dir, quality, idx, total, status
+                )
+                if success:
+                    return True
+                if not self.is_cancelled:
+                    initial = last_error or f"TwitchDownloaderCLI a échoué (code {returncode})."
+                    status(0, "Erreur Twitch : " + initial[:170] +
+                           (" / HLS : " + reason[:170] if reason else ""), True)
                 return False
             return True
         except (OSError, ValueError, subprocess.SubprocessError) as exc:
