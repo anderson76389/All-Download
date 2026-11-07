@@ -40,13 +40,25 @@ class TwitchVodTests(unittest.TestCase):
         info = twitch_vod.fallback_metadata(url)
         self.assertEqual(info["url"], url)
         self.assertEqual(info["mode"], "Vidéo")
-        self.assertEqual(info["selectedQuality"], info["formats"][0])
+        self.assertEqual(info["selectedQuality"], "1080p (60fps)")
+        self.assertEqual(info["selectedQualityLabel"], "1080p (60fps)")
         self.assertIn("720p (60fps)", info["formats"])
         self.assertIn("480p (30fps)", info["formats"])
-        self.assertEqual(twitch_vod.fallback_metadata(url, formats=["720p (60fps)"])["formats"],
-                         ["Meilleure qualité (Auto)", "720p (60fps)"])
+        fallback_720 = twitch_vod.fallback_metadata(url, formats=["720p (60fps)"])
+        self.assertEqual(fallback_720["formats"], ["Meilleure qualité (Auto)", "720p (60fps)"])
+        self.assertEqual(fallback_720["selectedQuality"], "720p (60fps)")
         self.assertEqual(info["item_count"], 1)
         self.assertIsNone(twitch_vod.fallback_metadata("https://twitch.tv/user"))
+
+    def test_default_quality_selection_prefers_1080_then_720(self):
+        picker = twitch_vod.preferred_twitch_quality
+        self.assertEqual(picker(["Meilleure qualité (Auto)", "1080p", "720p"]), "1080p")
+        self.assertEqual(picker(["Meilleure qualité (Auto)", "720p (60fps)", "480p (30fps)"]),
+                         "720p (60fps)")
+        self.assertEqual(picker(["Meilleure qualité (Auto)", "1080p (30fps)", "720p (60fps)"]),
+                         "1080p (30fps)")
+        self.assertEqual(picker(["Meilleure qualité (Auto)"]), "1080p (60fps)")
+        self.assertEqual(picker(["Meilleure qualité (Auto)", "480p"]), "480p")
 
     def test_quality_progress_and_safe_command(self):
         url = "https://www.twitch.tv/videos/1234567890"
@@ -141,6 +153,7 @@ class IntegrationTests(unittest.TestCase):
             result = api.extract_info("https://www.twitch.tv/videos/1234567890")
         self.assertTrue(result["success"])
         self.assertEqual(result["data"]["title"], "VOD Twitch 1234567890")
+        self.assertEqual(result["data"]["selectedQuality"], "1080p (60fps)")
         self.assertIn("720p (60fps)", result["data"]["formats"])
         self.assertIn("480p (30fps)", result["data"]["formats"])
 
