@@ -22,7 +22,7 @@ import multiprocessing
 import tempfile
 from pathlib import Path
 import webview
-from twitch_vod import (twitch_vod_id, fallback_metadata, ensure_cli_ready,
+from twitch_vod import (twitch_vod_id, fallback_metadata, preferred_twitch_quality, ensure_cli_ready,
                         build_command as build_twitch_command, selected_quality_to_cli, progress_percentage,
                         CLI_FILENAME as TWITCH_CLI_FILENAME)
 from twitch_hls import (resolve_hls, media_paths as twitch_hls_paths,
@@ -1933,6 +1933,21 @@ HTML_PAGE = """<!DOCTYPE html>
     }
   }
 
+  function defaultVideoQuality(item) {
+    const formats = Array.isArray(item.formats) ? item.formats : [];
+    const isTwitchVod = /^https?:\/\/(?:www\.|m\.)?twitch\.tv\/videos\/\d{5,20}\/?(?:[?#].*)?$/i.test(item.url || '');
+    if (isTwitchVod) {
+      // Priorité 1080p, puis 720p ; les autres sites conservent "Auto".
+      for (const tier of ['1080p', '720p']) {
+        const found = formats.find(f => f === tier || f.startsWith(tier + ' ('));
+        if (found) return found;
+      }
+      const other = formats.find(f => /^\d{3,4}p(?:\s*\(\d{2,3}fps\))?$/.test(f));
+      return other || '1080p (60fps)';
+    }
+    return formats[0] || 'Meilleure qualité (Auto)';
+  }
+
   function selectGlobalMode(mode, e) {
     if (e) { e.stopPropagation(); }
     currentGlobalMode = mode;
@@ -1965,8 +1980,8 @@ HTML_PAGE = """<!DOCTYPE html>
           item.selectedQuality = 'GIF';
           item.selectedQualityLabel = 'GIF (Haute Qualité)';
         } else {
-          item.selectedQuality = (item.formats && item.formats[0]) || 'Meilleure qualité (Auto)';
-          item.selectedQualityLabel = (item.formats && item.formats[0]) || 'Meilleure qualité (Auto)';
+          item.selectedQuality = defaultVideoQuality(item);
+          item.selectedQualityLabel = item.selectedQuality;
         }
       }
     });
@@ -2307,8 +2322,8 @@ HTML_PAGE = """<!DOCTYPE html>
           res.data.selectedQuality = 'Original';
           res.data.selectedQualityLabel = 'Qualité Originale';
         } else {
-          res.data.selectedQuality = (res.data.formats && res.data.formats[0]) || 'Meilleure qualité (Auto)';
-          res.data.selectedQualityLabel = (res.data.formats && res.data.formats[0]) || 'Meilleure qualité (Auto)';
+          res.data.selectedQuality = defaultVideoQuality(res.data);
+          res.data.selectedQualityLabel = res.data.selectedQuality;
         }
         queue.push(res.data);
         appendTerminal(`[info] Analyse terminée : ${res.data.title}`);
@@ -2563,8 +2578,8 @@ HTML_PAGE = """<!DOCTYPE html>
       queue[idx].selectedQuality = 'GIF';
       queue[idx].selectedQualityLabel = 'GIF (Haute Qualité)';
     } else {
-      queue[idx].selectedQuality = (queue[idx].formats && queue[idx].formats[0]) || 'Meilleure qualité (Auto)';
-      queue[idx].selectedQualityLabel = (queue[idx].formats && queue[idx].formats[0]) || 'Meilleure qualité (Auto)';
+      queue[idx].selectedQuality = defaultVideoQuality(queue[idx]);
+      queue[idx].selectedQualityLabel = queue[idx].selectedQuality;
     }
     closeAllPopovers();
     renderCards();
@@ -3200,8 +3215,8 @@ class DownloaderAPI:
                 "url": url,
                 "mode": "Vidéo",
                 "formats": sorted_formats,
-                "selectedQuality": sorted_formats[0],
-                "selectedQualityLabel": sorted_formats[0],
+                "selectedQuality": preferred_twitch_quality(sorted_formats) if twitch_vod_id(url) else sorted_formats[0],
+                "selectedQualityLabel": preferred_twitch_quality(sorted_formats) if twitch_vod_id(url) else sorted_formats[0],
                 "is_channel": is_channel,
                 "channel_title": channel_title,
                 "is_playlist": is_pure_playlist,
