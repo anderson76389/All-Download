@@ -190,6 +190,7 @@ FFMPEG_URL = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/f
 # DEUX octets a la place des vrais EXE. Ne plus considerer "existe et non
 # vide" comme une preuve qu'un outil Windows est executable.
 _BINARIES_LOCK = threading.RLock()
+_DOWNLOAD_LAUNCH_LOCK = threading.RLock()
 
 
 def is_valid_windows_executable(filename):
@@ -3488,302 +3489,340 @@ class DownloaderAPI:
             self._active_download_process = None
 
     def start_downloads(self, items):
-        self.is_cancelled = False
-        self.is_paused = False
-        self._suspended_download_pids = []
-        settings = self.get_app_settings()
+        if (not isinstance(items, list) or not items
+                or any(not isinstance(item, dict) or not isinstance(item.get('url'), str)
+                       or not item['url'].strip() for item in items)):
+            return {'success': False, 'error': 'La file de téléchargement est vide ou invalide.'}
+        with _DOWNLOAD_LAUNCH_LOCK:
+            if getattr(self, '_download_running', False):
+                return {'success': False, 'error': 'Un téléchargement est déjà en cours.'}
+            self._download_running = True
+            self.is_cancelled = False
+            self.is_paused = False
+            self._suspended_download_pids = []
+        # Capture indépendante : modifier la file ou les qualités pendant
+        # le transfert ne doit pas modifier le travail en cours.
+        items = [dict(item) for item in items]
+        settings = dict(self.get_app_settings())
 
         def _worker():
-            total = len(items)
-            completed = 0
-            if any(
-                not item.get("is_direct_download")
-                and not (item.get("mode", "Vidéo") == "Vidéo"
-                         and twitch_vod_id(item.get("url")))
-                for item in items
-            ):
-                if not ensure_ytdlp_ready():
-                    error_text = ("yt-dlp est absent ou invalide. "
-                                  "Impossible de demarrer les telechargements. "
-                                  "Verifiez la connexion Internet.")
-                    try:
-                        if self._window:
-                            self._window.evaluate_js(
-                                f"updateDownloadProgress(0, {json.dumps(error_text)})"
-                            )
-                            self._window.evaluate_js(
-                                f"showAppToast({json.dumps(error_text)})"
-                            )
-                    except Exception:
-                        pass
-                    return
-            for idx, item in enumerate(items, 1):
-                while self.is_paused and not self.is_cancelled:
-                    time.sleep(0.3)
+            try:
+                total = len(items)
+                completed = 0
+                if any(
+                    not item.get("is_direct_download")
+                    and not (item.get("mode", "Vidéo") == "Vidéo"
+                             and twitch_vod_id(item.get("url")))
+                    for item in items
+                ):
+                    if not ensure_ytdlp_ready():
+                        error_text = ("yt-dlp est absent ou invalide. "
+                                      "Impossible de demarrer les telechargements. "
+                                      "Verifiez la connexion Internet.")
+                        try:
+                            if self._window:
+                                self._window.evaluate_js(
+                                    f"updateDownloadProgress(0, {json.dumps(error_text)})"
+                                )
+                                self._window.evaluate_js(
+                                    f"showAppToast({json.dumps(error_text)})"
+                                )
+                        except Exception:
+                            pass
+                        return
+                for idx, item in enumerate(items, 1):
+                    while self.is_paused and not self.is_cancelled:
+                        time.sleep(0.3)
 
-                if self.is_cancelled: break
-                
-                url = item["url"]
-                mode = item.get("mode", "Vidéo")
-                quality = item.get("selectedQuality", "Meilleure qualité (Auto)")
+                    if self.is_cancelled: break
+                    
+                    url = item["url"]
+                    mode = item.get("mode", "Vidéo")
+                    quality = item.get("selectedQuality", "Meilleure qualité (Auto)")
 
-                is_yt = bool(url and ("youtube.com" in url.lower() or "youtu.be" in url.lower()))
-                is_channel = item.get("is_channel", False)
-                channel_title = item.get("channel_title")
-                is_playlist = item.get("is_playlist", False)
-                playlist_title = item.get("playlist_title")
+                    is_yt = bool(url and ("youtube.com" in url.lower() or "youtu.be" in url.lower()))
+                    is_channel = item.get("is_channel", False)
+                    channel_title = item.get("channel_title")
+                    is_playlist = item.get("is_playlist", False)
+                    playlist_title = item.get("playlist_title")
 
-                # Routage centralisé : GIFS, AUDIOS, CHAÎNES, PLAYLIST, VIDÉOS, AUTRES.
-                target_dir = get_media_download_dir(self.download_folder, item)
-                os.makedirs(target_dir, exist_ok=True)
+                    # Routage centralisé : GIFS, AUDIOS, CHAÎNES, PLAYLIST, VIDÉOS, AUTRES.
+                    target_dir = get_media_download_dir(self.download_folder, item)
+                    os.makedirs(target_dir, exist_ok=True)
 
-                # VOD Twitch en mode Vidéo : moteur CLI dédié. Les clips, GIF,
-                # audios et tous les autres sites restent sur le chemin yt-dlp.
-                if mode == "Vidéo" and twitch_vod_id(url):
-                    if self._download_twitch_video(item, target_dir, quality, idx, total):
+                    # VOD Twitch en mode Vidéo : moteur CLI dédié. Les clips, GIF,
+                    # audios et tous les autres sites restent sur le chemin yt-dlp.
+                    if mode == "Vidéo" and twitch_vod_id(url):
+                        if self._download_twitch_video(item, target_dir, quality, idx, total):
+                            completed += 1
+                            try:
+                                if self._window:
+                                    if settings.get("notify") == "always":
+                                        self._window.evaluate_js(
+                                            f"showAppToast({json.dumps('Média téléchargé : ' + str(item.get('title', 'VOD Twitch')))})"
+                                        )
+                                    self._window.evaluate_js(
+                                        f"markDownloadSuccess({json.dumps(url)})"
+                                    )
+                            except Exception:
+                                pass
+                        continue
+
+                    # Téléchargement direct d'image / GIF Pinterest
+                    if item.get("is_direct_download"):
+                        try:
+                            ext = os.path.splitext(urllib.parse.urlparse(url).path)[1]
+                            if not ext or len(ext) > 5:
+                                ext = ".jpg"
+                            out_name = sanitize_filename(item.get("title", "Pinterest_Media")) + ext
+                            out_path = os.path.join(target_dir, out_name)
+                            
+                            req = urllib.request.Request(url, headers={
+                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                                "Referer": "https://www.pinterest.com/"
+                            })
+                            with urllib.request.urlopen(req, timeout=20) as resp, open(out_path, "wb") as f_out:
+                                f_out.write(resp.read())
+                            
+                            completed += 1
+                            if self._window:
+                                try:
+                                    if settings.get("notify") == "always":
+                                        self._window.evaluate_js(f"showAppToast({json.dumps('Téléchargement terminé : ' + out_name)})")
+                                    self._window.evaluate_js(f"markDownloadSuccess({json.dumps(url)})")
+                                    self._window.evaluate_js(f"updateDownloadProgress(100, {json.dumps('Téléchargement terminé – ' + out_name)})")
+                                except Exception:
+                                    pass
+                            continue
+                        except Exception:
+                            pass
+
+                    # Téléchargement universel via yt-dlp
+                    cmd = [
+                        YTDLP_PATH,
+                        "--ffmpeg-location", BIN_DIR,
+                        "--windows-filenames",
+                        "--newline",
+                        "--force-ipv4",
+                        "--socket-timeout", "15",
+                        "-P", target_dir,
+                        "-o", f"{sanitize_filename(item.get('title', 'Media'))}.%(ext)s" if "v.pinimg.com" in url else "%(title)s.%(ext)s"
+                    ] + self._get_cookie_args()
+
+                    if "twitter.com" in url or "x.com" in url:
+                        cmd.extend(["--extractor-args", "twitter:api=syndication"])
+
+                    if is_playlist or is_channel:
+                        s_idx = item.get("start_idx", 1)
+                        e_idx = item.get("end_idx", item.get("item_count", 1))
+                        cmd.extend([
+                            "--yes-playlist",
+                            "--playlist-start", str(s_idx),
+                            "--playlist-end", str(e_idx),
+                            "--ignore-errors",
+                            "--no-abort-on-error"
+                        ])
+                    elif ("v=" in url or "youtu.be/" in url):
+                        cmd.append("--no-playlist")
+
+                    # Séparation stricte Vidéo vs Audio
+                    if mode == "Audio":
+                        embed_thumb = settings.get("audio_embed_thumb", True)
+                        write_thumb = settings.get("audio_write_thumb", True)
+                        add_meta = settings.get("audio_add_metadata", True)
+                    else:
+                        embed_thumb = settings.get("video_embed_thumb", True)
+                        write_thumb = settings.get("video_write_thumb", True)
+                        add_meta = settings.get("video_add_metadata", True)
+
+                    if embed_thumb or write_thumb:
+                        cmd.extend(["--convert-thumbnails", "jpg"])
+
+                    if embed_thumb:
+                        cmd.append("--embed-thumbnail")
+                    if write_thumb:
+                        cmd.append("--write-thumbnail")
+
+                    if add_meta:
+                        cmd.append("--add-metadata")
+
+                    # Proxy
+                    if settings.get("proxy_toggle") and settings.get("proxy_url"):
+                        cmd.extend(["--proxy", settings.get("proxy_url")])
+
+                    # SponsorBlock
+                    if is_yt and settings.get("sponsor_enable", True):
+                        s_remove = settings.get("sponsor_remove", "sponsor")
+                        if s_remove in ["all", "sponsor"]:
+                            cmd.extend(["--sponsorblock-remove", s_remove])
+
+                        if settings.get("sponsor_mark") == "chapters":
+                            cmd.extend(["--sponsorblock-mark", "all"])
+
+                        sponsor_api = settings.get("sponsor_api", "").strip()
+                        if sponsor_api and sponsor_api != "https://sponsor.ajay.app":
+                            cmd.extend(["--sponsorblock-api", sponsor_api.rstrip('/')])
+
+                        if settings.get("exact_cut", False):
+                            cmd.append("--force-keyframes-at-cuts")
+
+                    # Impersonation
+                    imp_val = settings.get("impersonation", "none")
+                    if imp_val == "random":
+                        rand_ua = random.choice(list(UA_MAP.values()))
+                        cmd.extend(["--user-agent", rand_ua])
+                    elif imp_val in UA_MAP:
+                        cmd.extend(["--user-agent", UA_MAP[imp_val]])
+
+                    # Arguments personnalisés
+                    extra_args = settings.get("extractor_args", "").strip()
+                    if extra_args:
+                        for arg in extra_args.splitlines():
+                            if arg.strip():
+                                cmd.extend(["--extractor-args", arg.strip()])
+
+                    # AUDIO / GIF / VIDÉO (Format universel garanti sans erreur 404/format unavailable)
+                    if mode == "Audio":
+                        cmd.append("-x")
+                        audio_choice = settings.get("audio_format", "FLAC")
+                        # Une qualité choisie sur une carte prime sur le défaut global.
+                        selected_audio = quality if quality in ("FLAC", "M4A", "MP3_320") else audio_choice
+                        if selected_audio in ("MP3", "MP3_320"):
+                            cmd.extend(["--audio-format", "mp3", "--audio-quality", "320K"])
+                        elif selected_audio == "M4A":
+                            cmd.extend(["--audio-format", "m4a"])
+                        else:
+                            cmd.extend(["--audio-format", "flac"])
+
+                        audio_args = []
+                        if settings.get("post_process_audio") == "Normaliser":
+                            audio_args.extend(["-af", "loudnorm"])
+                        if settings.get("extra_selector") == "audio_rate":
+                            sample_rate = str(settings.get("audio_sample_rate", "source"))
+                            if sample_rate in ("44100", "48000"):
+                                audio_args.extend(["-ar", sample_rate])
+                        if audio_args:
+                            cmd.extend(["--postprocessor-args", "ffmpeg:" + " ".join(audio_args)])
+                    elif mode == "GIF":
+                        cmd.extend([
+                            "-f", "bestvideo+bestaudio/best",
+                            "--recode-video", "gif"
+                        ])
+                    else:
+                        if settings.get("post_process_video") == "Normaliser":
+                            cmd.extend(["--postprocessor-args", "ffmpeg:-af loudnorm"])
+                        elif settings.get("post_process_video") == "Remuxer":
+                            cmd.extend(["--remux-video", "mp4"])
+
+                        target_ext = settings.get("video_format", "MP4").lower()
+
+                        if quality == "Meilleure qualité (Auto)" or not quality:
+                            cmd.extend(["-f", "bestvideo+bestaudio/best"])
+                        else:
+                            h_match = re.search(r'(\d+)p?', str(quality))
+                            if h_match:
+                                h = h_match.group(1)
+                                cmd.extend([
+                                    "-f", f"bestvideo[height<=?{h}]+bestaudio/best[height<=?{h}]/best",
+                                    "--format-sort", f"res:{h},fps"
+                                ])
+                            else:
+                                cmd.extend(["-f", "bestvideo+bestaudio/best"])
+                        
+                        if not settings.get("video_origin_stream", False):
+                            cmd.extend(["--merge-output-format", target_ext])
+
+                    cmd.append(url)
+                    proc = subprocess.Popen(
+                        cmd,
+                        stdin=subprocess.DEVNULL,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        universal_newlines=True,
+                        encoding='utf-8',
+                        errors='replace',
+                        bufsize=1,
+                        creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+                    )
+
+                    self._active_download_process = proc
+                    if self.is_cancelled:
+                        kill_process_tree(proc.pid)
+
+                    last_pct = -1
+                    last_time = 0
+                    for line in iter(proc.stdout.readline, ""):
+                        clean = line.strip()
+                        if "[download]" in clean and "%" in clean:
+                            m = re.search(r"(\d+\.\d+)%", clean)
+                            if m:
+                                pct = float(m.group(1))
+                                curr_time = time.time()
+                                if int(pct) != last_pct or (curr_time - last_time) > 0.3:
+                                    last_pct = int(pct)
+                                    last_time = curr_time
+                                    msg = f"[{idx}/{total}] {clean}"
+                                    try:
+                                        if self._window:
+                                            self._window.evaluate_js(f"updateDownloadProgress({pct}, {json.dumps(msg)})")
+                                    except Exception: pass
+
+                    proc.communicate()
+                    self._active_download_process = None
+
+                    if not self.is_cancelled and getattr(proc, "returncode", None) == 0:
                         completed += 1
                         try:
                             if self._window:
                                 if settings.get("notify") == "always":
-                                    self._window.evaluate_js(
-                                        f"showAppToast({json.dumps('Média téléchargé : ' + str(item.get('title', 'VOD Twitch')))})"
-                                    )
-                                self._window.evaluate_js(
-                                    f"markDownloadSuccess({json.dumps(url)})"
-                                )
+                                    self._window.evaluate_js(f"showAppToast({json.dumps('Média téléchargé : ' + str(item.get('title', 'Média')))})")
+                                self._window.evaluate_js(f"markDownloadSuccess({json.dumps(url)})")
                         except Exception:
                             pass
-                    continue
 
-                # Téléchargement direct d'image / GIF Pinterest
-                if item.get("is_direct_download"):
-                    try:
-                        ext = os.path.splitext(urllib.parse.urlparse(url).path)[1]
-                        if not ext or len(ext) > 5:
-                            ext = ".jpg"
-                        out_name = sanitize_filename(item.get("title", "Pinterest_Media")) + ext
-                        out_path = os.path.join(target_dir, out_name)
-                        
-                        req = urllib.request.Request(url, headers={
-                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                            "Referer": "https://www.pinterest.com/"
-                        })
-                        with urllib.request.urlopen(req, timeout=20) as resp, open(out_path, "wb") as f_out:
-                            f_out.write(resp.read())
-                        
-                        completed += 1
-                        if self._window:
-                            try:
-                                if settings.get("notify") == "always":
-                                    self._window.evaluate_js(f"showAppToast({json.dumps('Téléchargement terminé : ' + out_name)})")
-                                self._window.evaluate_js(f"markDownloadSuccess({json.dumps(url)})")
-                                self._window.evaluate_js(f"updateDownloadProgress(100, {json.dumps('Téléchargement terminé – ' + out_name)})")
-                            except Exception:
-                                pass
-                        continue
-                    except Exception:
-                        pass
-
-                # Téléchargement universel via yt-dlp
-                cmd = [
-                    YTDLP_PATH,
-                    "--ffmpeg-location", BIN_DIR,
-                    "--windows-filenames",
-                    "--newline",
-                    "--force-ipv4",
-                    "--socket-timeout", "15",
-                    "-P", target_dir,
-                    "-o", f"{sanitize_filename(item.get('title', 'Media'))}.%(ext)s" if "v.pinimg.com" in url else "%(title)s.%(ext)s"
-                ] + self._get_cookie_args()
-
-                if "twitter.com" in url or "x.com" in url:
-                    cmd.extend(["--extractor-args", "twitter:api=syndication"])
-
-                if is_playlist or is_channel:
-                    s_idx = item.get("start_idx", 1)
-                    e_idx = item.get("end_idx", item.get("item_count", 1))
-                    cmd.extend([
-                        "--yes-playlist",
-                        "--playlist-start", str(s_idx),
-                        "--playlist-end", str(e_idx),
-                        "--ignore-errors",
-                        "--no-abort-on-error"
-                    ])
-                elif ("v=" in url or "youtu.be/" in url):
-                    cmd.append("--no-playlist")
-
-                # Séparation stricte Vidéo vs Audio
-                if mode == "Audio":
-                    embed_thumb = settings.get("audio_embed_thumb", True)
-                    write_thumb = settings.get("audio_write_thumb", True)
-                    add_meta = settings.get("audio_add_metadata", True)
-                else:
-                    embed_thumb = settings.get("video_embed_thumb", True)
-                    write_thumb = settings.get("video_write_thumb", True)
-                    add_meta = settings.get("video_add_metadata", True)
-
-                if embed_thumb or write_thumb:
-                    cmd.extend(["--convert-thumbnails", "jpg"])
-
-                if embed_thumb:
-                    cmd.append("--embed-thumbnail")
-                if write_thumb:
-                    cmd.append("--write-thumbnail")
-
-                if add_meta:
-                    cmd.append("--add-metadata")
-
-                # Proxy
-                if settings.get("proxy_toggle") and settings.get("proxy_url"):
-                    cmd.extend(["--proxy", settings.get("proxy_url")])
-
-                # SponsorBlock
-                if is_yt and settings.get("sponsor_enable", True):
-                    s_remove = settings.get("sponsor_remove", "sponsor")
-                    if s_remove in ["all", "sponsor"]:
-                        cmd.extend(["--sponsorblock-remove", s_remove])
-
-                    if settings.get("sponsor_mark") == "chapters":
-                        cmd.extend(["--sponsorblock-mark", "all"])
-
-                    sponsor_api = settings.get("sponsor_api", "").strip()
-                    if sponsor_api and sponsor_api != "https://sponsor.ajay.app":
-                        cmd.extend(["--sponsorblock-api", sponsor_api.rstrip('/')])
-
-                    if settings.get("exact_cut", False):
-                        cmd.append("--force-keyframes-at-cuts")
-
-                # Impersonation
-                imp_val = settings.get("impersonation", "none")
-                if imp_val == "random":
-                    rand_ua = random.choice(list(UA_MAP.values()))
-                    cmd.extend(["--user-agent", rand_ua])
-                elif imp_val in UA_MAP:
-                    cmd.extend(["--user-agent", UA_MAP[imp_val]])
-
-                # Arguments personnalisés
-                extra_args = settings.get("extractor_args", "").strip()
-                if extra_args:
-                    for arg in extra_args.splitlines():
-                        if arg.strip():
-                            cmd.extend(["--extractor-args", arg.strip()])
-
-                # AUDIO / GIF / VIDÉO (Format universel garanti sans erreur 404/format unavailable)
-                if mode == "Audio":
-                    cmd.append("-x")
-                    audio_choice = settings.get("audio_format", "FLAC")
-                    # Une qualité choisie sur une carte prime sur le défaut global.
-                    selected_audio = quality if quality in ("FLAC", "M4A", "MP3_320") else audio_choice
-                    if selected_audio in ("MP3", "MP3_320"):
-                        cmd.extend(["--audio-format", "mp3", "--audio-quality", "320K"])
-                    elif selected_audio == "M4A":
-                        cmd.extend(["--audio-format", "m4a"])
-                    else:
-                        cmd.extend(["--audio-format", "flac"])
-
-                    audio_args = []
-                    if settings.get("post_process_audio") == "Normaliser":
-                        audio_args.extend(["-af", "loudnorm"])
-                    if settings.get("extra_selector") == "audio_rate":
-                        sample_rate = str(settings.get("audio_sample_rate", "source"))
-                        if sample_rate in ("44100", "48000"):
-                            audio_args.extend(["-ar", sample_rate])
-                    if audio_args:
-                        cmd.extend(["--postprocessor-args", "ffmpeg:" + " ".join(audio_args)])
-                elif mode == "GIF":
-                    cmd.extend([
-                        "-f", "bestvideo+bestaudio/best",
-                        "--recode-video", "gif"
-                    ])
-                else:
-                    if settings.get("post_process_video") == "Normaliser":
-                        cmd.extend(["--postprocessor-args", "ffmpeg:-af loudnorm"])
-                    elif settings.get("post_process_video") == "Remuxer":
-                        cmd.extend(["--remux-video", "mp4"])
-
-                    target_ext = settings.get("video_format", "MP4").lower()
-
-                    if quality == "Meilleure qualité (Auto)" or not quality:
-                        cmd.extend(["-f", "bestvideo+bestaudio/best"])
-                    else:
-                        h_match = re.search(r'(\d+)p?', str(quality))
-                        if h_match:
-                            h = h_match.group(1)
-                            cmd.extend([
-                                "-f", f"bestvideo[height<=?{h}]+bestaudio/best[height<=?{h}]/best",
-                                "--format-sort", f"res:{h},fps"
-                            ])
-                        else:
-                            cmd.extend(["-f", "bestvideo+bestaudio/best"])
-                    
-                    if not settings.get("video_origin_stream", False):
-                        cmd.extend(["--merge-output-format", target_ext])
-
-                cmd.append(url)
-                proc = subprocess.Popen(
-                    cmd,
-                    stdin=subprocess.DEVNULL,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    universal_newlines=True,
-                    encoding='utf-8',
-                    errors='replace',
-                    bufsize=1,
-                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
-                )
-
-                self._active_download_process = proc
-                if self.is_cancelled:
-                    kill_process_tree(proc.pid)
-
-                last_pct = -1
-                last_time = 0
-                for line in iter(proc.stdout.readline, ""):
-                    clean = line.strip()
-                    if "[download]" in clean and "%" in clean:
-                        m = re.search(r"(\d+\.\d+)%", clean)
-                        if m:
-                            pct = float(m.group(1))
-                            curr_time = time.time()
-                            if int(pct) != last_pct or (curr_time - last_time) > 0.3:
-                                last_pct = int(pct)
-                                last_time = curr_time
-                                msg = f"[{idx}/{total}] {clean}"
-                                try:
-                                    if self._window:
-                                        self._window.evaluate_js(f"updateDownloadProgress({pct}, {json.dumps(msg)})")
-                                except Exception: pass
-
-                proc.communicate()
                 self._active_download_process = None
+                try:
+                    if self._window:
+                        if self.is_cancelled:
+                            status = f"Annulé – {completed}/{total} élément(s) téléchargé(s)."
+                        elif completed == total:
+                            status = f"Traitement terminé – {completed}/{total} élément(s) téléchargé(s)."
+                        else:
+                            status = f"Terminé avec erreurs – {completed}/{total} élément(s) téléchargé(s)."
+                        self._window.evaluate_js(f"updateDownloadProgress(100, {json.dumps(status)})")
+                        if settings.get("notify") in ("finish", "always"):
+                            self._window.evaluate_js(f"showAppToast({json.dumps(status)})")
+                except Exception:
+                    pass
+                gc.collect()
 
-                if not self.is_cancelled and getattr(proc, "returncode", None) == 0:
-                    completed += 1
-                    try:
-                        if self._window:
-                            if settings.get("notify") == "always":
-                                self._window.evaluate_js(f"showAppToast({json.dumps('Média téléchargé : ' + str(item.get('title', 'Média')))})")
-                            self._window.evaluate_js(f"markDownloadSuccess({json.dumps(url)})")
-                    except Exception:
-                        pass
 
-            self._active_download_process = None
-            try:
-                if self._window:
-                    if self.is_cancelled:
-                        status = f"Annulé – {completed}/{total} élément(s) téléchargé(s)."
-                    elif completed == total:
-                        status = f"Traitement terminé – {completed}/{total} élément(s) téléchargé(s)."
-                    else:
-                        status = f"Terminé avec erreurs – {completed}/{total} élément(s) téléchargé(s)."
-                    self._window.evaluate_js(f"updateDownloadProgress(100, {json.dumps(status)})")
-                    if settings.get("notify") in ("finish", "always"):
-                        self._window.evaluate_js(f"showAppToast({json.dumps(status)})")
-            except Exception:
-                pass
-            gc.collect()
+            except Exception as exc:
+                handle_exception(type(exc), exc, exc.__traceback__)
+                try:
+                    if self._window:
+                        message = "Échec inattendu du téléchargement : " + str(exc)[:180]
+                        self._window.evaluate_js(
+                            f"updateDownloadProgress(0, {json.dumps(message)})"
+                        )
+                        self._window.evaluate_js(f"showAppToast({json.dumps(message)})")
+                except Exception:
+                    pass
+            finally:
+                self._active_download_process = None
+                self._download_running = False
+                try:
+                    if self._window:
+                        self._window.evaluate_js("finishDownloadUIState()")
+                except Exception:
+                    pass
 
-        threading.Thread(target=_worker, daemon=True).start()
+        try:
+            threading.Thread(target=_worker, daemon=True).start()
+        except (OSError, RuntimeError) as exc:
+            self._download_running = False
+            return {"success": False, "error": "Impossible de lancer la file : " + str(exc)}
+        return {"success": True}
 
 def _log_binary_setup_error(error):
     """Ne plus cacher silencieusement les erreurs du premier lancement."""
