@@ -87,7 +87,7 @@ jobs:
           Copy-Item "dist/portable-build/All_Media_Download.exe" "$root/All_Media_Download.exe"
           Copy-Item "logo.ico" "$root/logo.ico"
           Copy-Item "logo.jpg" "$root/logo.jpg"
-          foreach ($dir in @("AUDIOS", "AUTRES", "CHAÎNES", "GIFS", "PLAYLIST", "VIDÉOS")) {
+          foreach ($dir in @("AUDIOS", "AUTRES", "CHAÎNES", "GIFS", "PLAYLIST", "VIDÉOS", "TWITCH")) {
             New-Item -ItemType Directory -Force -Path "$root/$dir" | Out-Null
             # Le dossier vide est créé directement, sans .gitkeep.
           }
@@ -126,7 +126,7 @@ jobs:
           foreach ($f in @("$root/All_Media_Download.exe", "$root/logo.ico", "$root/logo.jpg")) {
             if (-not (Test-Path $f)) { throw "Portable incomplet : $f" }
           }
-          foreach ($d in @("AUDIOS", "AUTRES", "CHAÎNES", "GIFS", "PLAYLIST", "VIDÉOS")) {
+          foreach ($d in @("AUDIOS", "AUTRES", "CHAÎNES", "GIFS", "PLAYLIST", "VIDÉOS", "TWITCH")) {
             if (-not (Test-Path "$root/$d" -PathType Container)) { throw "Dossier $d absent" }
             if (Test-Path "$root/$d/.gitkeep") { throw "Marqueur .gitkeep interdit dans $d" }
           }
@@ -154,7 +154,7 @@ jobs:
           if (Test-Path "$installed/_internal") {
             throw "Version classique incompatible : _internal encore present"
           }
-          foreach ($d in @("AUDIOS", "AUTRES", "CHAÎNES", "GIFS", "PLAYLIST", "VIDÉOS")) {
+          foreach ($d in @("AUDIOS", "AUTRES", "CHAÎNES", "GIFS", "PLAYLIST", "VIDÉOS", "TWITCH")) {
             if (-not (Test-Path "$installed/$d" -PathType Container)) {
               throw "Dossier installe absent : $d"
             }
