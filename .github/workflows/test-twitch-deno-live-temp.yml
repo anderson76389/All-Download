@@ -1,0 +1,27 @@
+name: Test reel Twitch sans CLI et Deno local (temporaire)
+
+on:
+  pull_request:
+    paths:
+      - "scripts/test_twitch_deno_live_temp.py"
+      - ".github/workflows/test-twitch-deno-live-temp.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  real-cli-free-twitch:
+    runs-on: windows-latest
+    timeout-minutes: 19
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+      - name: Installer les bibliotheques necessaires pour les tests
+        run: python -m pip install pywebview==6.2.1 pythonnet==3.2.1 "psutil>=6.1,<8"
+      - name: Syntaxe du projet et des tests
+        run: python -m py_compile yt_app.py deno_runtime.py twitch_hls.py twitch_vod.py scripts/test_twitch_deno_live_temp.py
+      - name: Vrais Twitch HLS et Deno Windows x64
+        timeout-minutes: 15
+        run: python scripts/test_twitch_deno_live_temp.py
