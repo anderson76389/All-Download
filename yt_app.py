@@ -340,6 +340,72 @@ def get_media_download_dir(root, item):
         return os.path.join(root, "VIDÉOS")
     return os.path.join(root, "AUTRES")
 
+
+def save_direct_media(url, target_dir, title, on_chunk=None):
+    """Image/GIF direct : transfert borné, fichier temporaire, zéro écrasement.
+
+    Le résultat n'apparaît sous son nom final qu'après un transfert complet.
+    L'utilisateur conserve toutes les anciennes versions, même homonymes.
+    """
+    parts = urllib.parse.urlsplit(str(url))
+    if parts.scheme not in ("https", "http") or not parts.hostname:
+        raise ValueError("Adresse du média direct invalide.")
+    extension = os.path.splitext(parts.path)[1].lower()
+    if extension not in (".gif", ".jpg", ".jpeg", ".png", ".webp", ".mp4"):
+        extension = ".jpg"
+    os.makedirs(target_dir, exist_ok=True)
+    title = sanitize_filename(title or "Pinterest_Media").rstrip(" .")[:120] or "Pinterest_Media"
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            prefix=".all-download-", suffix=".part", dir=target_dir, delete=False
+        ) as output:
+            temp_path = output.name
+            req = urllib.request.Request(url, headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Referer": "https://www.pinterest.com/"
+            })
+            total = 0
+            with urllib.request.urlopen(req, timeout=20) as response:
+                while True:
+                    if on_chunk:
+                        on_chunk()
+                    chunk = response.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    total += len(chunk)
+                    if total > 250 * 1024 * 1024:
+                        raise ValueError("Le média dépasse la taille maximale autorisée.")
+                    output.write(chunk)
+            if total == 0:
+                raise ValueError("Réponse média vide.")
+        for index in range(1, 1001):
+            suffix = "" if index == 1 else f" ({index})"
+            path = os.path.join(target_dir, title + suffix + extension)
+            try:
+                os.link(temp_path, path)
+            except FileExistsError:
+                continue
+            except OSError:
+                # Le fichier final ne doit jamais écraser un média précédent.
+                if os.path.exists(path):
+                    continue
+                os.rename(temp_path, path)
+                temp_path = None
+                return path
+            else:
+                os.unlink(temp_path)
+                temp_path = None
+                return path
+        raise OSError("Trop de fichiers portent ce nom.")
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.unlink(temp_path)
+            except OSError:
+                pass
+
+
 def kill_process_tree(pid):
     try:
         if sys.platform == "win32":
@@ -3568,36 +3634,38 @@ class DownloaderAPI:
                                 pass
                         continue
 
-                    # Téléchargement direct d'image / GIF Pinterest
+                        # Téléchargement direct d'image / GIF Pinterest
                     if item.get("is_direct_download"):
                         try:
-                            ext = os.path.splitext(urllib.parse.urlparse(url).path)[1]
-                            if not ext or len(ext) > 5:
-                                ext = ".jpg"
-                            out_name = sanitize_filename(item.get("title", "Pinterest_Media")) + ext
-                            out_path = os.path.join(target_dir, out_name)
-                            
-                            req = urllib.request.Request(url, headers={
-                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                                "Referer": "https://www.pinterest.com/"
-                            })
-                            with urllib.request.urlopen(req, timeout=20) as resp, open(out_path, "wb") as f_out:
-                                f_out.write(resp.read())
-                            
+                            def check_transfer_state():
+                                while self.is_paused and not self.is_cancelled:
+                                    time.sleep(0.2)
+                                if self.is_cancelled:
+                                    raise InterruptedError("Téléchargement annulé.")
+                            saved_file = save_direct_media(
+                                url, target_dir, item.get("title", "Pinterest_Media"),
+                                on_chunk=check_transfer_state
+                            )
                             completed += 1
                             if self._window:
                                 try:
                                     if settings.get("notify") == "always":
-                                        self._window.evaluate_js(f"showAppToast({json.dumps('Téléchargement terminé : ' + out_name)})")
+                                        self._window.evaluate_js(
+                                            f"showAppToast({json.dumps('Téléchargement terminé : ' + os.path.basename(saved_file))})"
+                                        )
                                     self._window.evaluate_js(f"markDownloadSuccess({json.dumps(url)})")
-                                    self._window.evaluate_js(f"updateDownloadProgress(100, {json.dumps('Téléchargement terminé – ' + out_name)})")
                                 except Exception:
                                     pass
-                            continue
-                        except Exception:
-                            pass
+                        except (OSError, ValueError, InterruptedError) as exc:
+                            if not self.is_cancelled and self._window:
+                                try:
+                                    message = "Téléchargement direct impossible : " + str(exc)[:160]
+                                    self._window.evaluate_js(f"updateDownloadProgress(0, {json.dumps(message)})")
+                                except Exception:
+                                    pass
+                        continue
 
-                    # Téléchargement universel via yt-dlp
+                # Téléchargement universel via yt-dlp
                     cmd = [
                         YTDLP_PATH,
                         "--ffmpeg-location", BIN_DIR,
