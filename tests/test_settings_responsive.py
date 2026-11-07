@@ -69,6 +69,31 @@ class SettingsWorkflowTests(unittest.TestCase):
         self.assertEqual(len(commands), 1)
         return commands[0]
 
+    def test_ytdlp_uses_only_local_cache_for_downloads_and_metadata(self):
+        command = self.download("Vidéo")
+        self.assertEqual(command[command.index("--cache-dir") + 1],
+                         yt_app.YTDLP_CACHE_DIR)
+        self.assertEqual(os.path.commonpath([
+            yt_app.YTDLP_CACHE_DIR, yt_app.APP_DIR
+        ]), yt_app.APP_DIR)
+
+        class MetadataProcess:
+            returncode = 0
+            def communicate(self, timeout=None):
+                return (json.dumps({
+                    "id": "1234", "title": "Test cache local",
+                    "formats": [{"height": 1080, "fps": 60}],
+                    "duration": 30
+                }), "")
+        with patch.object(yt_app, "ensure_ytdlp_ready", return_value=True), \
+             patch.object(yt_app.subprocess, "Popen",
+                          return_value=MetadataProcess()) as launch:
+            result = self.api.extract_info("https://www.youtube.com/watch?v=1234")
+        self.assertTrue(result["success"], result)
+        metadata_command = launch.call_args.args[0]
+        self.assertEqual(metadata_command[metadata_command.index("--cache-dir") + 1],
+                         yt_app.YTDLP_CACHE_DIR)
+
     def test_video_container_and_origin_stream(self):
         cmd = self.download(video_format="MKV", video_origin_stream=False)
         self.assertEqual(cmd[cmd.index("--merge-output-format") + 1], "mkv")
