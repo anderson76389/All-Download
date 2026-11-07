@@ -1,0 +1,29 @@
+name: TEST approfondi Twitch HLS build-165 (temporaire)
+
+on:
+  pull_request:
+    paths:
+      - "scripts/test_twitch_deep_build165.py"
+      - ".github/workflows/test-twitch-deep-build165.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  deep-test:
+    runs-on: windows-latest
+    timeout-minutes: 17
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+      - name: Dépendances Windows
+        run: python -m pip install pywebview==6.2.1 pythonnet==3.2.1 "psutil>=6.1,<8"
+      - name: Syntaxe de tous les moteurs
+        run: python -m py_compile yt_app.py twitch_vod.py twitch_hls.py scripts/test_twitch_deep_build165.py
+      - name: Vérifications de non-régression
+        run: python -m unittest discover -s tests -v
+      - name: Téléchargements Twitch réels et contrôles lecture / pause / annulation
+        timeout-minutes: 13
+        run: python scripts/test_twitch_deep_build165.py
