@@ -5,6 +5,7 @@ la fermeture des indicateurs d'attente en cas d'erreur et la récupération du
 moteur après un échec.
 """
 import io
+import json
 import os
 import tempfile
 import threading
@@ -107,6 +108,24 @@ class DownloadInteractionAuditTests(unittest.TestCase):
         self.assertTrue(self.api.cancel_downloads())
         with open(old_path, "rb") as file:
             self.assertEqual(file.read(), b"private media")
+
+    def test_failed_config_replacement_preserves_previous_settings(self):
+        path = os.path.join(self.tmp.name, "config.json")
+        original = {"settings": {"theme": "dark_pure"}, "cookie_browser": "none"}
+        with open(path, "w", encoding="utf-8") as file:
+            json.dump(original, file)
+        self.api.config = dict(original)
+        with patch.object(yt_app, "CONFIG_FILE", path), \
+             patch.object(yt_app.os, "replace", side_effect=OSError("disk busy")):
+            self.assertFalse(self.api.save_auth_config("", "firefox"))
+        with open(path, encoding="utf-8") as file:
+            self.assertEqual(json.load(file), original)
+        self.assertEqual(self.api.config, original)
+        self.assertFalse(any(name.endswith(".tmp") for name in os.listdir(self.tmp.name)))
+        with patch.object(yt_app, "CONFIG_FILE", path):
+            self.assertTrue(self.api.save_auth_config("", "firefox"))
+        with open(path, encoding="utf-8") as file:
+            self.assertEqual(json.load(file)["cookie_browser"], "firefox")
 
     def test_direct_pinterest_download_never_overwrites_existing_file(self):
         root = os.path.join(self.tmp.name, "GIFS")
