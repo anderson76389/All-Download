@@ -129,6 +129,24 @@ class LocalDenoTests(unittest.TestCase):
                     "https://pinterest.com/pin/12"):
             self.assertFalse(deno_runtime.is_youtube_url(url), url)
 
+    def test_deno_cache_is_forced_into_application_data_not_appdata(self):
+        from types import SimpleNamespace
+        import yt_app
+        self.assertEqual(yt_app.local_ytdlp_environment()["DENO_DIR"],
+                         os.path.join(yt_app.APP_DIR, "cache", "deno"))
+        self.assertEqual(yt_app.local_ytdlp_environment()["DENO_NO_UPDATE_CHECK"], "1")
+        path = os.path.join(self.root.name, "Donnees", "bin", "deno.exe.tmp.exe")
+        with patch.object(deno_runtime.subprocess, "run",
+                          return_value=SimpleNamespace(
+                              returncode=0, stdout="deno 2.9.8\nv8 13.0\n")
+                          ) as process:
+            self.assertEqual(deno_runtime._deno_version(path), (2, 9, 8))
+        self.assertEqual(
+            process.call_args.kwargs["env"]["DENO_DIR"],
+            os.path.join(self.root.name, "Donnees", "cache", "deno")
+        )
+        self.assertEqual(process.call_args.kwargs["env"]["DENO_NO_UPDATE_CHECK"], "1")
+
     def test_youtube_can_fall_back_without_deno(self):
         import yt_app
         with patch.object(yt_app, "is_valid_windows_executable",
