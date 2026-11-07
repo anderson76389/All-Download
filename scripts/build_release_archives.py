@@ -45,6 +45,7 @@ def check_zip(zip_path: Path, tracked: list[Path], executable: str) -> None:
             if any(not name.startswith(prefix) for name in names):
                 raise ValueError("Le ZIP Portable ne doit rien extraire hors du dossier All-Download.")
             needed.add(prefix)
+            needed.update((prefix + "Donnees/", prefix + "Donnees/bin/"))
             needed.update(f"{prefix}{name}/" for name in MEDIA_DIRS)
         else:
             stray = sorted(n for n in names if n in {f"{d}/" for d in MEDIA_DIRS})
@@ -54,7 +55,10 @@ def check_zip(zip_path: Path, tracked: list[Path], executable: str) -> None:
             # Le runner cree des pseudo executables MZ lors des tests GUI.
             # Donnees/ ne doit JAMAIS entrer dans la release : ni outils
             # factices, ni config, ni logs, ni medias personnels.
-            forbidden = [name for name in names if name.startswith((prefix + "Donnees/", prefix + "bin/"))]
+            allowed_empty_dirs = {prefix + "Donnees/", prefix + "Donnees/bin/"}
+            forbidden = [name for name in names
+                         if name.startswith((prefix + "Donnees/", prefix + "bin/"))
+                         and name not in allowed_empty_dirs]
             if forbidden:
                 raise ValueError(f"Fichiers du runner trouves dans le ZIP Portable : {sorted(forbidden)}")
         if any(path.endswith(".gitkeep") for path in names):
@@ -74,11 +78,13 @@ def build_portable(root: Path, output: Path, tracked: list[Path]) -> None:
         raise FileNotFoundError("L'EXE Portable est absent")
     with zipfile.ZipFile(output / PORTABLE_NAME, "w", zipfile.ZIP_DEFLATED, compresslevel=6, allowZip64=True) as zf:
         zf.writestr(f"{PORTABLE_ROOT}/", "")
+        zf.writestr(f"{PORTABLE_ROOT}/Donnees/", "")
+        zf.writestr(f"{PORTABLE_ROOT}/Donnees/bin/", "")
         for category in MEDIA_DIRS:
             zf.writestr(f"{PORTABLE_ROOT}/{category}/", "")
-        # Ne distribuer que l'EXE et les logos. Les categories sont ajoutees
-        # explicitement comme dossiers vides ; Donnees/ est cree au premier
-        # lancement et les outils reels sont telecharges puis verifies.
+        # Distribuer uniquement des dossiers de base VIDES. Les réglages,
+        # les médias et les outils du runner sont toujours exclus. Les vrais
+        # exécutables sont téléchargés et vérifiés après le premier démarrage.
         for filename in ("All_Media_Download.exe", "logo.ico", "logo.jpg"):
             path = app / filename
             if not path.is_file():
