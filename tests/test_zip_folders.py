@@ -1,4 +1,4 @@
-"""Les ZIP doivent transporter six vrais dossiers vides, sans .gitkeep."""
+"""Les ZIP doivent transporter sept vrais dossiers vides, sans .gitkeep."""
 from pathlib import Path
 import tempfile
 import unittest
