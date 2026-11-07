@@ -8,9 +8,11 @@ import os
 import shutil
 import subprocess
 import tempfile
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import yt_app
 
 VOD = "https://www.twitch.tv/videos/2918765022"  # Kamet0, 03/11/2026, VOD publique.
