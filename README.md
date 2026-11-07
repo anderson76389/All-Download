@@ -105,13 +105,14 @@ Pour les liens de VOD du type `https://www.twitch.tv/videos/1234567890`, **All-D
 └── 📁 Donnees/       Données personnelles des deux éditions
     ├── config.json   Réglages du logiciel
     ├── bin/          yt-dlp, FFmpeg et ffprobe
+    ├── cache/        Cache yt-dlp et fichiers Twitch temporaires
     ├── webview/         Profil WebView2 local (Portable)
     ├── webview-classique/  Profil WebView2 local (Classique)
     ├── startup_log.txt
     └── crash_log.txt
 ```
 
-**Tout le stockage permanent est local dans les versions Windows :** les sept catégories sont créées à côté de l'EXE ; les réglages, outils, journaux et profils WebView2 sont dans `All-Download/Donnees/`. Les anciens profils techniques `%LOCALAPPDATA%\\AllMediaDownload` ne sont plus utilisés par les EXE à jour. **Exception Windows inévitable :** le Portable PyInstaller monofichier extrait temporairement ses composants dans le dossier système `%TEMP%` pendant l'exécution ; cela n'y sauvegarde jamais les médias ni les préférences.
+**Tout le stockage permanent est local dans les versions Windows :** les sept catégories sont créées à côté de l'EXE ; les réglages, outils, journaux, caches yt-dlp/Twitch et profils WebView2 sont dans `All-Download/Donnees/`. Les anciens profils techniques `%LOCALAPPDATA%\\AllMediaDownload` ne sont plus utilisés par les EXE à jour. **Exception Windows inévitable :** le Portable PyInstaller monofichier extrait temporairement ses composants dans le dossier système `%TEMP%` pendant l'exécution ; cela n'y sauvegarde jamais les médias ni les préférences.
 
 Les **sept catégories sont créées automatiquement**, sans effacer vos médias existants. Le ZIP **Portable** contient un dossier racine unique `All-Download/` avec l'EXE, les sept catégories, les logos, le code source et les dossiers `Donnees/bin` vides (aucun fichier personnel). Vous pouvez l'extraire dans le dossier parent de votre choix : aucun dossier de catégorie n'est déposé à l'extérieur d'All-Download. Le ZIP **Classique** contient l'installateur, qui crée les catégories dans son dossier d'installation. Sur GitHub, les dossiers vides n'apparaissent pas : c'est normal.
 
