@@ -54,9 +54,9 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 Pour les liens de VOD du type `https://www.twitch.tv/videos/1234567890`, **All-Download utilise [TwitchDownloaderCLI](https://github.com/lay295/TwitchDownloader)** en mode **Vidéo**, tout en conservant exactement la même interface et la même file d'attente (progression, pause, reprise et annulation).
 
 - Le CLI **Windows x64 autonome** est téléchargé **au premier besoin** depuis la dernière release officielle, dans `Donnees/bin/TwitchDownloaderCLI.exe`. L'archive est contrôlée (taille, empreinte SHA-256 quand elle est fournie par GitHub, format PE x64) puis l'exécutable est installé atomiquement. Aucune interface TwitchDownloader séparée ou installation de .NET n'est requise.
-- Les fichiers sont rangés dans **AUTRES/**, dans le dossier de téléchargement configuré. L'option **Rename** évite d'écraser un fichier du même nom.
+- Les VOD Twitch en mode **Vidéo** sont rangées dans le dossier **TWITCH/**, à côté de VIDÉOS, AUDIOS et AUTRES. Les anciennes VOD stockées dans AUTRES ne sont **ni déplacées ni supprimées**. L’option **Rename** du CLI évite d’écraser un fichier du même nom.
 - All-Download réutilise son propre FFmpeg. Le CLI télécharge les VOD vidéo en **MP4** ; il ne gère pas ici la sortie MKV, les options SponsorBlock, la conversion audio ni les réglages de proxy d'yt-dlp.
-- Si yt-dlp ne peut pas obtenir les métadonnées Twitch, une carte minimale **« VOD Twitch + identifiant »** est ajoutée : vous pouvez quand même lancer le téléchargement. Dans ce cas, seule la **meilleure qualité automatique** est proposée.
+- Si yt-dlp ne peut pas obtenir les métadonnées Twitch, une carte **« VOD Twitch + identifiant »** est ajoutée avec un **menu de qualité**. L’application sonde les playlists HLS accessibles pour afficher les résolutions réellement disponibles (ex. 1080p60, 720p60, 480p30), quand le CDN le permet. Sinon, elle propose les profils Twitch habituels et confirme la disponibilité au téléchargement. **Auto** reste le choix par défaut. Une qualité demandée est plafonnée : le moteur HLS ne remplace pas silencieusement un choix 720p par un flux source 1080p.
 - Quand TwitchDownloaderCLI refuse une VOD, All-Download essaie **automatiquement un secours HLS indépendant** : métadonnées publiques Twitch, recherche d’une playlist CDN accessible sans connexion, puis assemblage par le FFmpeg déjà installé. Cette méthode a été validée sur un extrait réel de la VOD `2919531847` (chaîne aminematue) sans cookie OAuth. Elle ne sollicite ni la base privée ni les serveurs de l’extension Chrome Twitch VOD Downloader. Elle peut toutefois échouer pour certaines VOD, dont les flux ne sont plus disponibles.
 - Les vidéos HLS sont enregistrées en **MP4**, avec fichiers temporaires nettoyés, sans écrasement des médias existants, et avec progression, pause/reprise et annulation pilotées par la file d’attente actuelle.
 - Les **clips Twitch**, les modes **Audio/GIF**, YouTube et tous les autres sites restent gérés par **yt-dlp**, sans changement de leur fonctionnement. L’accès HLS dépend des playlists encore accessibles sur le CDN Twitch ; il n’est pas garanti pour toutes les VOD, notamment celles supprimées ou expirées.
@@ -97,6 +97,7 @@ Pour les liens de VOD du type `https://www.twitch.tv/videos/1234567890`, **All-D
 ├── logo.ico et logo.jpg
 ├── 🎵 AUDIOS/        Musiques et fichiers audio individuels
 ├── 🎬 VIDÉOS/        Vidéos YouTube individuelles
+├── 📺 TWITCH/        VOD Twitch (publiques et HLS accessibles)
 ├── 🎞️ GIFS/          GIF téléchargés et GIF convertis
 ├── 📺 CHAÎNES/       Sous-dossiers par chaîne YouTube
 ├── 📑 PLAYLIST/      Sous-dossiers par playlist YouTube
@@ -108,9 +109,9 @@ Pour les liens de VOD du type `https://www.twitch.tv/videos/1234567890`, **All-D
     └── crash_log.txt
 ```
 
-**Même rangement dans les deux éditions :** les six catégories sont créées à côté de l'EXE, même si elles n'existaient pas à l'extraction. Les réglages, outils et journaux restent dans `Donnees/` de chaque édition. **Exception technique :** les profils de cache WebView2 restent dans `%LOCALAPPDATA%\\AllMediaDownload` (séparés entre Portable et Classique) pour la stabilité au démarrage, et PyInstaller peut employer des fichiers temporaires système. Aucun de ces caches ne contient vos médias.
+**Même rangement dans les deux éditions :** les sept catégories sont créées à côté de l'EXE, même si elles n'existaient pas à l'extraction. Les réglages, outils et journaux restent dans `Donnees/` de chaque édition. **Exception technique :** les profils de cache WebView2 restent dans `%LOCALAPPDATA%\\AllMediaDownload` (séparés entre Portable et Classique) pour la stabilité au démarrage, et PyInstaller peut employer des fichiers temporaires système. Aucun de ces caches ne contient vos médias.
 
-Les **six catégories sont créées automatiquement**, sans effacer vos médias existants. Le ZIP **Portable** les contient comme véritables dossiers vides, sans `.gitkeep`. Le ZIP **Classique** n'ajoute aucun dossier parasite lors de l'extraction : l'installateur crée les catégories directement dans son dossier d'installation. Sur GitHub, les dossiers vides n'apparaissent pas : c'est le fonctionnement normal de Git.
+Les **sept catégories sont créées automatiquement**, sans effacer vos médias existants. Le ZIP **Portable** les contient comme véritables dossiers vides, sans `.gitkeep`. Le ZIP **Classique** n'ajoute aucun dossier parasite lors de l'extraction : l'installateur crée les catégories directement dans son dossier d'installation. Sur GitHub, les dossiers vides n'apparaissent pas : c'est le fonctionnement normal de Git.
 
 L'ancien dossier `AUDIO/` est migré vers `AUDIOS/` lorsque c'est possible, sans écraser les fichiers homonymes.
 
@@ -125,13 +126,13 @@ L'ancien dossier `AUDIO/` est migré vers `AUDIOS/` lorsque c'est possible, sans
 
 Dans **Paramètres → Téléchargement → Dossier des téléchargements**, cliquez sur **Parcourir…** pour sélectionner un dossier Windows, y compris sur un autre disque (D:, E:, etc.), ou collez son chemin complet. Cliquez sur **Enregistrer** pour appliquer le changement. **Par défaut** rétablit l'emplacement automatique correspondant à l'édition utilisée.
 
-Les six catégories sont créées dans le dossier choisi. L'application vérifie l'accès en écriture et conserve l'ancien emplacement en cas d'erreur. **Les fichiers existants ne sont pas déplacés ni supprimés.**
+Les sept catégories sont créées dans le dossier choisi. L'application vérifie l'accès en écriture et conserve l'ancien emplacement en cas d'erreur. **Les fichiers existants ne sont pas déplacés ni supprimés.**
 
 **Chaque édition possède sa propre configuration** dans `Donnees/config.json` à côté de son EXE. Au premier démarrage, les anciens réglages de `%LOCALAPPDATA%\\AllMediaDownload` sont copiés s'ils existent, sans effacer leur origine. Un dossier personnalisé expressément choisi reste prioritaire. Si le dossier du programme est exceptionnellement protégé contre l'écriture, le logiciel utilise une destination de repli modifiable.
 
 **Dans les deux éditions**, les anciens emplacements automatiques `Téléchargements/MediaDownloader` et `Téléchargements/All-Download-Medias` ne sont plus utilisés pour les nouveaux téléchargements : ils vont dans les catégories du dossier contenant l'EXE. **Les anciens fichiers ne sont ni déplacés ni effacés automatiquement** ; vérifiez leur contenu avant de supprimer un ancien dossier. Vous pouvez toujours choisir une destination personnalisée dans les paramètres.
 
-**Sécurité des données Classique :** lors d'une mise à jour ou d'une désinstallation, l'installateur est configuré pour ne jamais supprimer les six catégories personnelles ni `Donnees/`. La désinstallation enlève l'application, mais ces dossiers personnels peuvent rester dans l'ancien emplacement ; c'est volontaire pour éviter toute perte. Ne les supprimez manuellement qu'après vérification.
+**Sécurité des données Classique :** lors d'une mise à jour ou d'une désinstallation, l'installateur est configuré pour ne jamais supprimer les sept catégories personnelles ni `Donnees/`. La désinstallation enlève l'application, mais ces dossiers personnels peuvent rester dans l'ancien emplacement ; c'est volontaire pour éviter toute perte. Ne les supprimez manuellement qu'après vérification.
 
 ---
 
@@ -142,7 +143,7 @@ Les deux boutons en haut de cette page renvoient vers les fichiers de la **derni
 - `All-Download-Portable-Windows.zip` : application autonome et prête à ouvrir.
 - `All-Download-Classique-Windows.zip` : installateur Windows `All-Download-Setup.exe`.
 
-Chaque archive comprend les **logos** et une copie des **sources GitHub** dans `Code-source/`. Les six dossiers vides sont inclus uniquement dans le ZIP Portable ; ils sont créés par l'installateur pour la version Classique.
+Chaque archive comprend les **logos** et une copie des **sources GitHub** dans `Code-source/`. Les sept dossiers vides sont inclus uniquement dans le ZIP Portable ; ils sont créés par l'installateur pour la version Classique.
 
 Les versions sont construites automatiquement et soumises à des tests Python, des tests d'interface et des vérifications du démarrage sur Windows. **Cela ne remplace pas un essai réel de chaque site ou de chaque format.**
 
