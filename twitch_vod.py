@@ -40,19 +40,35 @@ def twitch_vod_id(url):
         return None
 
 
-def fallback_metadata(url):
-    """Carte minimale quand yt-dlp ne parvient pas à lire les métadonnées Twitch."""
+TWITCH_VIDEO_QUALITIES = [
+    "Meilleure qualité (Auto)",
+    "1080p (60fps)", "720p (60fps)", "720p (30fps)",
+    "480p (30fps)", "360p (30fps)", "160p (30fps)",
+]
+
+
+def fallback_metadata(url, formats=None):
+    """Carte Twitch avec choix de qualité, même si yt-dlp refuse la VOD.
+
+    Les profils proposés par défaut sont vérifiés au téléchargement. Lorsqu'une
+    détection HLS réussit, la carte ne montre que les qualités réellement
+    annoncées disponibles.
+    """
     vod_id = twitch_vod_id(url)
     if not vod_id:
         return None
     quality = "Meilleure qualité (Auto)"
+    formats = [quality] + [
+        value for value in (formats if formats is not None else TWITCH_VIDEO_QUALITIES[1:])
+        if value in TWITCH_VIDEO_QUALITIES[1:]
+    ]
     return {
         "title": "VOD Twitch " + vod_id,
         "thumbnail": "",
         "duration": "—",
         "url": url,
         "mode": "Vidéo",
-        "formats": [quality],
+        "formats": formats,
         "selectedQuality": quality,
         "selectedQualityLabel": quality,
         "is_channel": False,
