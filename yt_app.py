@@ -22,6 +22,9 @@ import multiprocessing
 import tempfile
 from pathlib import Path
 import webview
+from twitch_vod import (twitch_vod_id, fallback_metadata, ensure_cli_ready,
+                        build_command as build_twitch_command, progress_percentage,
+                        CLI_FILENAME as TWITCH_CLI_FILENAME)
 
 # 1. Protection PyInstaller
 if __name__ == '__main__':
@@ -3055,6 +3058,8 @@ class DownloaderAPI:
         is_channel = bool(any(k in url.lower() for k in ["/channel/", "/c/", "/user/", "@"]) and not has_video_id)
 
         if not ensure_ytdlp_ready():
+            if twitch_vod_id(url):
+                return {"success": True, "data": fallback_metadata(url)}
             return {
                 "success": False,
                 "error": "yt-dlp est absent ou invalide. Impossible de recuperer "
@@ -3103,6 +3108,10 @@ class DownloaderAPI:
             stdout, stderr = proc.communicate(timeout=60)
             
             if proc.returncode != 0:
+                # Les métadonnées Twitch restent facultatives : le CLI sait
+                # télécharger une VOD avec son identifiant uniquement.
+                if twitch_vod_id(url):
+                    return {"success": True, "data": fallback_metadata(url)}
                 err_lower = stderr.lower()
                 is_restricted = False
                 if any(k in err_lower for k in ["sign in", "confirm your age", "age-restricted", "age restricted", "inappropriate"]):
@@ -3197,11 +3206,102 @@ class DownloaderAPI:
             return {"success": True, "data": data}
         except subprocess.TimeoutExpired:
             if proc: kill_process_tree(proc.pid)
+            if twitch_vod_id(url):
+                return {"success": True, "data": fallback_metadata(url)}
             return {"success": False, "error": "Délai d'attente dépassé lors de l'analyse."}
         except Exception as e:
+            if twitch_vod_id(url):
+                return {"success": True, "data": fallback_metadata(url)}
             return {"success": False, "error": str(e)}
         finally:
             gc.collect()
+
+    def _download_twitch_video(self, item, target_dir, quality, idx, total):
+        """Exécuter le CLI officiel en conservant pause, annulation et suivi."""
+        def status(pct, message, toast=False):
+            try:
+                if self._window:
+                    self._window.evaluate_js(
+                        f"updateDownloadProgress({pct}, {json.dumps(message)})"
+                    )
+                    if toast:
+                        self._window.evaluate_js(
+                            f"showAppToast({json.dumps(message)})"
+                        )
+            except Exception:
+                pass
+
+        proc = None
+        try:
+            if self.is_cancelled:
+                return False
+            status(0, f"[{idx}/{total}] Préparation de TwitchDownloaderCLI…")
+            cli_path = os.path.join(BIN_DIR, TWITCH_CLI_FILENAME)
+            ready, reason = ensure_cli_ready(BIN_DIR, is_valid_windows_executable)
+            if not ready:
+                status(0, "TwitchDownloaderCLI indisponible : " + reason[:240], True)
+                return False
+            # Le CLI utilise le même FFmpeg vérifié que yt-dlp : ni nouveau
+            # FFmpeg à installer séparément, ni dépendance à son interface WPF.
+            if not is_valid_windows_executable(FFMPEG_PATH):
+                status(0, f"[{idx}/{total}] Préparation de FFmpeg…")
+                setup_binaries()
+            if not is_valid_windows_executable(FFMPEG_PATH):
+                status(0, "FFmpeg est absent ou invalide pour cette VOD Twitch.", True)
+                return False
+            if self.is_cancelled:
+                return False
+
+            cache_dir = os.path.join(APP_DIR, "cache", "twitch")
+            os.makedirs(cache_dir, exist_ok=True)
+            cmd = build_twitch_command(
+                cli_path, item["url"], item.get("title", "VOD Twitch"),
+                quality, target_dir, FFMPEG_PATH, cache_dir
+            )
+            proc = subprocess.Popen(
+                cmd,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                universal_newlines=True,
+                encoding="utf-8",
+                errors="replace",
+                bufsize=1,
+                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+            )
+            self._active_download_process = proc
+            if self.is_cancelled:
+                kill_process_tree(proc.pid)
+
+            last_error = ""
+            last_pct = -1
+            for line in iter(proc.stdout.readline, ""):
+                clean = line.strip()
+                if not clean:
+                    continue
+                if "[ERROR]" in clean:
+                    last_error = clean[:240]
+                pct = progress_percentage(clean)
+                if pct is not None and pct != last_pct:
+                    last_pct = pct
+                    status(pct, f"[{idx}/{total}] Twitch : {clean[:180]}")
+            returncode = proc.wait()
+            if self.is_cancelled:
+                return False
+            if returncode != 0:
+                status(0, "Erreur Twitch : " + (
+                    last_error or f"TwitchDownloaderCLI a échoué (code {returncode})."
+                ), True)
+                return False
+            return True
+        except (OSError, ValueError, subprocess.SubprocessError) as exc:
+            if not self.is_cancelled:
+                status(0, "Erreur TwitchDownloaderCLI : " + str(exc)[:240], True)
+            return False
+        finally:
+            if proc is not None and proc.poll() is None:
+                kill_process_tree(proc.pid)
+            self._active_download_process = None
 
     def start_downloads(self, items):
         self.is_cancelled = False
@@ -3212,7 +3312,12 @@ class DownloaderAPI:
         def _worker():
             total = len(items)
             completed = 0
-            if any(not item.get("is_direct_download") for item in items):
+            if any(
+                not item.get("is_direct_download")
+                and not (item.get("mode", "Vidéo") == "Vidéo"
+                         and twitch_vod_id(item.get("url")))
+                for item in items
+            ):
                 if not ensure_ytdlp_ready():
                     error_text = ("yt-dlp est absent ou invalide. "
                                   "Impossible de demarrer les telechargements. "
@@ -3247,6 +3352,24 @@ class DownloaderAPI:
                 # Routage centralisé : GIFS, AUDIOS, CHAÎNES, PLAYLIST, VIDÉOS, AUTRES.
                 target_dir = get_media_download_dir(self.download_folder, item)
                 os.makedirs(target_dir, exist_ok=True)
+
+                # VOD Twitch en mode Vidéo : moteur CLI dédié. Les clips, GIF,
+                # audios et tous les autres sites restent sur le chemin yt-dlp.
+                if mode == "Vidéo" and twitch_vod_id(url):
+                    if self._download_twitch_video(item, target_dir, quality, idx, total):
+                        completed += 1
+                        try:
+                            if self._window:
+                                if settings.get("notify") == "always":
+                                    self._window.evaluate_js(
+                                        f"showAppToast({json.dumps('Média téléchargé : ' + str(item.get('title', 'VOD Twitch')))})"
+                                    )
+                                self._window.evaluate_js(
+                                    f"markDownloadSuccess({json.dumps(url)})"
+                                )
+                        except Exception:
+                            pass
+                    continue
 
                 # Téléchargement direct d'image / GIF Pinterest
                 if item.get("is_direct_download"):
