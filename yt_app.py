@@ -3707,6 +3707,11 @@ class DownloaderAPI:
                 return fallback_to_native_hls(initial)
             return True
         except (OSError, ValueError, subprocess.SubprocessError) as exc:
+            # Si le CLI s'est interrompu au milieu du flux, arrêter d'abord
+            # son processus pour ne pas le laisser écrire pendant le HLS.
+            if proc is not None and proc.poll() is None:
+                kill_process_tree(proc.pid)
+            self._active_download_process = None
             return fallback_to_native_hls("TwitchDownloaderCLI : " + str(exc)[:170])
         finally:
             if proc is not None and proc.poll() is None:
