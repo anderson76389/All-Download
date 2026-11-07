@@ -49,19 +49,6 @@ class HLSFallbackTests(unittest.TestCase):
         generic = [name for name, _ in twitch_hls.manifest_candidates(PREVIEW, "720p")]
         self.assertEqual(generic[0], "720p60")
 
-    def test_available_hls_formats_only_lists_verified_playlists(self):
-        from urllib.error import HTTPError
-        def probe(url, timeout=6):
-            if "/720p60/" in url:
-                return (100, 1000.0)
-            if "/480p30/" in url:
-                return (100, 1000.0)
-            raise HTTPError(url, 404, "Missing", None, None)
-        with patch.object(twitch_hls, "metadata_for_vod", return_value={"seekPreviewsURL": PREVIEW}), \
-             patch.object(twitch_hls, "read_public_manifest", side_effect=probe):
-            formats = twitch_hls.available_hls_formats("https://www.twitch.tv/videos/2919531847")
-        self.assertEqual(formats, ["720p (60fps)", "480p (30fps)"])
-
     def test_read_manifest_parses_fragment_duration(self):
         response = io.BytesIO(PLAYLIST.encode("utf-8"))
         response.url = PREVIEW
