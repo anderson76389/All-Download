@@ -3573,7 +3573,11 @@ class DownloaderAPI:
                     pass
 
     def _download_twitch_video(self, item, target_dir, quality, idx, total):
-        """Exécuter le CLI officiel en conservant pause, annulation et suivi."""
+        """CLI Twitch historique en priorité, HLS natif même si le CLI manque.
+
+        Les deux chemins utilisent FFmpeg local, la même qualité demandée,
+        le même dossier TWITCH et le contrôle d'annulation existant.
+        """
         def status(pct, message, toast=False):
             try:
                 if self._window:
@@ -3587,6 +3591,30 @@ class DownloaderAPI:
             except Exception:
                 pass
 
+        def fallback_to_native_hls(cli_error):
+            if self.is_cancelled:
+                return False
+            # Le secours HLS doit pouvoir s'exécuter sans TwitchDownloaderCLI.
+            # FFmpeg est la seule dépendance d'exécution de ce moteur.
+            if not is_valid_windows_executable(FFMPEG_PATH):
+                status(0, f"[{idx}/{total}] Préparation de FFmpeg pour Twitch HLS…")
+                setup_binaries()
+            if not is_valid_windows_executable(FFMPEG_PATH):
+                status(0, "FFmpeg est absent ou invalide : Twitch HLS indisponible.", True)
+                return False
+            status(0, f"[{idx}/{total}] Secours HLS Twitch indépendant du CLI…")
+            self._active_download_process = None
+            success, reason = self._download_twitch_hls(
+                item, target_dir, quality, idx, total, status
+            )
+            if success:
+                return True
+            if not self.is_cancelled:
+                message = ("Erreur Twitch : " + str(cli_error or "CLI indisponible")[:150]
+                           + (" / HLS : " + str(reason)[:170] if reason else ""))
+                status(0, message, True)
+            return False
+
         proc = None
         try:
             if self.is_cancelled:
@@ -3595,16 +3623,14 @@ class DownloaderAPI:
             cli_path = os.path.join(BIN_DIR, TWITCH_CLI_FILENAME)
             ready, reason = ensure_cli_ready(BIN_DIR, is_valid_windows_executable)
             if not ready:
-                status(0, "TwitchDownloaderCLI indisponible : " + reason[:240], True)
-                return False
-            # Le CLI utilise le même FFmpeg vérifié que yt-dlp : ni nouveau
-            # FFmpeg à installer séparément, ni dépendance à son interface WPF.
+                return fallback_to_native_hls(
+                    "TwitchDownloaderCLI indisponible : " + str(reason)[:170]
+                )
             if not is_valid_windows_executable(FFMPEG_PATH):
                 status(0, f"[{idx}/{total}] Préparation de FFmpeg…")
                 setup_binaries()
             if not is_valid_windows_executable(FFMPEG_PATH):
-                status(0, "FFmpeg est absent ou invalide pour cette VOD Twitch.", True)
-                return False
+                return fallback_to_native_hls("FFmpeg absent ou invalide")
             if self.is_cancelled:
                 return False
 
@@ -3636,9 +3662,6 @@ class DownloaderAPI:
                 clean = line.strip()
                 if not clean:
                     continue
-                # Certaines versions du CLI .NET se terminent en exception
-                # non gérée plutôt qu'avec une ligne [ERROR]. Ne pas perdre
-                # la véritable raison au profit du code CLR 0xE0434352.
                 if "Insufficient access to VOD" in clean:
                     last_error = (
                         "Twitch refuse l'accès à cette VOD. Elle peut être "
@@ -3659,25 +3682,11 @@ class DownloaderAPI:
             if self.is_cancelled:
                 return False
             if returncode != 0:
-                # Un refus "subscriber-only" du CLI ne prouve pas que le CDN
-                # HLS ne propose pas un manifest utilisable. L'essai reste
-                # indépendant de l'extension Chrome et de ses serveurs privés.
-                self._active_download_process = None
-                success, reason = self._download_twitch_hls(
-                    item, target_dir, quality, idx, total, status
-                )
-                if success:
-                    return True
-                if not self.is_cancelled:
-                    initial = last_error or f"TwitchDownloaderCLI a échoué (code {returncode})."
-                    status(0, "Erreur Twitch : " + initial[:170] +
-                           (" / HLS : " + reason[:170] if reason else ""), True)
-                return False
+                initial = last_error or f"TwitchDownloaderCLI a échoué (code {returncode})."
+                return fallback_to_native_hls(initial)
             return True
         except (OSError, ValueError, subprocess.SubprocessError) as exc:
-            if not self.is_cancelled:
-                status(0, "Erreur TwitchDownloaderCLI : " + str(exc)[:240], True)
-            return False
+            return fallback_to_native_hls("TwitchDownloaderCLI : " + str(exc)[:170])
         finally:
             if proc is not None and proc.poll() is None:
                 kill_process_tree(proc.pid)
