@@ -489,8 +489,10 @@ jobs:
           # repertoire d'installation pour verifier qu'une desinstallation
           # n'efface aucun fichier personnel.
           $mediaToKeep = Join-Path $installDir "VIDÉOS/preserve-me.mp4"
+          $twitchToKeep = Join-Path $installDir "TWITCH/ancienne-vod.mp4"
           $prefsToKeep = Join-Path $installDir "Donnees/config.json"
           [IO.File]::WriteAllText($mediaToKeep, "MEDIA-PERSONNEL-NE-PAS-EFFACER")
+          [IO.File]::WriteAllText($twitchToKeep, "VOD-TWITCH-PERSONNELLE")
           [IO.File]::WriteAllText($prefsToKeep, '{"settings":{"theme":"dark_pure"}}')
           # Une mise a jour dans le meme dossier ne doit ni supprimer ni
           # reinitialiser les preferences ou les medias precedents.
@@ -500,6 +502,9 @@ jobs:
           if ((Get-Content -Raw -Encoding UTF8 $mediaToKeep) -ne "MEDIA-PERSONNEL-NE-PAS-EFFACER") {
             throw "La mise a jour Classique a efface ou modifie un media"
           }
+          if ((Get-Content -Raw -Encoding UTF8 $twitchToKeep) -ne "VOD-TWITCH-PERSONNELLE") {
+            throw "La mise a jour Classique a efface une ancienne VOD Twitch"
+          }
           if (-not ((Get-Content -Raw -Encoding UTF8 $prefsToKeep).Contains("dark_pure"))) {
             throw "La mise a jour Classique a efface les preferences"
           }
@@ -507,6 +512,9 @@ jobs:
           if ($proc.ExitCode -ne 0) { throw "Desinstallation en echec : $($proc.ExitCode)" }
           if (Test-Path "$installDir/All_Media_Download.exe") {
             throw "L'EXE reste apres desinstallation"
+          }
+          if ((Get-Content -Raw -Encoding UTF8 $twitchToKeep) -ne "VOD-TWITCH-PERSONNELLE") {
+            throw "Le desinstalleur a efface les VOD du dossier TWITCH"
           }
           if ((Get-Content -Raw -Encoding UTF8 $mediaToKeep) -ne "MEDIA-PERSONNEL-NE-PAS-EFFACER") {
             throw "Le desinstalleur a efface ou modifie les medias personnels"
