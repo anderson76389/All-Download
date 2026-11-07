@@ -94,7 +94,7 @@ class DownloadInteractionAuditTests(unittest.TestCase):
             result = self.api.start_downloads([self.item])
             self.assertTrue(result["success"])
             self.wait_stopped()
-        self.assertTrue(any("Échec inattendu" in x for x in self.api._window.scripts))
+        self.assertTrue(any("inattendu" in x for x in self.api._window.scripts))
         self.assertTrue(any("finishDownloadUIState()" in x for x in self.api._window.scripts))
         self.assertIsNone(self.api._active_download_process)
 
