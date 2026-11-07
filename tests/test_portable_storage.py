@@ -186,6 +186,21 @@ class PortableStorageTests(unittest.TestCase):
         with open(old_file, "rb") as media:
             self.assertEqual(media.read(), b"ancienne video")
 
+    def test_read_only_portable_refuses_external_fallback(self):
+        # Un EXE Windows sur clé USB verrouillée ne doit PAS créer config,
+        # cache ou téléchargements dans %LOCALAPPDATA%.
+        with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
+            yt_app.sys, "executable", self.exe
+        ), patch.object(yt_app.tempfile, "TemporaryFile",
+                        side_effect=PermissionError("read-only")), patch.dict(
+            os.environ, {"LOCALAPPDATA": self.legacy}
+        ), patch.object(yt_app.ctypes.windll.user32, "MessageBoxW", return_value=1) as dialog:
+            with self.assertRaisesRegex(PermissionError, "All-Download"):
+                runpy.run_path(yt_app.__file__, run_name="all_download_read_only_test")
+            dialog.assert_called_once()
+        self.assertFalse(os.path.exists(os.path.join(self.legacy, "AllMediaDownload")))
+        self.assertFalse(os.path.exists(os.path.join(self.portable, "Donnees")))
+
     def test_webview_profiles_remain_inside_each_windows_application(self):
         app = self.load_mode()
         with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
