@@ -170,15 +170,31 @@ def media_paths(target_dir, url, title):
     return temp, filename
 
 
-def ffmpeg_command(ffmpeg_path, manifest_url, temp_path):
+def ffmpeg_command(ffmpeg_path, manifest_url, temp_path, max_height=None, max_fps=None):
     if not is_twitch_cdn(manifest_url):
         raise HLSUnavailable("URL de playlist Twitch non autorisée.")
-    return [
+    command = [
         str(ffmpeg_path), "-nostdin", "-hide_banner", "-loglevel", "warning",
-        "-progress", "pipe:1", "-i", manifest_url,
-        "-map", "0:v:0", "-map", "0:a?", "-c", "copy",
-        "-movflags", "+faststart", "-n", str(temp_path),
+        "-progress", "pipe:1", "-i", manifest_url, "-map", "0:v:0", "-map", "0:a?",
     ]
+    if max_height is not None:
+        if not isinstance(max_height, int) or not 144 <= max_height <= 4320:
+            raise HLSUnavailable("Résolution de conversion Twitch invalide.")
+        # Respect de la qualité choisie même lorsque seule la source est
+        # téléchargeable. min(ih, max_height) interdit tout agrandissement.
+        command += [
+            "-vf", f"scale=-2:min(ih\\,{max_height})",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
+            "-c:a", "copy",
+        ]
+        if max_fps is not None:
+            if not isinstance(max_fps, int) or not 24 <= max_fps <= 120:
+                raise HLSUnavailable("Fréquence Twitch invalide.")
+            command += ["-r", str(max_fps)]
+    else:
+        command += ["-c", "copy"]
+    command += ["-movflags", "+faststart", "-n", str(temp_path)]
+    return command
 
 
 def progress_from_ffmpeg(line, duration):
