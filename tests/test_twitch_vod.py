@@ -174,7 +174,7 @@ class IntegrationTests(unittest.TestCase):
                 api.start_downloads([item])
             ytdlp.assert_not_called()
             twitch.assert_called_once()
-            self.assertEqual(os.path.basename(twitch.call_args.args[1]), "AUTRES")
+            self.assertEqual(os.path.basename(twitch.call_args.args[1]), "TWITCH")
 
 
     def test_twitch_cli_rejection_displays_real_error_not_clr_exit_code(self):
