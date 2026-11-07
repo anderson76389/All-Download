@@ -94,6 +94,42 @@ class SettingsWorkflowTests(unittest.TestCase):
         self.assertEqual(metadata_command[metadata_command.index("--cache-dir") + 1],
                          yt_app.YTDLP_CACHE_DIR)
 
+    def test_local_deno_used_in_real_ytdlp_command_and_cache_is_internal(self):
+        with patch.object(yt_app, "is_valid_windows_executable",
+                          return_value=True), \
+             patch.object(yt_app, "ensure_deno_ready",
+                          return_value=(True, "")) as deno:
+            cmd = self.download()
+        self.assertEqual(cmd[cmd.index("--js-runtimes") + 1],
+                         "deno:" + yt_app.DENO_PATH)
+        self.assertEqual(deno.call_count, 1)
+        self.assertEqual(yt_app.local_ytdlp_environment()["DENO_DIR"],
+                         os.path.join(yt_app.APP_DIR, "cache", "deno"))
+
+    def test_metadata_extraction_uses_deno_without_changing_other_sites(self):
+        class Metadata:
+            returncode = 0
+            def communicate(self, timeout=None):
+                return (json.dumps({
+                    "id": "test", "title": "Demo",
+                    "duration": 12, "formats": [{"height": 1080, "fps": 60}]
+                }), "")
+        with patch.object(yt_app, "ensure_ytdlp_ready", return_value=True), \
+             patch.object(yt_app, "is_valid_windows_executable", return_value=True), \
+             patch.object(yt_app, "ensure_deno_ready", return_value=(True, "")) as deno, \
+             patch.object(yt_app.subprocess, "Popen", return_value=Metadata()) as launch:
+            result = self.api.extract_info("https://www.youtube.com/watch?v=1234")
+            self.assertTrue(result["success"], result)
+            command = launch.call_args.args[0]
+            self.assertEqual(command[command.index("--js-runtimes") + 1],
+                             "deno:" + yt_app.DENO_PATH)
+            self.assertEqual(launch.call_args.kwargs["env"]["DENO_DIR"],
+                             os.path.join(yt_app.APP_DIR, "cache", "deno"))
+            self.assertEqual(deno.call_count, 1)
+            self.api.extract_info("https://www.dailymotion.com/video/x1")
+            self.assertEqual(deno.call_count, 1, "Other sites must not install Deno")
+            self.assertNotIn("--js-runtimes", launch.call_args.args[0])
+
     def test_video_container_and_origin_stream(self):
         cmd = self.download(video_format="MKV", video_origin_stream=False)
         self.assertEqual(cmd[cmd.index("--merge-output-format") + 1], "mkv")
