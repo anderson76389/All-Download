@@ -44,10 +44,18 @@ def is_youtube_url(url):
 
 def _deno_version(path):
     try:
+        # Deno ne doit pas recréer un cache global dans AppData.
+        env = os.environ.copy()
+        env["DENO_DIR"] = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(path))),
+            "cache", "deno"
+        )
+        env["DENO_NO_UPDATE_CHECK"] = "1"
         proc = subprocess.run(
             [str(path), "--version"], stdin=subprocess.DEVNULL,
             capture_output=True, text=True, errors="replace", timeout=15,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            env=env,
         )
         if proc.returncode != 0:
             return None
