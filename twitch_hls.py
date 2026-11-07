@@ -78,9 +78,26 @@ def manifest_candidates(preview_url, quality):
     if not match:
         raise HLSUnavailable("Format des aperçus de cette VOD non compatible.")
     selected = selected_quality_to_cli(quality)
-    # La résolution demandée est prioritaire, sans perdre la source automatique.
-    qualities = ((selected,) + tuple(q for q in DEFAULT_QUALITIES if q != selected)
-                 if selected else DEFAULT_QUALITIES)
+    if selected:
+        # Une résolution demandée est une limite supérieure, pas une préférence
+        # facultative : ne jamais répondre "1080p source" pour une demande 720p.
+        match = re.fullmatch(r"(\d{3,4})p(\d{2,3})?", selected)
+        if not match:
+            raise HLSUnavailable("Qualité Twitch non reconnue.")
+        height = int(match.group(1))
+        max_fps = int(match.group(2)) if match.group(2) else None
+        choices = []
+        for name in DEFAULT_QUALITIES:
+            parsed_quality = re.fullmatch(r"(\d{3,4})p(\d{2,3})", name)
+            if parsed_quality and int(parsed_quality.group(1)) <= height:
+                if int(parsed_quality.group(1)) == height and max_fps and int(parsed_quality.group(2)) > max_fps:
+                    continue
+                choices.append(name)
+        qualities = tuple(choices)
+        if not qualities:
+            raise HLSUnavailable("Aucune qualité HLS inférieure ou égale à la résolution choisie.")
+    else:
+        qualities = DEFAULT_QUALITIES
     return [(q, urllib.parse.urlunsplit(
         ("https", parsed.netloc, "/" + match.group(1) + "/" + q + "/index-dvr.m3u8", "", "")
     )) for q in qualities]
@@ -153,15 +170,31 @@ def media_paths(target_dir, url, title):
     return temp, filename
 
 
-def ffmpeg_command(ffmpeg_path, manifest_url, temp_path):
+def ffmpeg_command(ffmpeg_path, manifest_url, temp_path, max_height=None, max_fps=None):
     if not is_twitch_cdn(manifest_url):
         raise HLSUnavailable("URL de playlist Twitch non autorisée.")
-    return [
+    command = [
         str(ffmpeg_path), "-nostdin", "-hide_banner", "-loglevel", "warning",
-        "-progress", "pipe:1", "-i", manifest_url,
-        "-map", "0:v:0", "-map", "0:a?", "-c", "copy",
-        "-movflags", "+faststart", "-n", str(temp_path),
+        "-progress", "pipe:1", "-i", manifest_url, "-map", "0:v:0", "-map", "0:a?",
     ]
+    if max_height is not None:
+        if not isinstance(max_height, int) or not 144 <= max_height <= 4320:
+            raise HLSUnavailable("Résolution de conversion Twitch invalide.")
+        # Respect de la qualité choisie même lorsque seule la source est
+        # téléchargeable. min(ih, max_height) interdit tout agrandissement.
+        command += [
+            "-vf", f"scale=-2:min(ih\\,{max_height})",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
+            "-c:a", "copy",
+        ]
+        if max_fps is not None:
+            if not isinstance(max_fps, int) or not 24 <= max_fps <= 120:
+                raise HLSUnavailable("Fréquence Twitch invalide.")
+            command += ["-r", str(max_fps)]
+    else:
+        command += ["-c", "copy"]
+    command += ["-movflags", "+faststart", "-n", str(temp_path)]
+    return command
 
 
 def progress_from_ffmpeg(line, duration):

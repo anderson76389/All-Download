@@ -23,7 +23,7 @@ import tempfile
 from pathlib import Path
 import webview
 from twitch_vod import (twitch_vod_id, fallback_metadata, ensure_cli_ready,
-                        build_command as build_twitch_command, progress_percentage,
+                        build_command as build_twitch_command, selected_quality_to_cli, progress_percentage,
                         CLI_FILENAME as TWITCH_CLI_FILENAME)
 from twitch_hls import (resolve_hls, media_paths as twitch_hls_paths,
                         ffmpeg_command as twitch_hls_ffmpeg_command,
@@ -234,7 +234,7 @@ LEGACY_DOWNLOAD_BASE = os.path.join(os.path.expanduser("~"), "Downloads", "Media
 DEFAULT_DOWNLOAD_BASE = os.path.join(os.path.expanduser("~"), "Downloads", "All-Download-Medias")
 
 # Dossiers locaux, séparés du dépôt GitHub. Ne jamais écraser les anciens médias.
-DOWNLOAD_CATEGORIES = ("AUTRES", "VIDÉOS", "CHAÎNES", "AUDIOS", "PLAYLIST", "GIFS")
+DOWNLOAD_CATEGORIES = ("AUTRES", "VIDÉOS", "CHAÎNES", "AUDIOS", "PLAYLIST", "GIFS", "TWITCH")
 
 
 def is_legacy_download_folder(path):
@@ -332,6 +332,8 @@ def get_media_download_dir(root, item):
         return os.path.join(root, "PLAYLIST", sanitize_filename(item["playlist_title"]))
     if mode == "Audio":
         return os.path.join(root, "AUDIOS")
+    if mode == "Vidéo" and twitch_vod_id(url):
+        return os.path.join(root, "TWITCH")
     if is_yt:
         return os.path.join(root, "VIDÉOS")
     return os.path.join(root, "AUTRES")
@@ -1352,7 +1354,7 @@ HTML_PAGE = """<!DOCTYPE html>
     <div class="settings-content" id="setSectionTelech">
       <div class="setting-section">
         <div class="setting-sec-title">📂 Dossier des téléchargements</div>
-        <div class="setting-sec-desc">Choisissez où enregistrer les médias. Les dossiers AUDIOS, VIDÉOS, GIFS, CHAÎNES, PLAYLIST et AUTRES seront créés automatiquement.</div>
+        <div class="setting-sec-desc">Choisissez où enregistrer les médias. Les dossiers AUDIOS, VIDÉOS, GIFS, CHAÎNES, PLAYLIST, TWITCH et AUTRES seront créés automatiquement.</div>
         <div class="setting-field">
           <label class="setting-label" for="setDownloadFolder">Emplacement actuel :</label>
           <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
@@ -2484,6 +2486,7 @@ HTML_PAGE = """<!DOCTYPE html>
         }
 
         let is_yt = Boolean(item.url && (item.url.toLowerCase().indexOf("youtube.com") !== -1 || item.url.toLowerCase().indexOf("youtu.be") !== -1));
+        let is_twitch_vod = /^https?:\/\/(?:www\.|m\.)?twitch\.tv\/videos\/\d{5,20}\/?(?:[?#].*)?$/i.test(item.url || '');
         let is_direct_gif = item.is_direct_download && (item.url || '').toLowerCase().split(/[?#]/)[0].endsWith('.gif');
         let destInfo = 'Dossier: /AUTRES';
         if (item.mode === 'GIF' || is_direct_gif) {
@@ -2494,6 +2497,8 @@ HTML_PAGE = """<!DOCTYPE html>
           destInfo = 'Dossier: /PLAYLIST';
         } else if (item.mode === 'Audio') {
           destInfo = 'Dossier: /AUDIOS';
+        } else if (item.mode === 'Vidéo' && is_twitch_vod) {
+          destInfo = 'Dossier: /TWITCH';
         } else if (is_yt) {
           destInfo = 'Dossier: /VIDÉOS';
         }
@@ -3232,12 +3237,36 @@ class DownloaderAPI:
             if self.is_cancelled:
                 return False, "Téléchargement annulé."
             status(0, f"[{idx}/{total}] Recherche d'un flux HLS Twitch accessible…")
-            manifest, label, duration, count = resolve_hls(item["url"], quality)
+            transcode_height = None
+            transcode_fps = None
+            try:
+                manifest, label, duration, count = resolve_hls(item["url"], quality)
+            except HLSUnavailable:
+                # Certaines VOD Sub-only n'exposent que leur playlist "chunked":
+                # les profils 720p/480p retournent 403 mais la source reste
+                # accessible. Convertir cette source plutôt que livrer du
+                # 1080p en prétendant respecter la résolution 720p choisie.
+                selected = selected_quality_to_cli(quality)
+                match = re.fullmatch(r"(\d{3,4})p(\d{2,3})?", selected or "")
+                if not match or self.is_cancelled:
+                    raise
+                transcode_height = int(match.group(1))
+                transcode_fps = int(match.group(2)) if match.group(2) else None
+                status(0, f"[{idx}/{total}] Flux {quality} indisponible : adaptation de la source en {transcode_height}p…")
+                manifest, label, duration, count = resolve_hls(
+                    item["url"], "Meilleure qualité (Auto)"
+                )
             status(0, f"[{idx}/{total}] Flux HLS trouvé : {label}, {count} segments.")
             temporary, final = twitch_hls_paths(
                 target_dir, item["url"], item.get("title", "VOD Twitch")
             )
-            command = twitch_hls_ffmpeg_command(FFMPEG_PATH, manifest, temporary)
+            if transcode_height:
+                command = twitch_hls_ffmpeg_command(
+                    FFMPEG_PATH, manifest, temporary,
+                    max_height=transcode_height, max_fps=transcode_fps
+                )
+            else:
+                command = twitch_hls_ffmpeg_command(FFMPEG_PATH, manifest, temporary)
             process = subprocess.Popen(
                 command,
                 stdin=subprocess.DEVNULL,

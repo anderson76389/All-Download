@@ -35,15 +35,15 @@ class DownloadFolderTests(unittest.TestCase):
     def item(self, url, mode="Vidéo", **extra):
         return {"url": url, "mode": mode, "title": "MediaTest", **extra}
 
-    def test_six_categories_created(self):
+    def test_seven_categories_created(self):
         yt_app.ensure_media_directories(self.root)
         self.assertTrue(all(
             os.path.isdir(os.path.join(self.root, category))
-            for category in ("AUTRES", "VIDÉOS", "CHAÎNES", "AUDIOS", "PLAYLIST", "GIFS")
+            for category in ("AUTRES", "VIDÉOS", "CHAÎNES", "AUDIOS", "PLAYLIST", "GIFS", "TWITCH")
         ))
 
 
-    def test_portable_exe_uses_six_folders_next_to_exe(self):
+    def test_portable_exe_uses_seven_folders_next_to_exe(self):
         yt_app.ensure_media_directories(self.root)
         with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
             yt_app.sys, "executable", os.path.join(self.root, "All_Media_Download.exe")
@@ -285,6 +285,21 @@ class DownloadFolderTests(unittest.TestCase):
             self.assertTrue(again["success"])
             self.assertFalse(api.config["download_folder_custom"])
 
+    def test_new_twitch_folder_does_not_move_or_delete_legacy_vods(self):
+        old_dir = os.path.join(self.root, "AUTRES")
+        os.makedirs(old_dir, exist_ok=True)
+        previous = os.path.join(old_dir, "Twitch_2919531847_old.mp4")
+        with open(previous, "wb") as file:
+            file.write(b"old twitch download")
+        yt_app.ensure_media_directories(self.root)
+        self.assertTrue(os.path.isdir(os.path.join(self.root, "TWITCH")))
+        with open(previous, "rb") as file:
+            self.assertEqual(file.read(), b"old twitch download")
+        self.assertEqual(
+            yt_app.get_media_download_dir(self.root, self.item("https://www.twitch.tv/videos/2919531847")),
+            os.path.join(self.root, "TWITCH")
+        )
+
     def test_legacy_audio_migrates_without_losing_files(self):
         old_dir = os.path.join(self.root, "AUDIO")
         os.makedirs(os.path.join(old_dir, "album"))
@@ -322,6 +337,11 @@ class DownloadFolderTests(unittest.TestCase):
         cases = [
             (self.item(video), os.path.join("VIDÉOS")),
             (self.item(others), os.path.join("AUTRES")),
+            (self.item("https://www.twitch.tv/videos/2919531847"), "TWITCH"),
+            (self.item("https://m.twitch.tv/videos/2919531847?t=35m"), "TWITCH"),
+            (self.item("https://www.twitch.tv/videos/2919531847", "Audio"), "AUDIOS"),
+            (self.item("https://www.twitch.tv/videos/2919531847", "GIF"), "GIFS"),
+            (self.item("https://www.twitch.tv/amine"), "AUTRES"),
             (self.item(video, "Audio"), os.path.join("AUDIOS")),
             (self.item(others, "Audio"), os.path.join("AUDIOS")),
             (self.item(video, "GIF"), os.path.join("GIFS")),

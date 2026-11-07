@@ -32,9 +32,22 @@ class HLSFallbackTests(unittest.TestCase):
         opts = twitch_hls.manifest_candidates(PREVIEW, "1080p (60fps)")
         self.assertEqual(opts[0][0], "1080p60")
         self.assertTrue(opts[0][1].endswith("/1080p60/index-dvr.m3u8"))
-        self.assertTrue(any(q == "chunked" for q, _ in opts))
+        self.assertFalse(any(q == "chunked" for q, _ in opts))
         with self.assertRaises(twitch_hls.HLSUnavailable):
             twitch_hls.manifest_candidates("https://test.com/a", "auto")
+
+    def test_selected_quality_never_silently_downloads_source_higher_resolution(self):
+        urls = twitch_hls.manifest_candidates(PREVIEW, "720p (60fps)")
+        names = [name for name, _ in urls]
+        self.assertEqual(names[0], "720p60")
+        self.assertNotIn("chunked", names)
+        self.assertNotIn("1080p60", names)
+        self.assertIn("480p30", names)
+        low = [name for name, _ in twitch_hls.manifest_candidates(PREVIEW, "720p (30fps)")]
+        self.assertEqual(low[0], "720p30")
+        self.assertNotIn("720p60", low)
+        generic = [name for name, _ in twitch_hls.manifest_candidates(PREVIEW, "720p")]
+        self.assertEqual(generic[0], "720p60")
 
     def test_read_manifest_parses_fragment_duration(self):
         response = io.BytesIO(PLAYLIST.encode("utf-8"))
@@ -90,6 +103,18 @@ class HLSFallbackTests(unittest.TestCase):
             self.assertEqual(new_output.name, "Twitch_2919531847_Bonjour_Vidéo_ (2).mp4")
             self.assertNotEqual(temp, tmp2)
             self.assertEqual(output.read_bytes(), b"user existing media")
+
+    def test_requested_720_transcodes_source_without_upscaling(self):
+        url = twitch_hls.manifest_candidates(PREVIEW, "auto")[0][1]
+        command = twitch_hls.ffmpeg_command(
+            "C:/app/ffmpeg.exe", url, "D:/out.mp4", max_height=720, max_fps=30
+        )
+        self.assertIn("scale=-2:min(ih\\,720)", command)
+        self.assertIn("libx264", command)
+        self.assertEqual(command[command.index("-r") + 1], "30")
+        self.assertNotIn("-c", command)
+        with self.assertRaises(twitch_hls.HLSUnavailable):
+            twitch_hls.ffmpeg_command("ffmpeg", url, "out.mp4", max_height=0)
 
     def test_ffmpeg_arguments_no_shell(self):
         url = twitch_hls.manifest_candidates(PREVIEW, "auto")[0][1]

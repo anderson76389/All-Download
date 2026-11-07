@@ -41,6 +41,10 @@ class TwitchVodTests(unittest.TestCase):
         self.assertEqual(info["url"], url)
         self.assertEqual(info["mode"], "Vidéo")
         self.assertEqual(info["selectedQuality"], info["formats"][0])
+        self.assertIn("720p (60fps)", info["formats"])
+        self.assertIn("480p (30fps)", info["formats"])
+        self.assertEqual(twitch_vod.fallback_metadata(url, formats=["720p (60fps)"])["formats"],
+                         ["Meilleure qualité (Auto)", "720p (60fps)"])
         self.assertEqual(info["item_count"], 1)
         self.assertIsNone(twitch_vod.fallback_metadata("https://twitch.tv/user"))
 
@@ -137,6 +141,8 @@ class IntegrationTests(unittest.TestCase):
             result = api.extract_info("https://www.twitch.tv/videos/1234567890")
         self.assertTrue(result["success"])
         self.assertEqual(result["data"]["title"], "VOD Twitch 1234567890")
+        self.assertIn("720p (60fps)", result["data"]["formats"])
+        self.assertIn("480p (30fps)", result["data"]["formats"])
 
     def test_twitch_video_does_not_require_ytdlp_and_uses_existing_queue(self):
         import yt_app
@@ -167,7 +173,7 @@ class IntegrationTests(unittest.TestCase):
                 api.start_downloads([item])
             ytdlp.assert_not_called()
             twitch.assert_called_once()
-            self.assertEqual(os.path.basename(twitch.call_args.args[1]), "AUTRES")
+            self.assertEqual(os.path.basename(twitch.call_args.args[1]), "TWITCH")
 
 
     def test_twitch_cli_rejection_displays_real_error_not_clr_exit_code(self):
@@ -233,6 +239,48 @@ class IntegrationTests(unittest.TestCase):
         self.assertTrue(any("avec erreurs" in x
                             for x in api._window.events))
 
+
+    def test_twitch_manual_quality_falls_back_to_source_transcoding(self):
+        import yt_app
+        from twitch_hls import HLSUnavailable
+        api = yt_app.DownloaderAPI.__new__(yt_app.DownloaderAPI)
+        api._window = None
+        api.is_cancelled = False
+        api._active_download_process = None
+        class FakeProcess:
+            pid = 10001
+            stdout = io.StringIO("out_time_ms=5000000\n")
+            def wait(self):
+                return 0
+            def poll(self):
+                return 0
+        with tempfile.TemporaryDirectory() as root:
+            temp = os.path.join(root, ".twitch.part.mp4")
+            final = os.path.join(root, "Twitch_2919531847.mp4")
+            def fake_open(*args, **kwargs):
+                with open(temp, "wb") as output:
+                    output.write(b"valid video" * 200)
+                return FakeProcess()
+            with patch.object(yt_app, "resolve_hls", side_effect=[
+                    HLSUnavailable("HTTP 403"),
+                    ("https://example.cloudfront.net/stream/chunked/index-dvr.m3u8",
+                     "chunked", 8030, 803)
+                ]) as resolver, \
+                 patch.object(yt_app, "twitch_hls_paths",
+                              return_value=(__import__("pathlib").Path(temp), __import__("pathlib").Path(final))), \
+                 patch.object(yt_app, "twitch_hls_ffmpeg_command",
+                              return_value=["ffmpeg"]) as builder, \
+                 patch.object(yt_app.subprocess, "Popen", side_effect=fake_open):
+                success, reason = api._download_twitch_hls(
+                    {"url": "https://twitch.tv/videos/2919531847", "title": "Test"},
+                    root, "720p (60fps)", 1, 1, lambda *args: None
+                )
+            self.assertTrue(success, reason)
+            self.assertTrue(os.path.isfile(final))
+            self.assertEqual(resolver.call_count, 2)
+            self.assertEqual(resolver.call_args_list[1].args[1], "Meilleure qualité (Auto)")
+            self.assertEqual(builder.call_args.kwargs["max_height"], 720)
+            self.assertEqual(builder.call_args.kwargs["max_fps"], 60)
 
     def test_twitch_cli_refusal_retries_hls_and_succeeds(self):
         import yt_app

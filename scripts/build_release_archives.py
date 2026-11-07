@@ -1,6 +1,6 @@
 """Publier deux ZIP complets : Portable et Windows Classique (installateur).
 
-Le ZIP Portable inclut ses six dossiers vides. Le ZIP Classique ne contient
+Le ZIP Portable inclut ses sept dossiers vides. Le ZIP Classique ne contient
 aucun dossier media parasite hors du programme installe. Les deux archives
 incluent les logos et les sources, sans fichiers personnels.
 """
@@ -11,7 +11,7 @@ from pathlib import Path
 import subprocess
 import zipfile
 
-MEDIA_DIRS = ("AUDIOS", "AUTRES", "CHAÎNES", "GIFS", "PLAYLIST", "VIDÉOS")
+MEDIA_DIRS = ("AUDIOS", "AUTRES", "CHAÎNES", "GIFS", "PLAYLIST", "VIDÉOS", "TWITCH")
 SOURCES = "Code-source"
 PORTABLE_NAME = "All-Download-Portable-Windows.zip"
 CLASSIC_NAME = "All-Download-Classique-Windows.zip"
@@ -94,7 +94,7 @@ def build_classic(root: Path, output: Path, tracked: list[Path]) -> None:
             "1. Lancez All-Download-Setup.exe.\n"
             "2. Choisissez vos raccourcis et terminez l'installation.\n"
             "3. Les medias, reglages et outils sont conserves dans le dossier\n"
-            "   du logiciel, avec les six categories et Donnees/.\n"
+            "   du logiciel, avec les sept categories et Donnees/.\n"
             "4. Mise a jour et desinstallation : les dossiers personnels restent\n"
             "   sur le disque, sans effacement automatique.\n"
             "5. Les anciens medias stockes ailleurs ne sont pas deplaces.\n\n"
