@@ -285,6 +285,21 @@ class DownloadFolderTests(unittest.TestCase):
             self.assertTrue(again["success"])
             self.assertFalse(api.config["download_folder_custom"])
 
+    def test_new_twitch_folder_does_not_move_or_delete_legacy_vods(self):
+        old_dir = os.path.join(self.root, "AUTRES")
+        os.makedirs(old_dir, exist_ok=True)
+        previous = os.path.join(old_dir, "Twitch_2919531847_old.mp4")
+        with open(previous, "wb") as file:
+            file.write(b"old twitch download")
+        yt_app.ensure_media_directories(self.root)
+        self.assertTrue(os.path.isdir(os.path.join(self.root, "TWITCH")))
+        with open(previous, "rb") as file:
+            self.assertEqual(file.read(), b"old twitch download")
+        self.assertEqual(
+            yt_app.get_media_download_dir(self.root, self.item("https://www.twitch.tv/videos/2919531847")),
+            os.path.join(self.root, "TWITCH")
+        )
+
     def test_legacy_audio_migrates_without_losing_files(self):
         old_dir = os.path.join(self.root, "AUDIO")
         os.makedirs(os.path.join(old_dir, "album"))
