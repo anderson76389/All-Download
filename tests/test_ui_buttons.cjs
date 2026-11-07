@@ -393,6 +393,21 @@ async function run() {
   await flush();
   assert.equal(win.eval('queue.length'),0,'Une requête tardive a recréé une carte supprimée');
   win.pywebview.api.extract_info = oldExtract;
+  // Une erreur de téléchargement apparaît dans la file et peut être réessayée.
+  input.value='https://example.com/failed-after-queue';
+  win.addVideo();
+  await flush();
+  assert.equal(win.eval('queue.length'),1);
+  win.markDownloadFailure('https://example.com/failed-after-queue', 'HTTP 403 - flux inaccessible');
+  assert.equal(win.eval('queue[0].isError'),true);
+  assert.match(doc.querySelector('.media-card').textContent,/Erreur d'accès/);
+  win.refreshLogsViewData();
+  assert.match(doc.getElementById('errList').textContent,/HTTP 403/);
+  action('.media-card [title="Réessayer"]');
+  await flush();
+  assert.equal(win.eval('queue.length'),1);
+  assert.equal(win.eval('queue[0].isError'),false);
+  win.clearQueue();
   validate();
   console.log('OK : boutons, formulaires, thèmes, cookies, file d’attente, qualité, playlist, navigation, API Python simulée');
   console.log('Gestionnaires HTML vérifiés : '+verifyInlineHandlers());
