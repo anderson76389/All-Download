@@ -92,7 +92,7 @@ Pour les liens de VOD du type `https://www.twitch.tv/videos/1234567890`, **All-D
 ## 📁 Un rangement automatique et organisé
 
 ```text
-📁 All-Download-Portable/ (ou dossier d'installation Classique/)
+📁 All-Download/ (dossier de l'EXE Portable ou dossier d'installation Classique)
 ├── All_Media_Download.exe
 ├── logo.ico et logo.jpg
 ├── 🎵 AUDIOS/        Musiques et fichiers audio individuels
@@ -105,32 +105,34 @@ Pour les liens de VOD du type `https://www.twitch.tv/videos/1234567890`, **All-D
 └── 📁 Donnees/       Données personnelles des deux éditions
     ├── config.json   Réglages du logiciel
     ├── bin/          yt-dlp, FFmpeg et ffprobe
+    ├── webview/         Profil WebView2 local (Portable)
+    ├── webview-classique/  Profil WebView2 local (Classique)
     ├── startup_log.txt
     └── crash_log.txt
 ```
 
-**Même rangement dans les deux éditions :** les sept catégories sont créées à côté de l'EXE, même si elles n'existaient pas à l'extraction. Les réglages, outils et journaux restent dans `Donnees/` de chaque édition. **Exception technique :** les profils de cache WebView2 restent dans `%LOCALAPPDATA%\\AllMediaDownload` (séparés entre Portable et Classique) pour la stabilité au démarrage, et PyInstaller peut employer des fichiers temporaires système. Aucun de ces caches ne contient vos médias.
+**Tout le stockage permanent est local dans les versions Windows :** les sept catégories sont créées à côté de l'EXE ; les réglages, outils, journaux et profils WebView2 sont dans `All-Download/Donnees/`. Les anciens profils techniques `%LOCALAPPDATA%\\AllMediaDownload` ne sont plus utilisés par les EXE à jour. **Exception Windows inévitable :** le Portable PyInstaller monofichier extrait temporairement ses composants dans le dossier système `%TEMP%` pendant l'exécution ; cela n'y sauvegarde jamais les médias ni les préférences.
 
-Les **sept catégories sont créées automatiquement**, sans effacer vos médias existants. Le ZIP **Portable** les contient comme véritables dossiers vides, sans `.gitkeep`. Le ZIP **Classique** n'ajoute aucun dossier parasite lors de l'extraction : l'installateur crée les catégories directement dans son dossier d'installation. Sur GitHub, les dossiers vides n'apparaissent pas : c'est le fonctionnement normal de Git.
+Les **sept catégories sont créées automatiquement**, sans effacer vos médias existants. Le ZIP **Portable** contient un dossier racine unique `All-Download/` avec l'EXE, les sept catégories, les logos, le code source et les dossiers `Donnees/bin` vides (aucun fichier personnel). Vous pouvez l'extraire dans le dossier parent de votre choix : aucun dossier de catégorie n'est déposé à l'extérieur d'All-Download. Le ZIP **Classique** contient l'installateur, qui crée les catégories dans son dossier d'installation. Sur GitHub, les dossiers vides n'apparaissent pas : c'est normal.
 
 L'ancien dossier `AUDIO/` est migré vers `AUDIOS/` lorsque c'est possible, sans écraser les fichiers homonymes.
 
 | Édition | Emplacement initial des téléchargements |
 |---|---|
-| **Portable x64** | Dans le dossier contenant l'EXE, sans dossier `All-Download-Medias` supplémentaire (si l'emplacement est modifiable) |
+| **Portable x64** | Dans `All-Download/`, directement à côté de l'EXE (dossier obligatoirement modifiable) |
 | **Classique x64** | Directement à côté de l'EXE installé (par défaut `%LOCALAPPDATA%\Programs\All-Download`) |
 
 ---
 
-### 📂 Choisir librement son dossier
+### 📂 Un seul dossier All-Download, y compris après les mises à jour
 
-Dans **Paramètres → Téléchargement → Dossier des téléchargements**, cliquez sur **Parcourir…** pour sélectionner un dossier Windows, y compris sur un autre disque (D:, E:, etc.), ou collez son chemin complet. Cliquez sur **Enregistrer** pour appliquer le changement. **Par défaut** rétablit l'emplacement automatique correspondant à l'édition utilisée.
+Dans **Paramètres → Téléchargement**, vous pouvez conserver le dossier principal `All-Download/` (recommandé) ou choisir **un sous-dossier situé à l'intérieur d'All-Download**. Les sélections extérieures sont refusées, y compris si vous collez un ancien chemin. **Par défaut** rétablit le dossier de l'EXE. Les sept catégories restent à l'intérieur de l'arborescence All-Download.
 
-Les sept catégories sont créées dans le dossier choisi. L'application vérifie l'accès en écriture et conserve l'ancien emplacement en cas d'erreur. **Les fichiers existants ne sont pas déplacés ni supprimés.**
+**Chaque édition possède sa propre configuration** dans `Donnees/config.json` à côté de son EXE. Au premier démarrage, les anciens réglages d'AppData peuvent être copiés, mais **un ancien emplacement de téléchargement extérieur (y compris personnalisé) est automatiquement désactivé et remplacé par le dossier All-Download**, sans déplacer ni supprimer les anciens médias. Les préférences et les cookies enregistrés sont conservés.
 
-**Chaque édition possède sa propre configuration** dans `Donnees/config.json` à côté de son EXE. Au premier démarrage, les anciens réglages de `%LOCALAPPDATA%\\AllMediaDownload` sont copiés s'ils existent, sans effacer leur origine. Un dossier personnalisé expressément choisi reste prioritaire. Si le dossier du programme est exceptionnellement protégé contre l'écriture, le logiciel utilise une destination de repli modifiable.
+**Aucune destination de secours extérieure :** si All-Download est protégé en écriture (par exemple `Program Files`, dossier ZIP non extrait ou partage non modifiable), l'application explique le problème plutôt que d'écrire silencieusement ailleurs. Déplacez la version Portable dans un dossier modifiable ou installez la version Classique dans un dossier modifiable.
 
-**Dans les deux éditions**, les anciens emplacements automatiques `Téléchargements/MediaDownloader` et `Téléchargements/All-Download-Medias` ne sont plus utilisés pour les nouveaux téléchargements : ils vont dans les catégories du dossier contenant l'EXE. **Les anciens fichiers ne sont ni déplacés ni effacés automatiquement** ; vérifiez leur contenu avant de supprimer un ancien dossier. Vous pouvez toujours choisir une destination personnalisée dans les paramètres.
+**Mise à jour d'une ancienne Portable :** la nouvelle archive contient déjà `All-Download/`. Pour conserver les anciens téléchargements, remplacez uniquement l'EXE et les logos dans votre dossier actuel, ou transférez les dossiers `Donnees/` et les sept catégories vers le nouveau `All-Download/` après vérification. N'extrayez pas une seconde copie `All-Download/All-Download/` dans votre installation existante. **Aucun ancien média n'est supprimé ni déplacé automatiquement.**
 
 **Sécurité des données Classique :** lors d'une mise à jour ou d'une désinstallation, l'installateur est configuré pour ne jamais supprimer les sept catégories personnelles ni `Donnees/`. La désinstallation enlève l'application, mais ces dossiers personnels peuvent rester dans l'ancien emplacement ; c'est volontaire pour éviter toute perte. Ne les supprimez manuellement qu'après vérification.
 
@@ -176,7 +178,7 @@ Le fichier `dist/All_Media_Download.exe` déjà présent dans le dépôt est une
 
 - **Premier démarrage Windows / WebView2 :** la compilation officielle applique une correction ciblée au cycle de vie WinForms : WebView2 commence son initialisation après l'affichage de la fenêtre. Un test Windows exige un premier chargement HTML réactif **sans relance automatique**, pour chaque édition. Le diagnostic de lancements répétés demeure disponible et peut toujours relever un blocage intermittent sur certaines configurations.
 - **Crash CLR / pythonnet au démarrage :** All-Download tente automatiquement **une seule relance propre** lors de l'erreur connue `Python.Runtime.Loader.Initialize`. Si celle-ci échoue aussi, la boîte d'erreur et le journal restent disponibles.
-- **Problème de démarrage :** ouvrez `Donnees/crash_log.txt` ou `Donnees/startup_log.txt` dans le dossier de l'application et partagez la dernière erreur dans une [issue](https://github.com/anderson76389/All-Download/issues), après avoir masqué les données personnelles. Si le dossier de l'application n'est pas modifiable, les journaux peuvent se trouver dans `%LOCALAPPDATA%\AllMediaDownload`.
+- **Problème de démarrage :** ouvrez `Donnees/crash_log.txt` ou `Donnees/startup_log.txt` dans le dossier de l'application et partagez la dernière erreur dans une [issue](https://github.com/anderson76389/All-Download/issues), après avoir masqué les données personnelles. Si le dossier de l'application est protégé, déplacez la version Portable ou réinstallez la version Classique dans un dossier modifiable : les EXE ne stockent plus leurs données en dehors d'All-Download.
 - **Média non disponible :** contrôlez l'URL, les autorisations, les cookies éventuels et la compatibilité yt-dlp.
 - **Conversion impossible :** vérifiez FFmpeg, l'espace disque et le format source.
 - **Avertissement SmartScreen :** les exécutables ne disposent pas encore d'une signature d'éditeur reconnue. Un avertissement de réputation ne constitue pas à lui seul une détection de malware. Ne désactivez pas vos protections et ne contournez pas une détection de menace.
