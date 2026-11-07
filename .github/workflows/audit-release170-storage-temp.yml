@@ -1,0 +1,215 @@
+name: Audit reel build-170 stockage Windows (temporaire)
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/audit-release170-storage-temp.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  published-build-e2e:
+    runs-on: windows-latest
+    timeout-minutes: 19
+    steps:
+      - name: "Archives officielles : empreintes SHA-256 et extraction"
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'all-download-build170-e2e'
+          New-Item -ItemType Directory -Force -Path $root | Out-Null
+          $portableZip = Join-Path $root 'All-Download-Portable-Windows.zip'
+          $classicZip = Join-Path $root 'All-Download-Classique-Windows.zip'
+          $sources = @(
+            @{ URL='https://github.com/anderson76389/All-Download/releases/download/build-170/All-Download-Portable-Windows.zip'; Path=$portableZip; Hash='cf5af7e4d11f74ceb8ad18ed1787ad5c274019fb52bbda0f941cff2148e16098' },
+            @{ URL='https://github.com/anderson76389/All-Download/releases/download/build-170/All-Download-Classique-Windows.zip'; Path=$classicZip; Hash='d1a724ba317475b47440bb3c80f3361ac90b59a1898d674b61e923e0bb9173de' }
+          )
+          foreach ($source in $sources) {
+            Invoke-WebRequest -Uri $source.URL -OutFile $source.Path -MaximumRedirection 8
+            $hash = (Get-FileHash -LiteralPath $source.Path -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($hash -ne $source.Hash) { throw "HASH MISMATCH $($source.Path) $hash" }
+            Write-Output "VERIFIED_RELEASE_SHA256 $([IO.Path]::GetFileName($source.Path)) $hash"
+          }
+          Add-Type -AssemblyName System.IO.Compression
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zip = [IO.Compression.ZipFile]::OpenRead($portableZip)
+          try {
+            $names = @($zip.Entries | ForEach-Object FullName)
+            if (@($names | Where-Object { -not $_.StartsWith('All-Download/') }).Count -gt 0) {
+              throw "Le ZIP Portable crée des fichiers hors de All-Download/"
+            }
+            foreach ($entry in @('All-Download/All_Media_Download.exe','All-Download/Donnees/',
+              'All-Download/Donnees/bin/', 'All-Download/VIDÉOS/', 'All-Download/AUDIOS/',
+              'All-Download/TWITCH/', 'All-Download/GIFS/', 'All-Download/AUTRES/',
+              'All-Download/CHAÎNES/', 'All-Download/PLAYLIST/',
+              'All-Download/Code-source/yt_app.py')) {
+              if ($names -notcontains $entry) { throw "Archive Portable incomplete: $entry" }
+            }
+            if (@($names | Where-Object { $_ -match 'Donnees/.+\.(exe|json|log)$' }).Count -gt 0) {
+              throw "Le ZIP distribue des binaires caches ou des données personnelles"
+            }
+            Write-Output "PORTABLE_ARCHIVE_SINGLE_ROOT_PASS entries=$($names.Count)"
+          } finally {
+            $zip.Dispose()
+          }
+          $portableParent = Join-Path $root 'Portable-Extraction'
+          Expand-Archive -LiteralPath $portableZip -DestinationPath $portableParent -Force
+          $portableRoot = Join-Path $portableParent 'All-Download'
+          if (@(Get-ChildItem -LiteralPath $portableParent).Count -ne 1) {
+            throw "L'extraction crée plusieurs dossiers de base"
+          }
+          if (-not (Test-Path (Join-Path $portableRoot 'All_Media_Download.exe'))) {
+            throw "EXE Portable absent apres extraction"
+          }
+          $classicExtract = Join-Path $root 'Classic-Archive'
+          Expand-Archive -LiteralPath $classicZip -DestinationPath $classicExtract -Force
+          if (-not (Test-Path (Join-Path $classicExtract 'All-Download-Setup.exe'))) {
+            throw "Installateur Classique absent"
+          }
+          Write-Output "RELEASE_ARCHIVES_EXTRACT_PASS"
+      - name: "Vrais démarrages Portable + Classique, chemins internes, mise à jour, désinstallation"
+        shell: pwsh
+        timeout-minutes: 12
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'all-download-build170-e2e'
+          $portableRoot = Join-Path $root 'Portable-Extraction/All-Download'
+          $classicRoot = Join-Path $root 'Classic-Installed/All-Download'
+          $classicZip = Join-Path $root 'Classic-Archive/All-Download-Setup.exe'
+          $foreign = Join-Path $root 'FOREIGN-DOWNLOADS'
+          $foreignAppdata = Join-Path $root 'FOREIGN-APPDATA'
+          New-Item -ItemType Directory -Force -Path $foreign,$foreignAppdata | Out-Null
+          New-Item -ItemType Directory -Force -Path (Join-Path $foreign 'VIDÉOS') | Out-Null
+          $foreignFile = Join-Path $foreign 'VIDÉOS/ancienne-video.mp4'
+          [IO.File]::WriteAllText($foreignFile,'FICHIER-EXTERNE-A-PRESERVER')
+          $originalForeignHash = (Get-FileHash $foreignFile -Algorithm SHA256).Hash
+
+          function Assert-MediaStillSafe([string]$app) {
+            foreach ($dir in @('AUDIOS','VIDÉOS','TWITCH','GIFS','CHAÎNES','PLAYLIST','AUTRES')) {
+              if (-not (Test-Path (Join-Path $app $dir) -PathType Container)) {
+                throw "Dossier media absent dans All-Download : $dir"
+              }
+            }
+            if ((Get-FileHash $foreignFile -Algorithm SHA256).Hash -ne $originalForeignHash) {
+              throw "Un ancien media exterieur a été modifie ou supprime"
+            }
+          }
+
+          function Seed-Old-Settings([string]$app) {
+            $data = Join-Path $app 'Donnees'
+            New-Item -ItemType Directory -Force -Path $data | Out-Null
+            $cfg = @{
+              settings = @{ theme = 'dark_pure'; video_format = 'MKV' }
+              cookie_browser = 'none'
+              download_folder = $foreign
+              download_folder_custom = $true
+            } | ConvertTo-Json -Depth 8
+            [IO.File]::WriteAllText((Join-Path $data 'config.json'),$cfg)
+          }
+
+          function Assert-LocalSettings([string]$app, [string]$profile) {
+            $data = Join-Path $app 'Donnees'
+            $configPath = Join-Path $data 'config.json'
+            if (-not (Test-Path $configPath)) { throw "Configuration absente : $app" }
+            $config = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $expected = [IO.Path]::GetFullPath($app).TrimEnd('\')
+            $actual = [IO.Path]::GetFullPath([string]$config.download_folder).TrimEnd('\')
+            if (-not $expected.Equals($actual,[System.StringComparison]::OrdinalIgnoreCase)) {
+              throw "Fuite du dossier de téléchargement: $actual (attendu: $expected)"
+            }
+            if ($config.download_folder_custom -ne $false) {
+              throw "Ancienne destination personnalisee exterieure pas desactivee"
+            }
+            if ($config.settings.theme -ne 'dark_pure' -or $config.settings.video_format -ne 'MKV') {
+              throw "Les anciens reglages ont été perdus"
+            }
+            if (-not (Test-Path (Join-Path $data $profile) -PathType Container)) {
+              throw "Profil WebView2 absent de Donnees/$profile"
+            }
+            if (-not (Test-Path (Join-Path $data 'bin') -PathType Container)) {
+              throw "Dossier d'outils bin absent de Donnees"
+            }
+            if (Test-Path (Join-Path $foreignAppdata 'AllMediaDownload')) {
+              throw "All-Download a recree un dossier permanent externe dans LOCALAPPDATA"
+            }
+            Assert-MediaStillSafe $app
+            Write-Output "REAL_LOCAL_STORAGE_PASS edition=$profile root=$app foreignPreserved=true"
+          }
+
+          function LaunchAndCheck([string]$app, [string]$profile) {
+            $exe = Join-Path $app 'All_Media_Download.exe'
+            $log = Join-Path $app 'Donnees/startup_log.txt'
+            if (Test-Path $log) { Remove-Item $log -Force }
+            $previousLocal = $env:LOCALAPPDATA
+            $env:LOCALAPPDATA = $foreignAppdata
+            $proc = $null
+            try {
+              $proc = Start-Process -FilePath $exe -WorkingDirectory $app -PassThru
+            } finally {
+              $env:LOCALAPPDATA = $previousLocal
+            }
+            try {
+              $ready = $false
+              for ($i=0; $i -lt 110; $i++) {
+                Start-Sleep -Milliseconds 650
+                if (Test-Path $log) {
+                  $trace = @(Get-Content $log -Tail 70 -ErrorAction SilentlyContinue)
+                  if (@($trace | Where-Object { $_ -match 'Interface HTML chargee' }).Count -gt 0) {
+                    $ready = $true
+                    break
+                  }
+                }
+                $proc.Refresh()
+                if ($proc.HasExited) { throw "EXE ferme avant HTML, exit=$($proc.ExitCode)" }
+              }
+              if (-not $ready) {
+                if (Test-Path $log) { Get-Content $log -Tail 60 }
+                throw "L'interface $profile ne s'est pas ouverte"
+              }
+              Assert-LocalSettings $app $profile
+            } finally {
+              Get-Process -Name 'All_Media_Download' -ErrorAction SilentlyContinue |
+                Stop-Process -Force -ErrorAction SilentlyContinue
+              Start-Sleep -Seconds 3
+            }
+          }
+
+          Seed-Old-Settings $portableRoot
+          LaunchAndCheck $portableRoot 'webview'
+          Write-Output "REAL_PORTABLE_RELEASE_PASS"
+
+          $installProcess = Start-Process -FilePath $classicZip -Wait -PassThru -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-',"/DIR=$classicRoot")
+          if ($installProcess.ExitCode -ne 0) {
+            throw "Installation Classique code=$($installProcess.ExitCode)"
+          }
+          Seed-Old-Settings $classicRoot
+          LaunchAndCheck $classicRoot 'webview-classique'
+          $personalVideo = Join-Path $classicRoot 'VIDÉOS/mon-film-preserve.mp4'
+          $personalTwitch = Join-Path $classicRoot 'TWITCH/ma-vod-preserve.mp4'
+          [IO.File]::WriteAllText($personalVideo,'PERSONAL-FILM')
+          [IO.File]::WriteAllText($personalTwitch,'PERSONAL-TWITCH')
+
+          $updateProcess = Start-Process -FilePath $classicZip -Wait -PassThru -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-',"/DIR=$classicRoot")
+          if ($updateProcess.ExitCode -ne 0) { throw "Mise a jour Classique echouee" }
+          Assert-LocalSettings $classicRoot 'webview-classique'
+          if ((Get-Content -Raw $personalVideo) -ne 'PERSONAL-FILM') { throw "Film personnel ecrase" }
+          if ((Get-Content -Raw $personalTwitch) -ne 'PERSONAL-TWITCH') { throw "VOD Twitch effacee" }
+          Write-Output 'REAL_CLASSIC_UPDATE_PRESERVES_FILES_PASS'
+
+          $uninstaller = Join-Path $classicRoot 'unins000.exe'
+          if (-not (Test-Path $uninstaller)) { throw "Desinstalleur absent" }
+          $un = Start-Process -FilePath $uninstaller -Wait -PassThru -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART')
+          if ($un.ExitCode -ne 0) { throw "Desinstallation code=$($un.ExitCode)" }
+          if (-not (Test-Path $personalTwitch) -or -not (Test-Path $personalVideo)) {
+            throw "La desinstallation a efface les medias personnels"
+          }
+          if (-not (Test-Path (Join-Path $classicRoot 'Donnees/config.json'))) {
+            throw "La desinstallation a efface les preferences"
+          }
+          if (Test-Path (Join-Path $classicRoot 'All_Media_Download.exe')) {
+            throw "L'executable est reste apres desinstallation"
+          }
+          Assert-MediaStillSafe $classicRoot
+          Write-Output 'REAL_CLASSIC_UNINSTALL_PRESERVES_FILES_PASS'
+          Write-Output 'REAL_RELEASE170_STORAGE_AUDIT_SUCCESS'
