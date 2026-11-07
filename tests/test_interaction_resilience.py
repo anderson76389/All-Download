@@ -4,6 +4,7 @@ Ces tests ne téléchargent rien. Ils vérifient le rejet des soumissions parall
 la fermeture des indicateurs d'attente en cas d'erreur et la récupération du
 moteur après un échec.
 """
+import io
 import os
 import tempfile
 import threading
@@ -106,6 +107,55 @@ class DownloadInteractionAuditTests(unittest.TestCase):
         self.assertTrue(self.api.cancel_downloads())
         with open(old_path, "rb") as file:
             self.assertEqual(file.read(), b"private media")
+
+    def test_direct_pinterest_download_never_overwrites_existing_file(self):
+        root = os.path.join(self.tmp.name, "GIFS")
+        os.makedirs(root)
+        existing = os.path.join(root, "Mon GIF.gif")
+        with open(existing, "wb") as media:
+            media.write(b"GIF89a-personal-original")
+        with patch.object(yt_app.urllib.request, "urlopen",
+                          return_value=io.BytesIO(b"GIF89a-new-media")):
+            output = yt_app.save_direct_media(
+                "https://i.pinimg.com/abc.gif?format=gif", root, "Mon GIF"
+            )
+        self.assertEqual(os.path.basename(output), "Mon GIF (2).gif")
+        with open(existing, "rb") as media:
+            self.assertEqual(media.read(), b"GIF89a-personal-original")
+        with open(output, "rb") as media:
+            self.assertEqual(media.read(), b"GIF89a-new-media")
+        self.assertFalse(any(name.endswith(".part") for name in os.listdir(root)))
+
+    def test_failed_or_cancelled_direct_transfer_cleans_partial_file(self):
+        class FailingResponse:
+            def __enter__(self):
+                self.reads = 0
+                return self
+            def __exit__(self, *_):
+                return False
+            def read(self, size):
+                self.reads += 1
+                if self.reads == 1:
+                    return b"GIF89a"
+                raise OSError("network interruption")
+        root = os.path.join(self.tmp.name, "GIFS")
+        os.makedirs(root)
+        with patch.object(yt_app.urllib.request, "urlopen", return_value=FailingResponse()):
+            with self.assertRaises(OSError):
+                yt_app.save_direct_media("https://i.pinimg.com/abc.gif", root, "Failed")
+        self.assertEqual(os.listdir(root), [])
+        with patch.object(yt_app.urllib.request, "urlopen", return_value=io.BytesIO(b"GIF89a")):
+            with self.assertRaises(InterruptedError):
+                yt_app.save_direct_media(
+                    "https://i.pinimg.com/abc.gif", root, "Cancelled",
+                    on_chunk=lambda: (_ for _ in ()).throw(InterruptedError())
+                )
+        self.assertEqual(os.listdir(root), [])
+
+    def test_direct_download_rejects_non_http_url_without_touching_files(self):
+        with self.assertRaises(ValueError):
+            yt_app.save_direct_media("file:///C:/secret.gif", self.tmp.name, "test")
+        self.assertFalse(os.listdir(self.tmp.name))
 
 
 if __name__ == "__main__":
