@@ -1,0 +1,120 @@
+name: Verification finale independante build-170 emplacement Windows (temporaire)
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/audit-build170-final-cwd.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify-published-runtime:
+    runs-on: windows-latest
+    timeout-minutes: 14
+    steps:
+      - name: "Vérifier la véritable build-170 depuis un répertoire de travail extérieur"
+        shell: pwsh
+        timeout-minutes: 11
+        run: |
+          $ErrorActionPreference = "Stop"
+          $root = Join-Path $env:RUNNER_TEMP "all-download-final170"
+          $outside = Join-Path $root "outside-working-dir"
+          $fakeAppData = Join-Path $root "outside-localappdata"
+          $fakeRoaming = Join-Path $root "outside-roaming"
+          $parent = Join-Path $root "portable-extracted"
+          New-Item -ItemType Directory -Force -Path $outside,$fakeAppData,$fakeRoaming,$parent | Out-Null
+          [IO.File]::WriteAllText((Join-Path $outside 'canary.txt'),"NE PAS TOUCHER")
+          $url = "https://github.com/anderson76389/All-Download/releases/download/build-170/All-Download-Portable-Windows.zip"
+          $archive = Join-Path $root "portable-build-170.zip"
+          Invoke-WebRequest -Uri $url -OutFile $archive -MaximumRedirection 8
+          $hash = (Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -ne "cf5af7e4d11f74ceb8ad18ed1787ad5c274019fb52bbda0f941cff2148e16098") {
+            throw "Le ZIP téléchargé est différent de la release officielle"
+          }
+          Expand-Archive -Path $archive -DestinationPath $parent -Force
+          $app = Join-Path $parent "All-Download"
+          $exe = Join-Path $app "All_Media_Download.exe"
+          if (-not (Test-Path $exe)) { throw "Exe absent" }
+          if (@(Get-ChildItem -Path $parent).Count -ne 1) { throw "Fichiers hors de All-Download" }
+          foreach($folder in @('VIDÉOS','AUDIOS','TWITCH','GIFS','PLAYLIST','CHAÎNES','AUTRES','Donnees/bin')) {
+            if (-not (Test-Path (Join-Path $app $folder))) { throw "Répertoire manquant: $folder" }
+          }
+          Write-Output "LAST_CHECK_RELEASE_ARCHIVE_PASS"
+
+          # Simuler une ancienne configuration extérieure ; elle doit être corrigée,
+          # sans toucher à la destination historique.
+          $old = Join-Path $root "old-custom-download"
+          New-Item -ItemType Directory -Force -Path $old | Out-Null
+          [IO.File]::WriteAllText((Join-Path $old "video-ancienne.mp4"),"ANCIEN MEDIA PERSO")
+          $oldHash = (Get-FileHash (Join-Path $old "video-ancienne.mp4") -Algorithm SHA256).Hash
+          $settings = @{
+            download_folder = $old
+            download_folder_custom = $true
+            settings = @{theme = "dark_pure"; video_format = "MP4"}
+          } | ConvertTo-Json -Depth 8
+          [IO.File]::WriteAllText((Join-Path $app "Donnees/config.json"),$settings)
+          $oldLocal = $env:LOCALAPPDATA
+          $oldRoaming = $env:APPDATA
+          $env:LOCALAPPDATA = $fakeAppData
+          $env:APPDATA = $fakeRoaming
+
+          # Lancer intentionnellement depuis UN AUTRE dossier que celui de l'EXE.
+          $process = $null
+          try {
+            $process = Start-Process -FilePath $exe -WorkingDirectory $outside -PassThru
+          } finally {
+            $env:LOCALAPPDATA = $oldLocal
+            $env:APPDATA = $oldRoaming
+          }
+          try {
+            $log = Join-Path $app "Donnees/startup_log.txt"
+            $ready = $false
+            for ($i = 0; $i -lt 120; $i++) {
+              Start-Sleep -Milliseconds 600
+              if (Test-Path $log) {
+                $readLines = Get-Content $log -Tail 35 -ErrorAction SilentlyContinue
+                if (@($readLines | Where-Object {$_ -match "Interface HTML chargee"}).Count -gt 0) {
+                  $ready = $true
+                  break
+                }
+              }
+              $process.Refresh()
+              if ($process.HasExited) {
+                throw "Portable ferme brutalement depuis un cwd extérieur (exit $($process.ExitCode))"
+              }
+            }
+            if (-not $ready) { throw "Demarrage portable impossible depuis cwd extérieur" }
+            $cfg = Get-Content (Join-Path $app "Donnees/config.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+            if ([IO.Path]::GetFullPath([string]$cfg.download_folder) -ne [IO.Path]::GetFullPath($app)) {
+              throw "Ancienne destination extérieure encore utilisée: $($cfg.download_folder)"
+            }
+            if ($cfg.download_folder_custom -ne $false) { throw "Ancien drapeau custom pas désactivé" }
+            if ($cfg.settings.theme -ne "dark_pure") { throw "Ancien thème perdu" }
+            foreach($folder in @('VIDÉOS','AUDIOS','TWITCH','GIFS','PLAYLIST','CHAÎNES','AUTRES','Donnees/webview','Donnees/bin')) {
+              if (-not (Test-Path (Join-Path $app $folder))) { throw "Répertoire manquant au démarrage: $folder" }
+            }
+            if (Test-Path (Join-Path $fakeAppData "AllMediaDownload")) {
+              throw "Un cache permanent externe AllMediaDownload a été créé"
+            }
+            if (Test-Path (Join-Path $fakeRoaming "AllMediaDownload")) {
+              throw "Un cache permanent Roaming AllMediaDownload a été créé"
+            }
+            if ((Get-FileHash (Join-Path $old "video-ancienne.mp4") -Algorithm SHA256).Hash -ne $oldHash) {
+              throw "Ancienne vidéo modifiée"
+            }
+            $extraneous = @(Get-ChildItem $outside -Force | Where-Object {$_.Name -ne 'canary.txt'})
+            if ($extraneous.Count -gt 0) {
+              throw "Lancement depuis cwd extérieur a créé des fichiers hors All-Download: $($extraneous.Name)"
+            }
+            if ((Get-Content (Join-Path $outside "canary.txt") -Raw).Trim() -ne "NE PAS TOUCHER") {
+              throw "Fichier extérieur altéré"
+            }
+            Write-Output "LAST_CHECK_EXTERNAL_CWD_NO_LEAK_PASS"
+            Write-Output "LAST_CHECK_LEGACY_CONFIG_MIGRATION_PASS"
+            Write-Output "LAST_CHECK_PERSONAL_DOWNLOAD_PRESERVED_PASS"
+            Write-Output "LAST_CHECK_WEBVIEW_LOCAL_PASS"
+          } finally {
+            Get-Process -Name "All_Media_Download" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          }
+          Write-Output "BUILD170_FINAL_INDEPENDENT_AUDIT_SUCCESS"
