@@ -41,6 +41,10 @@ class TwitchVodTests(unittest.TestCase):
         self.assertEqual(info["url"], url)
         self.assertEqual(info["mode"], "Vidéo")
         self.assertEqual(info["selectedQuality"], info["formats"][0])
+        self.assertIn("720p (60fps)", info["formats"])
+        self.assertIn("480p (30fps)", info["formats"])
+        self.assertEqual(twitch_vod.fallback_metadata(url, formats=["720p (60fps)"])["formats"],
+                         ["Meilleure qualité (Auto)", "720p (60fps)"])
         self.assertEqual(info["item_count"], 1)
         self.assertIsNone(twitch_vod.fallback_metadata("https://twitch.tv/user"))
 
@@ -133,10 +137,13 @@ class IntegrationTests(unittest.TestCase):
         import yt_app
         api = yt_app.DownloaderAPI.__new__(yt_app.DownloaderAPI)
         api.config = {}
-        with patch.object(yt_app, "ensure_ytdlp_ready", return_value=False):
+        with patch.object(yt_app, "ensure_ytdlp_ready", return_value=False), \
+             patch.object(yt_app, "available_hls_formats", return_value=["720p (60fps)", "480p (30fps)"]) as probe:
             result = api.extract_info("https://www.twitch.tv/videos/1234567890")
         self.assertTrue(result["success"])
         self.assertEqual(result["data"]["title"], "VOD Twitch 1234567890")
+        self.assertEqual(result["data"]["formats"], ["Meilleure qualité (Auto)", "720p (60fps)", "480p (30fps)"])
+        probe.assert_called_once()
 
     def test_twitch_video_does_not_require_ytdlp_and_uses_existing_queue(self):
         import yt_app
