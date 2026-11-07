@@ -59,9 +59,17 @@ const backend = {
   cancel_downloads: () => {events.push(['cancel_downloads']);return true;},
   pause_downloads: () => {events.push(['pause_downloads']);return {success:true,mode:'active'};},
   resume_downloads: () => {events.push(['resume_downloads']);return {success:true};},
-  start_downloads: items => {events.push(['start_downloads',JSON.parse(JSON.stringify(items))]);return true;},
+  start_downloads: items => {events.push(['start_downloads',JSON.parse(JSON.stringify(items))]);setImmediate(()=>dom.window.finishDownloadUIState());return true;},
   extract_info: url => {
     events.push(['extract_info',url]);
+    if(url.includes('untrusted-error')) return {success:false,error:'<svg onload="window.__evil=1"></svg>'};
+    if(url.includes('untrusted')) return {success:true,data:{
+      ...media,url,
+      title:'<img src=x onerror="window.__evil=1">',
+      thumbnail:'https://example.com/image.jpg" onerror="window.__evil=2',
+      duration:'<svg onload="window.__evil=3">',
+      formats:['1080p', "720p');window.__evil=4;//"]
+    }};
     if(url.includes('denied')) return {success:false,error:'Accès refusé'};
     if(url.includes('/playlist?')) return {success:true,data:{...playlist,url}};
     if(url.includes('twitch.tv/videos/2222222222')) return {success:true,data:{...media,url,formats:['Meilleure qualité (Auto)','720p','480p']}};
@@ -259,6 +267,29 @@ async function run() {
   action('[onclick="clearSuccess();"]');
   assert.equal(win.eval('queue.length'),0);
 
+  // Audit de sécurité des métadonnées provenant des plateformes externes.
+  win.clearQueue();
+  input.value='https://example.com/untrusted';
+  win.addVideo();
+  await flush();
+  assert.equal(doc.querySelector('.media-card .card-title').textContent, '<img src=x onerror="window.__evil=1">');
+  assert.equal(win.__evil, undefined, 'Une métadonnée externe a exécuté du JavaScript');
+  assert.equal(doc.querySelectorAll('.media-card svg[onload]').length, 0, 'Durée non échappée');
+  assert.equal(doc.querySelectorAll('.media-card img[onerror^="window.__evil"]').length, 0, 'Miniature injectée');
+  const qualityOption = doc.querySelector('.media-card [onclick="setCardFormat(0, 1, event)"]');
+  assert.ok(qualityOption, 'Choix de qualité externe absent');
+  qualityOption.click();
+  assert.equal(win.eval('queue[0].selectedQuality'), "720p');window.__evil=4;//");
+  assert.equal(win.__evil, undefined, 'Une qualité externe a exécuté du JavaScript');
+  win.clearQueue();
+  input.value='https://example.com/untrusted-error';
+  win.addVideo();
+  await flush();
+  win.refreshLogsViewData();
+  assert.match(doc.getElementById('errList').textContent, /<svg onload/);
+  assert.equal(doc.querySelectorAll('#errList svg[onload]').length, 0, 'Log non échappé');
+  assert.equal(win.__evil, undefined);
+  win.clearQueue();
   // Twitch : 1080p par défaut, 720p si pas de 1080, choix manuel conservé.
   win.selectGlobalMode('Vidéo');
   input.value='https://www.twitch.tv/videos/1111111111';
@@ -318,6 +349,27 @@ async function run() {
   assert.ok(doc.getElementById('appToast').textContent.includes('repris'),
     'La reprise doit confirmer réellement la réponse du moteur');
 
+  // Soumission double : le pont ne reçoit qu'un travail quand la réponse est en vol.
+  let resolveSubmission;
+  const beforeRequests = events.filter(e=>e[0]==='start_downloads').length;
+  const originalStartDownload = win.pywebview.api.start_downloads;
+  win.pywebview.api.start_downloads = items => new Promise(resolve => {
+    events.push(['start_downloads', JSON.parse(JSON.stringify(items))]);
+    resolveSubmission = resolve;
+  });
+  win.startDownloads();
+  win.startDownloads();
+  assert.equal(events.filter(e=>e[0]==='start_downloads').length, beforeRequests+1);
+  resolveSubmission({success:true});
+  await flush();
+  win.finishDownloadUIState();
+  win.pywebview.api.start_downloads = originalStartDownload;
+  assert.equal(doc.querySelector('.btn-download-all').dataset.originalText, undefined);
+  // Une plage de playlist incohérente est bornée entre 1 et son vrai total.
+  first.value='-50'; last.value='999999';
+  win.updatePlaylistRange(1);
+  assert.equal(win.eval('queue[1].start_idx'),1);
+  assert.equal(win.eval('queue[1].end_idx'),12);
   // Changer de thème depuis l'interface et vérifier le même accent violet.
   for (const theme of ['light','dark','dark_pure']) {
     win.applyTheme(theme);
@@ -330,6 +382,32 @@ async function run() {
   win.clearQueue();
   assert.equal(win.eval('queue.length'),0);
   assert.equal(doc.getElementById('emptyView').style.display,'flex');
+  // Une analyse restée en vol ne réintroduit pas une carte après vider la file.
+  let finishExtraction;
+  const oldExtract = win.pywebview.api.extract_info;
+  win.pywebview.api.extract_info = () => new Promise(resolve => { finishExtraction = resolve; });
+  input.value='https://example.com/slow-async';
+  win.addVideo();
+  win.clearQueue();
+  finishExtraction({success:true,data:{...media,title:'Ancienne requête'}});
+  await flush();
+  assert.equal(win.eval('queue.length'),0,'Une requête tardive a recréé une carte supprimée');
+  win.pywebview.api.extract_info = oldExtract;
+  // Une erreur de téléchargement apparaît dans la file et peut être réessayée.
+  input.value='https://example.com/failed-after-queue';
+  win.addVideo();
+  await flush();
+  assert.equal(win.eval('queue.length'),1);
+  win.markDownloadFailure('https://example.com/failed-after-queue', 'HTTP 403 - flux inaccessible');
+  assert.equal(win.eval('queue[0].isError'),true);
+  assert.match(doc.querySelector('.media-card').textContent,/Erreur d'accès/);
+  win.refreshLogsViewData();
+  assert.match(doc.getElementById('errList').textContent,/HTTP 403/);
+  action('.media-card [title="Réessayer"]');
+  await flush();
+  assert.equal(win.eval('queue.length'),1);
+  assert.equal(win.eval('queue[0].isError'),false);
+  win.clearQueue();
   validate();
   console.log('OK : boutons, formulaires, thèmes, cookies, file d’attente, qualité, playlist, navigation, API Python simulée');
   console.log('Gestionnaires HTML vérifiés : '+verifyInlineHandlers());

@@ -430,6 +430,7 @@ class DownloadFolderTests(unittest.TestCase):
             api.start_downloads([self.item("https://youtube.com/watch?v=43")])
         self.assertFalse(any("markDownloadSuccess(" in x for x in api._window.scripts))
         self.assertTrue(any("0/1" in x for x in api._window.scripts))
+        self.assertTrue(any("markDownloadFailure(" in x for x in api._window.scripts))
 
     def test_direct_pinterest_gif_saved_in_gifs(self):
         api = self.create_api()

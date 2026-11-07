@@ -20,6 +20,7 @@ import ctypes
 from ctypes import wintypes
 import multiprocessing
 import tempfile
+import uuid
 from pathlib import Path
 import webview
 from twitch_vod import (twitch_vod_id, fallback_metadata, preferred_twitch_quality, ensure_cli_ready,
@@ -190,6 +191,8 @@ FFMPEG_URL = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/f
 # DEUX octets a la place des vrais EXE. Ne plus considerer "existe et non
 # vide" comme une preuve qu'un outil Windows est executable.
 _BINARIES_LOCK = threading.RLock()
+_DOWNLOAD_LAUNCH_LOCK = threading.RLock()
+_CONFIG_WRITE_LOCK = threading.RLock()
 
 
 def is_valid_windows_executable(filename):
@@ -338,6 +341,72 @@ def get_media_download_dir(root, item):
     if is_yt:
         return os.path.join(root, "VIDÉOS")
     return os.path.join(root, "AUTRES")
+
+
+def save_direct_media(url, target_dir, title, on_chunk=None):
+    """Image/GIF direct : transfert borné, fichier temporaire, zéro écrasement.
+
+    Le résultat n'apparaît sous son nom final qu'après un transfert complet.
+    L'utilisateur conserve toutes les anciennes versions, même homonymes.
+    """
+    parts = urllib.parse.urlsplit(str(url))
+    if parts.scheme not in ("https", "http") or not parts.hostname:
+        raise ValueError("Adresse du média direct invalide.")
+    extension = os.path.splitext(parts.path)[1].lower()
+    if extension not in (".gif", ".jpg", ".jpeg", ".png", ".webp", ".mp4"):
+        extension = ".jpg"
+    os.makedirs(target_dir, exist_ok=True)
+    title = sanitize_filename(title or "Pinterest_Media").rstrip(" .")[:120] or "Pinterest_Media"
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            prefix=".all-download-", suffix=".part", dir=target_dir, delete=False
+        ) as output:
+            temp_path = output.name
+            req = urllib.request.Request(url, headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Referer": "https://www.pinterest.com/"
+            })
+            total = 0
+            with urllib.request.urlopen(req, timeout=20) as response:
+                while True:
+                    if on_chunk:
+                        on_chunk()
+                    chunk = response.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    total += len(chunk)
+                    if total > 250 * 1024 * 1024:
+                        raise ValueError("Le média dépasse la taille maximale autorisée.")
+                    output.write(chunk)
+            if total == 0:
+                raise ValueError("Réponse média vide.")
+        for index in range(1, 1001):
+            suffix = "" if index == 1 else f" ({index})"
+            path = os.path.join(target_dir, title + suffix + extension)
+            try:
+                os.link(temp_path, path)
+            except FileExistsError:
+                continue
+            except OSError:
+                # Le fichier final ne doit jamais écraser un média précédent.
+                if os.path.exists(path):
+                    continue
+                os.rename(temp_path, path)
+                temp_path = None
+                return path
+            else:
+                os.unlink(temp_path)
+                temp_path = None
+                return path
+        raise OSError("Trop de fichiers portent ce nom.")
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.unlink(temp_path)
+            except OSError:
+                pass
+
 
 def kill_process_tree(pid):
     try:
@@ -2227,7 +2296,7 @@ HTML_PAGE = """<!DOCTYPE html>
         html += `
           <div class="log-banner">
             <div class="badge-fail">! Échec</div>
-            <div class="banner-text"><b>${item.title}</b><br><span style="color:#aaa;">${item.error}</span></div>
+            <div class="banner-text"><b>${escapeHtml(item.title)}</b><br><span style="color:#aaa;">${escapeHtml(item.error)}</span></div>
           </div>`;
       });
       errList.innerHTML = html;
@@ -2241,8 +2310,10 @@ HTML_PAGE = """<!DOCTYPE html>
   }
 
   function cancelDownloadsSafe() {
-    callApi('cancel_downloads');
-    resetDownloadUIState();
+    callApi('cancel_downloads').then(ok => {
+      if (ok !== true) showAppToast("Annulation impossible.");
+    }).catch(() => showAppToast("Annulation impossible."));
+    // Garder le verrou UI tant que le moteur termine ses nettoyages.
   }
 
   function pauseDownloadsSafe() {
@@ -2288,14 +2359,15 @@ HTML_PAGE = """<!DOCTYPE html>
     if (!url) return;
     input.value = '';
 
-    const tempId = 'skel_' + Date.now();
+    const tempId = 'skel_' + (++skeletonSequence);
+    const requestGeneration = queueGeneration;
     const skelHtml = `
       <div class="skeleton-card" id="${tempId}">
         <div class="skeleton-thumb">
           <svg style="width:32px;height:32px;fill:currentColor;" viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg>
         </div>
         <div style="flex:1;">
-          <div class="card-title" style="font-size:14px; font-weight:600;">${url}</div>
+          <div class="card-title" style="font-size:14px; font-weight:600;">${escapeHtml(url)}</div>
           <div class="skeleton-bar"><div class="skeleton-fill"></div></div>
           <div class="skeleton-status" style="font-size:11px; margin-top:4px; font-weight:600;">Récupération des métadonnées...</div>
         </div>
@@ -2310,6 +2382,7 @@ HTML_PAGE = """<!DOCTYPE html>
     callApi('extract_info', url).then(res => {
       const el = document.getElementById(tempId);
       if (el) el.remove();
+      if (requestGeneration !== queueGeneration) return;
 
       if (res && res.success) {
         res.data.mode = (res.data.mode === 'Image' || res.data.mode === 'GIF') ? res.data.mode : currentGlobalMode;
@@ -2344,6 +2417,7 @@ HTML_PAGE = """<!DOCTYPE html>
     }).catch(err => {
       const el = document.getElementById(tempId);
       if (el) el.remove();
+      if (requestGeneration !== queueGeneration) return;
       queue.push({ title: url, url: url, error: String(err), isError: true });
       renderCards();
       updateView();
@@ -2353,12 +2427,30 @@ HTML_PAGE = """<!DOCTYPE html>
   function updatePlaylistRange(idx) {
     const sInput = document.getElementById(`p_start_${idx}`);
     const eInput = document.getElementById(`p_end_${idx}`);
-    if (sInput && eInput) {
-      queue[idx].start_idx = parseInt(sInput.value) || 1;
-      queue[idx].end_idx = parseInt(eInput.value) || (queue[idx].item_count || 1);
+    const item = queue[idx];
+    if (sInput && eInput && item) {
+      const count = Math.max(1, Math.min(1000000, parseInt(item.item_count, 10) || 1));
+      const start = Math.max(1, Math.min(count, parseInt(sInput.value, 10) || 1));
+      const end = Math.max(start, Math.min(count, parseInt(eInput.value, 10) || count));
+      item.start_idx = start;
+      item.end_idx = end;
+      sInput.value = start;
+      eInput.value = end;
     }
   }
 
+  // Toutes les métadonnées proviennent de sites externes : jamais de HTML actif.
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[ch]);
+  }
+  function safeThumbnailUrl(value) {
+    try {
+      const url = new URL(String(value || ''));
+      return ['https:', 'http:'].includes(url.protocol) ? escapeHtml(url.href) : '';
+    } catch (_) { return ''; }
+  }
   function renderCards() {
     const list = document.getElementById('cardList');
     list.innerHTML = '';
@@ -2367,7 +2459,8 @@ HTML_PAGE = """<!DOCTYPE html>
       const card = document.createElement('div');
       card.className = 'media-card' + (item.isError ? ' error' : '');
 
-      const thumbImg = item.thumbnail ? `<img class="thumb" src="${item.thumbnail}" onerror="this.style.display='none'">` : '';
+      const thumbnail = safeThumbnailUrl(item.thumbnail);
+      const thumbImg = thumbnail ? `<img class="thumb" src="${thumbnail}" onerror="this.style.display='none'">` : '';
 
       if (item.isError) {
         const badgeText = item.isRestricted ? "🔒 Contenu Restreint (+18 / Privé)" : "Erreur d'accès";
@@ -2375,7 +2468,7 @@ HTML_PAGE = """<!DOCTYPE html>
           <div class="thumb-container" style="background:#ff4d4f;">${thumbImg}</div>
           <div class="card-body">
             <div class="card-title-row">
-              <div class="card-title">${item.title}</div>
+              <div class="card-title">${escapeHtml(item.title)}</div>
             </div>
             <div class="card-bottom-row">
               <div class="error-badge">
@@ -2401,9 +2494,9 @@ HTML_PAGE = """<!DOCTYPE html>
           </div>
         `;
       } else if (item.is_playlist || item.is_channel) {
-        const count = item.item_count || 1;
-        const startVal = item.start_idx || 1;
-        const endVal = item.end_idx || count;
+        const count = Math.min(1000000, Math.max(1, parseInt(item.item_count, 10) || 1));
+        const startVal = Math.max(1, Math.min(count, parseInt(item.start_idx, 10) || 1));
+        const endVal = Math.max(startVal, Math.min(count, parseInt(item.end_idx, 10) || count));
 
         let plQualOptions = '';
         if (item.mode === 'Audio') {
@@ -2430,8 +2523,8 @@ HTML_PAGE = """<!DOCTYPE html>
           <div class="thumb-container">${thumbImg}</div>
           <div class="card-body">
             <div class="card-title-row" style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
-              <div class="card-title">${item.title}</div>
-              <div class="playlist-count-text" style="font-size:12px; font-weight:600; white-space:nowrap; flex-shrink:0;">${countLabel}</div>
+              <div class="card-title">${escapeHtml(item.title)}</div>
+              <div class="playlist-count-text" style="font-size:12px; font-weight:600; white-space:nowrap; flex-shrink:0;">${escapeHtml(countLabel)}</div>
             </div>
             <div class="playlist-label">Sélectionnez les éléments à télécharger :</div>
             <div class="card-bottom-row">
@@ -2443,7 +2536,7 @@ HTML_PAGE = """<!DOCTYPE html>
               </div>
               <div style="display:flex; align-items:center; gap:8px; margin-left:auto; flex-wrap:wrap;">
                 <div class="pill-dropdown" onclick="toggleDropdown('pl_mode_pop_${index}', event)">
-                  <span>${item.mode || 'Vidéo'}</span>
+                  <span>${escapeHtml(item.mode || 'Vidéo')}</span>
                   <svg class="svg-icon" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
                   <div class="dropdown-popover" id="pl_mode_pop_${index}">
                     <div class="dropdown-item ${item.mode==='Vidéo'?'selected':''}" onclick="setCardMode(${index}, 'Vidéo', event)"><span class="check">${item.mode==='Vidéo'?'✓':''}</span>Vidéo</div>
@@ -2452,7 +2545,7 @@ HTML_PAGE = """<!DOCTYPE html>
                 </div>
 
                 <div class="pill-dropdown" onclick="toggleDropdown('pl_qual_pop_${index}', event)">
-                  <span>${item.selectedQualityLabel || (item.mode==='Audio'?'FLAC (selon la source)':'Meilleure qualité (Auto)')}</span>
+                  <span>${escapeHtml(item.selectedQualityLabel || (item.mode==='Audio'?'FLAC (selon la source)':'Meilleure qualité (Auto)'))}</span>
                   <svg class="svg-icon" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
                   <div class="dropdown-popover" id="pl_qual_pop_${index}">
                     ${plQualOptions}
@@ -2495,9 +2588,9 @@ HTML_PAGE = """<!DOCTYPE html>
             <div class="dropdown-item selected"><span class="check">✓</span>Qualité Originale</div>
           `;
         } else {
-          item.formats.forEach(f => {
+          (Array.isArray(item.formats) ? item.formats : []).forEach((f, formatIndex) => {
             const isSel = item.selectedQuality === f;
-            qualPopoverHtml += `<div class="dropdown-item ${isSel?'selected':''}" onclick="setCardQuality(${index}, '${f}', '${f}', event)"><span class="check">${isSel?'✓':''}</span>${f}</div>`;
+            qualPopoverHtml += `<div class="dropdown-item ${isSel?'selected':''}" onclick="setCardFormat(${index}, ${formatIndex}, event)"><span class="check">${isSel?'✓':''}</span>${escapeHtml(f)}</div>`;
           });
         }
 
@@ -2523,13 +2616,13 @@ HTML_PAGE = """<!DOCTYPE html>
           <div class="thumb-container">${thumbImg}</div>
           <div class="card-body">
             <div class="card-title-row">
-              <div class="card-title">${item.title}</div>
+              <div class="card-title">${escapeHtml(item.title)}</div>
             </div>
             <div class="card-bottom-row">
-              <div class="card-meta">Durée : ${item.duration} &nbsp;•&nbsp; ${destInfo}</div>
+              <div class="card-meta">Durée : ${escapeHtml(item.duration)} &nbsp;•&nbsp; ${destInfo}</div>
               <div class="card-controls">
                 <div class="pill-dropdown" onclick="toggleDropdown('card_mode_pop_${index}', event)">
-                  <span>${item.mode}</span>
+                  <span>${escapeHtml(item.mode)}</span>
                   <svg class="svg-icon" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
                   <div class="dropdown-popover" id="card_mode_pop_${index}">
                     <div class="dropdown-item ${item.mode==='Vidéo'?'selected':''}" onclick="setCardMode(${index}, 'Vidéo', event)"><span class="check">${item.mode==='Vidéo'?'✓':''}</span>Vidéo</div>
@@ -2539,7 +2632,7 @@ HTML_PAGE = """<!DOCTYPE html>
                 </div>
 
                 <div class="pill-dropdown" onclick="toggleDropdown('card_qual_pop_${index}', event)">
-                  <span>${item.selectedQualityLabel || item.selectedQuality}</span>
+                  <span>${escapeHtml(item.selectedQualityLabel || item.selectedQuality)}</span>
                   <svg class="svg-icon" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
                   <div class="dropdown-popover" id="card_qual_pop_${index}">
                     ${qualPopoverHtml}
@@ -2586,6 +2679,13 @@ HTML_PAGE = """<!DOCTYPE html>
     renderCards();
   }
 
+  function setCardFormat(idx, formatIndex, e) {
+    const item = queue[idx];
+    if (!item || !Array.isArray(item.formats)) return;
+    const value = item.formats[formatIndex];
+    if (typeof value !== 'string') return;
+    setCardQuality(idx, value, value, e);
+  }
   function setCardQuality(idx, val, label, e) {
     if (e) { e.stopPropagation(); }
     queue[idx].selectedQuality = val;
@@ -2608,6 +2708,7 @@ HTML_PAGE = """<!DOCTYPE html>
   }
 
   function clearQueue() {
+    queueGeneration += 1;
     queue = [];
     closeAllPopovers();
     renderCards();
@@ -2630,6 +2731,15 @@ HTML_PAGE = """<!DOCTYPE html>
     }
   }
 
+  function markDownloadFailure(url, reason) {
+    const item = queue.find(x => !x.isError && x.url === url && x.status !== 'success');
+    if (!item) return;
+    item.isError = true;
+    item.error = reason || 'Téléchargement impossible. Consultez le journal.';
+    renderCards();
+    const logs = document.getElementById('viewLogs');
+    if (logs && logs.style.display === 'flex') refreshLogsViewData();
+  }
   function clearSuccess() {
     queue = queue.filter(item => item.status !== 'success');
     closeAllPopovers();
@@ -2638,10 +2748,34 @@ HTML_PAGE = """<!DOCTYPE html>
   }
 
   /* GESTION ANIMATION CHARGEMENT AVANT LE TÉLÉCHARGEMENT */
+  // Empêcher deux soumissions parallèles pendant la réponse du pont Python.
+  let downloadSubmissionPending = false;
+  let downloadJobActive = false;
+  let queueGeneration = 0;
+  let skeletonSequence = 0;
+  function submitDownloads(items) {
+    if (downloadSubmissionPending || downloadJobActive) {
+      showAppToast('Un téléchargement est déjà en cours.');
+      return;
+    }
+    if (!items.length) return;
+    downloadSubmissionPending = true;
+    downloadJobActive = true;
+    startDownloadUIState();
+    callApi('start_downloads', items.map(item => ({ ...item }))).then(result => {
+      if (!(result === true || (result && result.success === true))) {
+        finishDownloadUIState();
+        showAppToast(result && result.error ? result.error : 'Téléchargement impossible.');
+      }
+    }).catch(() => {
+      finishDownloadUIState();
+      showAppToast('Impossible de démarrer les téléchargements.');
+    }).finally(() => { downloadSubmissionPending = false; });
+  }
   function startDownloadUIState() {
     const btn = document.querySelector('.btn-download-all');
     if (btn) {
-      btn.dataset.originalText = btn.innerHTML;
+      if (!btn.dataset.originalText) btn.dataset.originalText = btn.innerHTML;
       btn.innerHTML = '<span class="btn-spinner"></span>Préparation...';
       btn.style.pointerEvents = 'none';
       btn.style.opacity = '0.85';
@@ -2663,15 +2797,17 @@ HTML_PAGE = """<!DOCTYPE html>
       btn.innerHTML = btn.dataset.originalText;
       btn.style.pointerEvents = 'auto';
       btn.style.opacity = '1';
+      delete btn.dataset.originalText;
     }
     const bar = document.getElementById('progressFill');
     if (bar) {
+      if (bar.classList.contains('indeterminate')) bar.style.width = '0%';
       bar.classList.remove('indeterminate');
     }
   }
 
   function startDownloads() {
-    const valid = queue.filter(i => !i.isError);
+    const valid = queue.filter(i => !i.isError && i.status !== 'success');
     if (valid.length === 0) return;
     // 'valid' n'a pas forcement les memes index que la file d'attente
     // lorsqu'une entrée en erreur a ete retiree.
@@ -2680,14 +2816,20 @@ HTML_PAGE = """<!DOCTYPE html>
         updatePlaylistRange(index);
       }
     });
-    startDownloadUIState();
-    callApi('start_downloads', valid);
+    submitDownloads(valid);
   }
 
   function downloadSingle(idx) {
-    if (queue[idx].is_playlist || queue[idx].is_channel) updatePlaylistRange(idx);
-    startDownloadUIState();
-    callApi('start_downloads', [queue[idx]]);
+    const item = queue[idx];
+    if (!item || item.isError || item.status === 'success') return;
+    if (item.is_playlist || item.is_channel) updatePlaylistRange(idx);
+    submitDownloads([item]);
+  }
+
+  function finishDownloadUIState() {
+    resetDownloadUIState();
+    downloadSubmissionPending = false;
+    downloadJobActive = false;
   }
 
   function openExternal(url) {
@@ -2714,8 +2856,8 @@ HTML_PAGE = """<!DOCTYPE html>
     document.getElementById('statusBar').innerText = statusText;
     appendTerminal(statusText);
 
-    if (pct >= 100 || statusText.toLowerCase().includes('terminé')) {
-      resetDownloadUIState();
+    if (/^(Traitement terminé|Terminé avec erreurs|Annulé)/.test(statusText)) {
+      finishDownloadUIState();
     }
   }
 
@@ -2727,13 +2869,17 @@ HTML_PAGE = """<!DOCTYPE html>
 
   updateGlobalQualityDropdown();
 
+  let appInitializationStarted = false;
   function initApp() {
+    if (appInitializationStarted || !window.pywebview || !window.pywebview.api ||
+        typeof window.pywebview.api.get_app_settings !== 'function') return;
+    appInitializationStarted = true;
     callApi('get_app_settings').then(s => {
       if (!s) return;
       if (s.theme) applyTheme(s.theme);
       configureQuickSelector(s);
       if (queue.length === 0) selectGlobalMode(s.sortie_type === 'audio' ? 'Audio' : 'Vidéo');
-    });
+    }).catch(() => { appInitializationStarted = false; });
   }
 
   window.addEventListener('pywebviewready', initApp);
@@ -2796,18 +2942,32 @@ class DownloaderAPI:
         if os.path.exists(CONFIG_FILE):
             try:
                 with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    loaded = json.load(f)
+                    return loaded if isinstance(loaded, dict) else {}
             except Exception: pass
         return {}
 
     def _save_config(self):
-        self.config["download_folder"] = self.download_folder
-        try:
-            with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-                json.dump(self.config, f, indent=4, ensure_ascii=False)
-            return True
-        except (OSError, TypeError, ValueError):
-            return False
+        """Écrire les paramètres atomiquement, sans tronquer l'ancien JSON."""
+        temporary = CONFIG_FILE + "." + uuid.uuid4().hex + ".tmp"
+        with _CONFIG_WRITE_LOCK:
+            self.config["download_folder"] = self.download_folder
+            try:
+                os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
+                with open(temporary, "w", encoding="utf-8") as f:
+                    json.dump(self.config, f, indent=4, ensure_ascii=False)
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(temporary, CONFIG_FILE)
+                return True
+            except (OSError, TypeError, ValueError):
+                return False
+            finally:
+                if os.path.exists(temporary):
+                    try:
+                        os.unlink(temporary)
+                    except OSError:
+                        pass
 
     def get_download_folder(self):
         return self.download_folder
@@ -2830,7 +2990,7 @@ class DownloaderAPI:
         return None
 
     def get_app_settings(self):
-        return self.config.get("settings", {
+        defaults = {
             "sortie_type": "video",
             "video_format": "MP4",
             "post_process_video": "Aucun",
@@ -2856,7 +3016,9 @@ class DownloaderAPI:
             "proxy_url": "",
             "impersonation": "none",
             "extractor_args": ""
-        })
+        }
+        saved = self.config.get("settings") if isinstance(self.config, dict) else None
+        return {**defaults, **saved} if isinstance(saved, dict) else defaults
 
     def save_quick_selector_value(self, kind, value):
         """Enregistrer les choix de la barre du bas, sans écraser les autres options."""
@@ -3430,302 +3592,364 @@ class DownloaderAPI:
             self._active_download_process = None
 
     def start_downloads(self, items):
-        self.is_cancelled = False
-        self.is_paused = False
-        self._suspended_download_pids = []
-        settings = self.get_app_settings()
+        if (not isinstance(items, list) or not items
+                or any(not isinstance(item, dict) or not isinstance(item.get('url'), str)
+                       or not item['url'].strip() for item in items)):
+            return {'success': False, 'error': 'La file de téléchargement est vide ou invalide.'}
+        with _DOWNLOAD_LAUNCH_LOCK:
+            if getattr(self, '_download_running', False):
+                return {'success': False, 'error': 'Un téléchargement est déjà en cours.'}
+            self._download_running = True
+            self.is_cancelled = False
+            self.is_paused = False
+            self._suspended_download_pids = []
+        # Capture indépendante : modifier la file ou les qualités pendant
+        # le transfert ne doit pas modifier le travail en cours.
+        items = [dict(item) for item in items]
+        settings = dict(self.get_app_settings())
 
         def _worker():
-            total = len(items)
-            completed = 0
-            if any(
-                not item.get("is_direct_download")
-                and not (item.get("mode", "Vidéo") == "Vidéo"
-                         and twitch_vod_id(item.get("url")))
-                for item in items
-            ):
-                if not ensure_ytdlp_ready():
-                    error_text = ("yt-dlp est absent ou invalide. "
-                                  "Impossible de demarrer les telechargements. "
-                                  "Verifiez la connexion Internet.")
-                    try:
-                        if self._window:
-                            self._window.evaluate_js(
-                                f"updateDownloadProgress(0, {json.dumps(error_text)})"
+            try:
+                total = len(items)
+                completed = 0
+                if any(
+                    not item.get("is_direct_download")
+                    and not (item.get("mode", "Vidéo") == "Vidéo"
+                             and twitch_vod_id(item.get("url")))
+                    for item in items
+                ):
+                    if not ensure_ytdlp_ready():
+                        error_text = ("yt-dlp est absent ou invalide. "
+                                      "Impossible de demarrer les telechargements. "
+                                      "Verifiez la connexion Internet.")
+                        try:
+                            if self._window:
+                                self._window.evaluate_js(
+                                    f"updateDownloadProgress(0, {json.dumps(error_text)})"
+                                )
+                                self._window.evaluate_js(
+                                    f"showAppToast({json.dumps(error_text)})"
+                                )
+                        except Exception:
+                            pass
+                        return
+                for idx, item in enumerate(items, 1):
+                    while self.is_paused and not self.is_cancelled:
+                        time.sleep(0.3)
+
+                    if self.is_cancelled: break
+                    
+                    url = item["url"]
+                    mode = item.get("mode", "Vidéo")
+                    quality = item.get("selectedQuality", "Meilleure qualité (Auto)")
+
+                    is_yt = bool(url and ("youtube.com" in url.lower() or "youtu.be" in url.lower()))
+                    is_channel = item.get("is_channel", False)
+                    channel_title = item.get("channel_title")
+                    is_playlist = item.get("is_playlist", False)
+                    playlist_title = item.get("playlist_title")
+
+                    # Routage centralisé : GIFS, AUDIOS, CHAÎNES, PLAYLIST, VIDÉOS, AUTRES.
+                    target_dir = get_media_download_dir(self.download_folder, item)
+                    os.makedirs(target_dir, exist_ok=True)
+
+                    # VOD Twitch en mode Vidéo : moteur CLI dédié. Les clips, GIF,
+                    # audios et tous les autres sites restent sur le chemin yt-dlp.
+                    if mode == "Vidéo" and twitch_vod_id(url):
+                        if self._download_twitch_video(item, target_dir, quality, idx, total):
+                            completed += 1
+                            try:
+                                if self._window:
+                                    if settings.get("notify") == "always":
+                                        self._window.evaluate_js(
+                                            f"showAppToast({json.dumps('Média téléchargé : ' + str(item.get('title', 'VOD Twitch')))})"
+                                        )
+                                    self._window.evaluate_js(
+                                        f"markDownloadSuccess({json.dumps(url)})"
+                                    )
+                            except Exception:
+                                pass
+                        elif not self.is_cancelled and self._window:
+                            try:
+                                self._window.evaluate_js(
+                                    f"markDownloadFailure({json.dumps(url)}, "
+                                    f"{json.dumps('Téléchargement Twitch impossible. Consultez le journal de progression.')})"
+                                )
+                            except Exception:
+                                pass
+                        continue
+
+                    # Téléchargement direct d'image / GIF Pinterest
+                    if item.get("is_direct_download"):
+                        try:
+                            def check_transfer_state():
+                                while self.is_paused and not self.is_cancelled:
+                                    time.sleep(0.2)
+                                if self.is_cancelled:
+                                    raise InterruptedError("Téléchargement annulé.")
+                            saved_file = save_direct_media(
+                                url, target_dir, item.get("title", "Pinterest_Media"),
+                                on_chunk=check_transfer_state
                             )
-                            self._window.evaluate_js(
-                                f"showAppToast({json.dumps(error_text)})"
-                            )
-                    except Exception:
-                        pass
-                    return
-            for idx, item in enumerate(items, 1):
-                while self.is_paused and not self.is_cancelled:
-                    time.sleep(0.3)
+                            completed += 1
+                            if self._window:
+                                try:
+                                    if settings.get("notify") == "always":
+                                        self._window.evaluate_js(
+                                            f"showAppToast({json.dumps('Téléchargement terminé : ' + os.path.basename(saved_file))})"
+                                        )
+                                    self._window.evaluate_js(f"markDownloadSuccess({json.dumps(url)})")
+                                except Exception:
+                                    pass
+                        except (OSError, ValueError, InterruptedError) as exc:
+                            if not self.is_cancelled and self._window:
+                                try:
+                                    message = "Téléchargement direct impossible : " + str(exc)[:160]
+                                    self._window.evaluate_js(f"updateDownloadProgress(0, {json.dumps(message)})")
+                                    self._window.evaluate_js(
+                                        f"markDownloadFailure({json.dumps(url)}, {json.dumps(message)})"
+                                    )
+                                except Exception:
+                                    pass
+                        continue
 
-                if self.is_cancelled: break
-                
-                url = item["url"]
-                mode = item.get("mode", "Vidéo")
-                quality = item.get("selectedQuality", "Meilleure qualité (Auto)")
+                # Téléchargement universel via yt-dlp
+                    cmd = [
+                        YTDLP_PATH,
+                        "--ffmpeg-location", BIN_DIR,
+                        "--windows-filenames",
+                        "--newline",
+                        "--force-ipv4",
+                        "--socket-timeout", "15",
+                        "-P", target_dir,
+                        "-o", f"{sanitize_filename(item.get('title', 'Media'))}.%(ext)s" if "v.pinimg.com" in url else "%(title)s.%(ext)s"
+                    ] + self._get_cookie_args()
 
-                is_yt = bool(url and ("youtube.com" in url.lower() or "youtu.be" in url.lower()))
-                is_channel = item.get("is_channel", False)
-                channel_title = item.get("channel_title")
-                is_playlist = item.get("is_playlist", False)
-                playlist_title = item.get("playlist_title")
+                    if "twitter.com" in url or "x.com" in url:
+                        cmd.extend(["--extractor-args", "twitter:api=syndication"])
 
-                # Routage centralisé : GIFS, AUDIOS, CHAÎNES, PLAYLIST, VIDÉOS, AUTRES.
-                target_dir = get_media_download_dir(self.download_folder, item)
-                os.makedirs(target_dir, exist_ok=True)
+                    if is_playlist or is_channel:
+                        s_idx = item.get("start_idx", 1)
+                        e_idx = item.get("end_idx", item.get("item_count", 1))
+                        cmd.extend([
+                            "--yes-playlist",
+                            "--playlist-start", str(s_idx),
+                            "--playlist-end", str(e_idx),
+                            "--ignore-errors",
+                            "--no-abort-on-error"
+                        ])
+                    elif ("v=" in url or "youtu.be/" in url):
+                        cmd.append("--no-playlist")
 
-                # VOD Twitch en mode Vidéo : moteur CLI dédié. Les clips, GIF,
-                # audios et tous les autres sites restent sur le chemin yt-dlp.
-                if mode == "Vidéo" and twitch_vod_id(url):
-                    if self._download_twitch_video(item, target_dir, quality, idx, total):
+                    # Séparation stricte Vidéo vs Audio
+                    if mode == "Audio":
+                        embed_thumb = settings.get("audio_embed_thumb", True)
+                        write_thumb = settings.get("audio_write_thumb", True)
+                        add_meta = settings.get("audio_add_metadata", True)
+                    else:
+                        embed_thumb = settings.get("video_embed_thumb", True)
+                        write_thumb = settings.get("video_write_thumb", True)
+                        add_meta = settings.get("video_add_metadata", True)
+
+                    if embed_thumb or write_thumb:
+                        cmd.extend(["--convert-thumbnails", "jpg"])
+
+                    if embed_thumb:
+                        cmd.append("--embed-thumbnail")
+                    if write_thumb:
+                        cmd.append("--write-thumbnail")
+
+                    if add_meta:
+                        cmd.append("--add-metadata")
+
+                    # Proxy
+                    if settings.get("proxy_toggle") and settings.get("proxy_url"):
+                        cmd.extend(["--proxy", settings.get("proxy_url")])
+
+                    # SponsorBlock
+                    if is_yt and settings.get("sponsor_enable", True):
+                        s_remove = settings.get("sponsor_remove", "sponsor")
+                        if s_remove in ["all", "sponsor"]:
+                            cmd.extend(["--sponsorblock-remove", s_remove])
+
+                        if settings.get("sponsor_mark") == "chapters":
+                            cmd.extend(["--sponsorblock-mark", "all"])
+
+                        sponsor_api = settings.get("sponsor_api", "").strip()
+                        if sponsor_api and sponsor_api != "https://sponsor.ajay.app":
+                            cmd.extend(["--sponsorblock-api", sponsor_api.rstrip('/')])
+
+                        if settings.get("exact_cut", False):
+                            cmd.append("--force-keyframes-at-cuts")
+
+                    # Impersonation
+                    imp_val = settings.get("impersonation", "none")
+                    if imp_val == "random":
+                        rand_ua = random.choice(list(UA_MAP.values()))
+                        cmd.extend(["--user-agent", rand_ua])
+                    elif imp_val in UA_MAP:
+                        cmd.extend(["--user-agent", UA_MAP[imp_val]])
+
+                    # Arguments personnalisés
+                    extra_args = settings.get("extractor_args", "").strip()
+                    if extra_args:
+                        for arg in extra_args.splitlines():
+                            if arg.strip():
+                                cmd.extend(["--extractor-args", arg.strip()])
+
+                    # AUDIO / GIF / VIDÉO (Format universel garanti sans erreur 404/format unavailable)
+                    if mode == "Audio":
+                        cmd.append("-x")
+                        audio_choice = settings.get("audio_format", "FLAC")
+                        # Une qualité choisie sur une carte prime sur le défaut global.
+                        selected_audio = quality if quality in ("FLAC", "M4A", "MP3_320") else audio_choice
+                        if selected_audio in ("MP3", "MP3_320"):
+                            cmd.extend(["--audio-format", "mp3", "--audio-quality", "320K"])
+                        elif selected_audio == "M4A":
+                            cmd.extend(["--audio-format", "m4a"])
+                        else:
+                            cmd.extend(["--audio-format", "flac"])
+
+                        audio_args = []
+                        if settings.get("post_process_audio") == "Normaliser":
+                            audio_args.extend(["-af", "loudnorm"])
+                        if settings.get("extra_selector") == "audio_rate":
+                            sample_rate = str(settings.get("audio_sample_rate", "source"))
+                            if sample_rate in ("44100", "48000"):
+                                audio_args.extend(["-ar", sample_rate])
+                        if audio_args:
+                            cmd.extend(["--postprocessor-args", "ffmpeg:" + " ".join(audio_args)])
+                    elif mode == "GIF":
+                        cmd.extend([
+                            "-f", "bestvideo+bestaudio/best",
+                            "--recode-video", "gif"
+                        ])
+                    else:
+                        if settings.get("post_process_video") == "Normaliser":
+                            cmd.extend(["--postprocessor-args", "ffmpeg:-af loudnorm"])
+                        elif settings.get("post_process_video") == "Remuxer":
+                            cmd.extend(["--remux-video", "mp4"])
+
+                        target_ext = settings.get("video_format", "MP4").lower()
+
+                        if quality == "Meilleure qualité (Auto)" or not quality:
+                            cmd.extend(["-f", "bestvideo+bestaudio/best"])
+                        else:
+                            h_match = re.search(r'(\d+)p?', str(quality))
+                            if h_match:
+                                h = h_match.group(1)
+                                cmd.extend([
+                                    "-f", f"bestvideo[height<=?{h}]+bestaudio/best[height<=?{h}]/best",
+                                    "--format-sort", f"res:{h},fps"
+                                ])
+                            else:
+                                cmd.extend(["-f", "bestvideo+bestaudio/best"])
+                        
+                        if not settings.get("video_origin_stream", False):
+                            cmd.extend(["--merge-output-format", target_ext])
+
+                    cmd.append(url)
+                    proc = subprocess.Popen(
+                        cmd,
+                        stdin=subprocess.DEVNULL,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        universal_newlines=True,
+                        encoding='utf-8',
+                        errors='replace',
+                        bufsize=1,
+                        creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+                    )
+
+                    self._active_download_process = proc
+                    if self.is_cancelled:
+                        kill_process_tree(proc.pid)
+
+                    last_pct = -1
+                    last_time = 0
+                    last_error = ""
+                    for line in iter(proc.stdout.readline, ""):
+                        clean = line.strip()
+                        if "ERROR:" in clean or "HTTP Error 403" in clean or "HTTP Error 404" in clean:
+                            last_error = clean[:220]
+                        if "[download]" in clean and "%" in clean:
+                            m = re.search(r"(\d+\.\d+)%", clean)
+                            if m:
+                                pct = float(m.group(1))
+                                curr_time = time.time()
+                                if int(pct) != last_pct or (curr_time - last_time) > 0.3:
+                                    last_pct = int(pct)
+                                    last_time = curr_time
+                                    msg = f"[{idx}/{total}] {clean}"
+                                    try:
+                                        if self._window:
+                                            self._window.evaluate_js(f"updateDownloadProgress({pct}, {json.dumps(msg)})")
+                                    except Exception: pass
+
+                    proc.communicate()
+                    self._active_download_process = None
+
+                    if not self.is_cancelled and getattr(proc, "returncode", None) == 0:
                         completed += 1
                         try:
                             if self._window:
                                 if settings.get("notify") == "always":
-                                    self._window.evaluate_js(
-                                        f"showAppToast({json.dumps('Média téléchargé : ' + str(item.get('title', 'VOD Twitch')))})"
-                                    )
-                                self._window.evaluate_js(
-                                    f"markDownloadSuccess({json.dumps(url)})"
-                                )
+                                    self._window.evaluate_js(f"showAppToast({json.dumps('Média téléchargé : ' + str(item.get('title', 'Média')))})")
+                                self._window.evaluate_js(f"markDownloadSuccess({json.dumps(url)})")
                         except Exception:
                             pass
-                    continue
+                    elif not self.is_cancelled and self._window:
+                        reason = last_error or f"yt-dlp a échoué (code {proc.returncode})."
+                        try:
+                            self._window.evaluate_js(
+                                f"markDownloadFailure({json.dumps(url)}, {json.dumps(reason)})"
+                            )
+                        except Exception:
+                            pass
 
-                # Téléchargement direct d'image / GIF Pinterest
-                if item.get("is_direct_download"):
-                    try:
-                        ext = os.path.splitext(urllib.parse.urlparse(url).path)[1]
-                        if not ext or len(ext) > 5:
-                            ext = ".jpg"
-                        out_name = sanitize_filename(item.get("title", "Pinterest_Media")) + ext
-                        out_path = os.path.join(target_dir, out_name)
-                        
-                        req = urllib.request.Request(url, headers={
-                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                            "Referer": "https://www.pinterest.com/"
-                        })
-                        with urllib.request.urlopen(req, timeout=20) as resp, open(out_path, "wb") as f_out:
-                            f_out.write(resp.read())
-                        
-                        completed += 1
-                        if self._window:
-                            try:
-                                if settings.get("notify") == "always":
-                                    self._window.evaluate_js(f"showAppToast({json.dumps('Téléchargement terminé : ' + out_name)})")
-                                self._window.evaluate_js(f"markDownloadSuccess({json.dumps(url)})")
-                                self._window.evaluate_js(f"updateDownloadProgress(100, {json.dumps('Téléchargement terminé – ' + out_name)})")
-                            except Exception:
-                                pass
-                        continue
-                    except Exception:
-                        pass
-
-                # Téléchargement universel via yt-dlp
-                cmd = [
-                    YTDLP_PATH,
-                    "--ffmpeg-location", BIN_DIR,
-                    "--windows-filenames",
-                    "--newline",
-                    "--force-ipv4",
-                    "--socket-timeout", "15",
-                    "-P", target_dir,
-                    "-o", f"{sanitize_filename(item.get('title', 'Media'))}.%(ext)s" if "v.pinimg.com" in url else "%(title)s.%(ext)s"
-                ] + self._get_cookie_args()
-
-                if "twitter.com" in url or "x.com" in url:
-                    cmd.extend(["--extractor-args", "twitter:api=syndication"])
-
-                if is_playlist or is_channel:
-                    s_idx = item.get("start_idx", 1)
-                    e_idx = item.get("end_idx", item.get("item_count", 1))
-                    cmd.extend([
-                        "--yes-playlist",
-                        "--playlist-start", str(s_idx),
-                        "--playlist-end", str(e_idx),
-                        "--ignore-errors",
-                        "--no-abort-on-error"
-                    ])
-                elif ("v=" in url or "youtu.be/" in url):
-                    cmd.append("--no-playlist")
-
-                # Séparation stricte Vidéo vs Audio
-                if mode == "Audio":
-                    embed_thumb = settings.get("audio_embed_thumb", True)
-                    write_thumb = settings.get("audio_write_thumb", True)
-                    add_meta = settings.get("audio_add_metadata", True)
-                else:
-                    embed_thumb = settings.get("video_embed_thumb", True)
-                    write_thumb = settings.get("video_write_thumb", True)
-                    add_meta = settings.get("video_add_metadata", True)
-
-                if embed_thumb or write_thumb:
-                    cmd.extend(["--convert-thumbnails", "jpg"])
-
-                if embed_thumb:
-                    cmd.append("--embed-thumbnail")
-                if write_thumb:
-                    cmd.append("--write-thumbnail")
-
-                if add_meta:
-                    cmd.append("--add-metadata")
-
-                # Proxy
-                if settings.get("proxy_toggle") and settings.get("proxy_url"):
-                    cmd.extend(["--proxy", settings.get("proxy_url")])
-
-                # SponsorBlock
-                if is_yt and settings.get("sponsor_enable", True):
-                    s_remove = settings.get("sponsor_remove", "sponsor")
-                    if s_remove in ["all", "sponsor"]:
-                        cmd.extend(["--sponsorblock-remove", s_remove])
-
-                    if settings.get("sponsor_mark") == "chapters":
-                        cmd.extend(["--sponsorblock-mark", "all"])
-
-                    sponsor_api = settings.get("sponsor_api", "").strip()
-                    if sponsor_api and sponsor_api != "https://sponsor.ajay.app":
-                        cmd.extend(["--sponsorblock-api", sponsor_api.rstrip('/')])
-
-                    if settings.get("exact_cut", False):
-                        cmd.append("--force-keyframes-at-cuts")
-
-                # Impersonation
-                imp_val = settings.get("impersonation", "none")
-                if imp_val == "random":
-                    rand_ua = random.choice(list(UA_MAP.values()))
-                    cmd.extend(["--user-agent", rand_ua])
-                elif imp_val in UA_MAP:
-                    cmd.extend(["--user-agent", UA_MAP[imp_val]])
-
-                # Arguments personnalisés
-                extra_args = settings.get("extractor_args", "").strip()
-                if extra_args:
-                    for arg in extra_args.splitlines():
-                        if arg.strip():
-                            cmd.extend(["--extractor-args", arg.strip()])
-
-                # AUDIO / GIF / VIDÉO (Format universel garanti sans erreur 404/format unavailable)
-                if mode == "Audio":
-                    cmd.append("-x")
-                    audio_choice = settings.get("audio_format", "FLAC")
-                    # Une qualité choisie sur une carte prime sur le défaut global.
-                    selected_audio = quality if quality in ("FLAC", "M4A", "MP3_320") else audio_choice
-                    if selected_audio in ("MP3", "MP3_320"):
-                        cmd.extend(["--audio-format", "mp3", "--audio-quality", "320K"])
-                    elif selected_audio == "M4A":
-                        cmd.extend(["--audio-format", "m4a"])
-                    else:
-                        cmd.extend(["--audio-format", "flac"])
-
-                    audio_args = []
-                    if settings.get("post_process_audio") == "Normaliser":
-                        audio_args.extend(["-af", "loudnorm"])
-                    if settings.get("extra_selector") == "audio_rate":
-                        sample_rate = str(settings.get("audio_sample_rate", "source"))
-                        if sample_rate in ("44100", "48000"):
-                            audio_args.extend(["-ar", sample_rate])
-                    if audio_args:
-                        cmd.extend(["--postprocessor-args", "ffmpeg:" + " ".join(audio_args)])
-                elif mode == "GIF":
-                    cmd.extend([
-                        "-f", "bestvideo+bestaudio/best",
-                        "--recode-video", "gif"
-                    ])
-                else:
-                    if settings.get("post_process_video") == "Normaliser":
-                        cmd.extend(["--postprocessor-args", "ffmpeg:-af loudnorm"])
-                    elif settings.get("post_process_video") == "Remuxer":
-                        cmd.extend(["--remux-video", "mp4"])
-
-                    target_ext = settings.get("video_format", "MP4").lower()
-
-                    if quality == "Meilleure qualité (Auto)" or not quality:
-                        cmd.extend(["-f", "bestvideo+bestaudio/best"])
-                    else:
-                        h_match = re.search(r'(\d+)p?', str(quality))
-                        if h_match:
-                            h = h_match.group(1)
-                            cmd.extend([
-                                "-f", f"bestvideo[height<=?{h}]+bestaudio/best[height<=?{h}]/best",
-                                "--format-sort", f"res:{h},fps"
-                            ])
-                        else:
-                            cmd.extend(["-f", "bestvideo+bestaudio/best"])
-                    
-                    if not settings.get("video_origin_stream", False):
-                        cmd.extend(["--merge-output-format", target_ext])
-
-                cmd.append(url)
-                proc = subprocess.Popen(
-                    cmd,
-                    stdin=subprocess.DEVNULL,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    universal_newlines=True,
-                    encoding='utf-8',
-                    errors='replace',
-                    bufsize=1,
-                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
-                )
-
-                self._active_download_process = proc
-                if self.is_cancelled:
-                    kill_process_tree(proc.pid)
-
-                last_pct = -1
-                last_time = 0
-                for line in iter(proc.stdout.readline, ""):
-                    clean = line.strip()
-                    if "[download]" in clean and "%" in clean:
-                        m = re.search(r"(\d+\.\d+)%", clean)
-                        if m:
-                            pct = float(m.group(1))
-                            curr_time = time.time()
-                            if int(pct) != last_pct or (curr_time - last_time) > 0.3:
-                                last_pct = int(pct)
-                                last_time = curr_time
-                                msg = f"[{idx}/{total}] {clean}"
-                                try:
-                                    if self._window:
-                                        self._window.evaluate_js(f"updateDownloadProgress({pct}, {json.dumps(msg)})")
-                                except Exception: pass
-
-                proc.communicate()
                 self._active_download_process = None
+                try:
+                    if self._window:
+                        if self.is_cancelled:
+                            status = f"Annulé – {completed}/{total} élément(s) téléchargé(s)."
+                        elif completed == total:
+                            status = f"Traitement terminé – {completed}/{total} élément(s) téléchargé(s)."
+                        else:
+                            status = f"Terminé avec erreurs – {completed}/{total} élément(s) téléchargé(s)."
+                        self._window.evaluate_js(f"updateDownloadProgress(100, {json.dumps(status)})")
+                        if settings.get("notify") in ("finish", "always"):
+                            self._window.evaluate_js(f"showAppToast({json.dumps(status)})")
+                except Exception:
+                    pass
+                gc.collect()
 
-                if not self.is_cancelled and getattr(proc, "returncode", None) == 0:
-                    completed += 1
-                    try:
-                        if self._window:
-                            if settings.get("notify") == "always":
-                                self._window.evaluate_js(f"showAppToast({json.dumps('Média téléchargé : ' + str(item.get('title', 'Média')))})")
-                            self._window.evaluate_js(f"markDownloadSuccess({json.dumps(url)})")
-                    except Exception:
-                        pass
 
-            self._active_download_process = None
-            try:
-                if self._window:
-                    if self.is_cancelled:
-                        status = f"Annulé – {completed}/{total} élément(s) téléchargé(s)."
-                    elif completed == total:
-                        status = f"Traitement terminé – {completed}/{total} élément(s) téléchargé(s)."
-                    else:
-                        status = f"Terminé avec erreurs – {completed}/{total} élément(s) téléchargé(s)."
-                    self._window.evaluate_js(f"updateDownloadProgress(100, {json.dumps(status)})")
-                    if settings.get("notify") in ("finish", "always"):
-                        self._window.evaluate_js(f"showAppToast({json.dumps(status)})")
-            except Exception:
-                pass
-            gc.collect()
+            except Exception as exc:
+                handle_exception(type(exc), exc, exc.__traceback__)
+                try:
+                    if self._window:
+                        message = "Échec inattendu du téléchargement : " + str(exc)[:180]
+                        self._window.evaluate_js(
+                            f"updateDownloadProgress(0, {json.dumps(message)})"
+                        )
+                        self._window.evaluate_js(f"showAppToast({json.dumps(message)})")
+                except Exception:
+                    pass
+            finally:
+                self._active_download_process = None
+                self._download_running = False
+                try:
+                    if self._window:
+                        self._window.evaluate_js("finishDownloadUIState()")
+                except Exception:
+                    pass
 
-        threading.Thread(target=_worker, daemon=True).start()
+        try:
+            threading.Thread(target=_worker, daemon=True).start()
+        except (OSError, RuntimeError) as exc:
+            self._download_running = False
+            return {"success": False, "error": "Impossible de lancer la file : " + str(exc)}
+        return {"success": True}
 
 def _log_binary_setup_error(error):
     """Ne plus cacher silencieusement les erreurs du premier lancement."""
