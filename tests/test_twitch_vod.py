@@ -410,7 +410,7 @@ class IntegrationTests(unittest.TestCase):
         cli.assert_called_once()
         launch.assert_not_called()
         hls.assert_called_once()
-        self.assertEqual(hls.call_args.args[3], "1080p (60fps)")
+        self.assertEqual(hls.call_args.args[2], "1080p (60fps)")
         self.assertFalse(api.is_cancelled)
 
     def test_cli_launch_exception_falls_back_to_native_hls(self):
@@ -432,7 +432,7 @@ class IntegrationTests(unittest.TestCase):
                 root, "720p (60fps)", 1, 1
             ))
         hls.assert_called_once()
-        self.assertEqual(hls.call_args.args[3], "720p (60fps)")
+        self.assertEqual(hls.call_args.args[2], "720p (60fps)")
 
     def test_healthy_cli_is_still_prioritized_and_not_duplicated_by_hls(self):
         import yt_app
