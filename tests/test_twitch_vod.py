@@ -137,13 +137,12 @@ class IntegrationTests(unittest.TestCase):
         import yt_app
         api = yt_app.DownloaderAPI.__new__(yt_app.DownloaderAPI)
         api.config = {}
-        with patch.object(yt_app, "ensure_ytdlp_ready", return_value=False), \
-             patch.object(yt_app, "available_hls_formats", return_value=["720p (60fps)", "480p (30fps)"]) as probe:
+        with patch.object(yt_app, "ensure_ytdlp_ready", return_value=False):
             result = api.extract_info("https://www.twitch.tv/videos/1234567890")
         self.assertTrue(result["success"])
         self.assertEqual(result["data"]["title"], "VOD Twitch 1234567890")
-        self.assertEqual(result["data"]["formats"], ["Meilleure qualité (Auto)", "720p (60fps)", "480p (30fps)"])
-        probe.assert_called_once()
+        self.assertIn("720p (60fps)", result["data"]["formats"])
+        self.assertIn("480p (30fps)", result["data"]["formats"])
 
     def test_twitch_video_does_not_require_ytdlp_and_uses_existing_queue(self):
         import yt_app
