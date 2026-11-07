@@ -95,6 +95,7 @@ PORTABLE_DATA_LOCAL = bool(APP_ROOT and get_portable_root())
 # AppData ne sert qu'aux anciennes données à importer ou au mode source.
 APP_DIR = os.path.join(APP_ROOT, "Donnees") if APP_ROOT else LEGACY_APP_DIR
 BIN_DIR = os.path.join(APP_DIR, "bin")
+YTDLP_CACHE_DIR = os.path.join(APP_DIR, "cache", "yt-dlp")
 CONFIG_FILE = os.path.join(APP_DIR, "config.json")
 HTML_FILE = os.path.join(APP_DIR, "index.html")
 CRASH_LOG = os.path.join(APP_DIR, "crash_log.txt")
@@ -3332,6 +3333,7 @@ class DownloaderAPI:
 
         cmd = [
             YTDLP_PATH, "-J",
+            "--cache-dir", YTDLP_CACHE_DIR,
             "--no-warnings",
             "--force-ipv4",
             "--socket-timeout", "15",
@@ -3793,6 +3795,7 @@ class DownloaderAPI:
                 # Téléchargement universel via yt-dlp
                     cmd = [
                         YTDLP_PATH,
+                        "--cache-dir", YTDLP_CACHE_DIR,
                         "--ffmpeg-location", BIN_DIR,
                         "--windows-filenames",
                         "--newline",
