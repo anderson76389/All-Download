@@ -49,6 +49,21 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 
 ---
 
+## 📺 VOD Twitch — moteur spécialisé
+
+Pour les liens de VOD du type `https://www.twitch.tv/videos/1234567890`, **All-Download utilise [TwitchDownloaderCLI](https://github.com/lay295/TwitchDownloader)** en mode **Vidéo**, tout en conservant exactement la même interface et la même file d'attente (progression, pause, reprise et annulation).
+
+- Le CLI **Windows x64 autonome** est téléchargé **au premier besoin** depuis la dernière release officielle, dans `Donnees/bin/TwitchDownloaderCLI.exe`. L'archive est contrôlée (taille, empreinte SHA-256 quand elle est fournie par GitHub, format PE x64) puis l'exécutable est installé atomiquement. Aucune interface TwitchDownloader séparée ou installation de .NET n'est requise.
+- Les fichiers sont rangés dans **AUTRES/**, dans le dossier de téléchargement configuré. L'option **Rename** évite d'écraser un fichier du même nom.
+- All-Download réutilise son propre FFmpeg. Le CLI télécharge les VOD vidéo en **MP4** ; il ne gère pas ici la sortie MKV, les options SponsorBlock, la conversion audio ni les réglages de proxy d'yt-dlp.
+- Si yt-dlp ne peut pas obtenir les métadonnées Twitch, une carte minimale **« VOD Twitch + identifiant »** est ajoutée : vous pouvez quand même lancer le téléchargement. Dans ce cas, seule la **meilleure qualité automatique** est proposée.
+- Les **clips Twitch**, les modes **Audio/GIF**, YouTube et tous les autres sites restent gérés par **yt-dlp**, sans changement de leur fonctionnement. Seules les VOD accessibles publiquement sont prises en charge sans identification OAuth spécifique ; certains contenus abonnés/privés peuvent rester inaccessibles.
+- Une connexion est nécessaire au premier téléchargement pour obtenir le CLI. En cas d'indisponibilité de GitHub ou du fichier, All-Download affiche une erreur et conserve les autres moteurs utilisables.
+
+**Crédits :** [TwitchDownloader de lay295](https://github.com/lay295/TwitchDownloader), distribué sous [licence MIT](https://github.com/lay295/TwitchDownloader/blob/master/LICENSE.txt). TwitchDownloader n'est pas affilié à Twitch.
+
+---
+
 ## 💻 Deux versions Windows, le même All-Download
 
 | 🧳 **PORTABLE** | 🖥️ **CLASSIQUE** |
