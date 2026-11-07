@@ -197,7 +197,8 @@ class IntegrationTests(unittest.TestCase):
              patch.object(yt_app, "ensure_cli_ready", return_value=(True, "")), \
              patch.object(yt_app, "is_valid_windows_executable", return_value=True), \
              patch.object(yt_app, "build_twitch_command", return_value=["cmd"]), \
-             patch.object(yt_app.subprocess, "Popen", return_value=FakeProcess()):
+             patch.object(yt_app.subprocess, "Popen", return_value=FakeProcess()), \
+             patch.object(api, "_download_twitch_hls", return_value=(False, "Aucun manifest HLS")):
             success = api._download_twitch_video(
                 {"url": "https://twitch.tv/videos/1234567890"}, root,
                 "Meilleure qualité (Auto)", 1, 1
@@ -231,6 +232,76 @@ class IntegrationTests(unittest.TestCase):
         ytdlp.assert_not_called()
         self.assertTrue(any("avec erreurs" in x
                             for x in api._window.events))
+
+
+    def test_twitch_cli_refusal_retries_hls_and_succeeds(self):
+        import yt_app
+        api = yt_app.DownloaderAPI.__new__(yt_app.DownloaderAPI)
+        api._window = None
+        api.is_cancelled = False
+        api._active_download_process = None
+        class FakeProcess:
+            pid = 10001
+            stdout = io.StringIO("Unhandled exception. (Insufficient access to VOD)\n")
+            def wait(self):
+                return 3762504530
+            def poll(self):
+                return 3762504530
+        with tempfile.TemporaryDirectory() as root, \
+             patch.object(yt_app, "BIN_DIR", root), \
+             patch.object(yt_app, "APP_DIR", root), \
+             patch.object(yt_app, "FFMPEG_PATH", os.path.join(root, "ffmpeg.exe")), \
+             patch.object(yt_app, "ensure_cli_ready", return_value=(True, "")), \
+             patch.object(yt_app, "is_valid_windows_executable", return_value=True), \
+             patch.object(yt_app, "build_twitch_command", return_value=["cmd"]), \
+             patch.object(yt_app.subprocess, "Popen", return_value=FakeProcess()), \
+             patch.object(api, "_download_twitch_hls", return_value=(True, "")) as fallback:
+            success = api._download_twitch_video(
+                {"url": "https://twitch.tv/videos/2919531847"}, root,
+                "Meilleure qualité (Auto)", 1, 1
+            )
+        self.assertTrue(success)
+        fallback.assert_called_once()
+
+    def test_hls_fallback_reports_success_and_preserves_existing_file(self):
+        import yt_app
+        api = yt_app.DownloaderAPI.__new__(yt_app.DownloaderAPI)
+        api._window = None
+        api.is_cancelled = False
+        api._active_download_process = None
+        with tempfile.TemporaryDirectory() as root:
+            first_output = os.path.join(root, "Twitch_2919531847_VOD.mp4")
+            with open(first_output, "wb") as existing:
+                existing.write(b"old file must remain")
+            from pathlib import Path
+            new_output = Path(root, "Twitch_2919531847_VOD (2).mp4")
+            temp_output = Path(root, ".test-part.mp4")
+            def fake_popen(*args, **kwargs):
+                temp_output.write_bytes(b"sample output" * 200)
+                class FakeProcess:
+                    pid = 10001
+                    stdout = io.StringIO("out_time_ms=3000000\nout_time_ms=6000000\n")
+                    def wait(self):
+                        return 0
+                    def poll(self):
+                        return 0
+                return FakeProcess()
+            with patch.object(yt_app, "resolve_hls",
+                              return_value=("https://d1.example.cloudfront.net/abcd/chunked/index-dvr.m3u8",
+                                            "chunked", 10, 1)), \
+                 patch.object(yt_app, "twitch_hls_paths", return_value=(temp_output, new_output)), \
+                 patch.object(yt_app, "twitch_hls_ffmpeg_command", return_value=["ffmpeg.exe"]), \
+                 patch.object(yt_app.subprocess, "Popen", side_effect=fake_popen):
+                success, reason = api._download_twitch_hls(
+                    {"url": "https://twitch.tv/videos/2919531847", "title": "VOD"},
+                    root, "Meilleure qualité (Auto)", 1, 1,
+                    lambda pct, label: None
+                )
+            self.assertTrue(success, reason)
+            self.assertEqual(open(first_output, "rb").read(), b"old file must remain")
+            self.assertTrue(new_output.is_file())
+            self.assertFalse(temp_output.exists())
+
 
 
 if __name__ == "__main__":
