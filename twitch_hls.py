@@ -12,7 +12,6 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from twitch_vod import twitch_vod_id, selected_quality_to_cli
@@ -129,45 +128,6 @@ def read_public_manifest(url, timeout=12):
     if not durations:
         raise HLSUnavailable("Manifest sans segments vidéo.")
     return len(durations), sum(durations)
-
-
-# Libellés sûrs, utilisés tels quels dans le menu de la carte vidéo.
-PUBLIC_HLS_FORMATS = {
-    "1080p60": "1080p (60fps)",
-    "720p60": "720p (60fps)",
-    "720p30": "720p (30fps)",
-    "480p30": "480p (30fps)",
-    "360p30": "360p (30fps)",
-    "160p30": "160p (30fps)",
-}
-
-
-def available_hls_formats(url, timeout=6):
-    """Lister uniquement les résolutions dont la playlist contient des segments.
-
-    Échec d'un serveur -> cette qualité est absente ; l'extraction de la carte
-    reste possible en mode Auto. Les sondes sont simultanées pour rester rapides.
-    """
-    vod_id = twitch_vod_id(url)
-    if not vod_id:
-        raise HLSUnavailable("URL Twitch VOD invalide.")
-    meta = metadata_for_vod(vod_id, timeout=timeout)
-    preview = meta.get("seekPreviewsURL")
-    if not preview:
-        return []
-    entries = [(code, playlist) for code, playlist
-               in manifest_candidates(preview, "Meilleure qualité (Auto)")
-               if code in PUBLIC_HLS_FORMATS]
-    def probe(entry):
-        code, playlist = entry
-        try:
-            count, _ = read_public_manifest(playlist, timeout=timeout)
-            return code if count > 0 else None
-        except (HLSUnavailable, urllib.error.URLError, TimeoutError, OSError, ValueError):
-            return None
-    with ThreadPoolExecutor(max_workers=6) as executor:
-        available = set(x for x in executor.map(probe, entries) if x)
-    return [PUBLIC_HLS_FORMATS[code] for code, _ in entries if code in available]
 
 
 def resolve_hls(url, quality="Meilleure qualité (Auto)", timeout=12):
