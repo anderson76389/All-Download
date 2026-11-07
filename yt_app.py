@@ -212,6 +212,7 @@ except Exception:
 YTDLP_PATH = os.path.join(BIN_DIR, "yt-dlp.exe")
 DENO_PATH = os.path.join(BIN_DIR, "deno.exe")
 FFMPEG_PATH = os.path.join(BIN_DIR, "ffmpeg.exe")
+FFPROBE_PATH = os.path.join(BIN_DIR, "ffprobe.exe")
 
 YTDLP_URL = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
 FFMPEG_URL = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
@@ -4144,7 +4145,7 @@ def _setup_binaries_locked():
         if not is_valid_windows_executable(YTDLP_PATH):
             safe_download_file(YTDLP_URL, YTDLP_PATH)
 
-        probe_path = os.path.join(BIN_DIR, "ffprobe.exe")
+        probe_path = FFPROBE_PATH
         if not is_valid_windows_executable(FFMPEG_PATH) or not is_valid_windows_executable(probe_path):
             zip_p = os.path.join(APP_DIR, "ffmpeg.zip")
             if not safe_download_file(FFMPEG_URL, zip_p):
