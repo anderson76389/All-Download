@@ -3656,9 +3656,17 @@ class DownloaderAPI:
                                     )
                             except Exception:
                                 pass
+                        elif not self.is_cancelled and self._window:
+                            try:
+                                self._window.evaluate_js(
+                                    f"markDownloadFailure({json.dumps(url)}, "
+                                    f"{json.dumps('Téléchargement Twitch impossible. Consultez le journal de progression.')})"
+                                )
+                            except Exception:
+                                pass
                         continue
 
-                        # Téléchargement direct d'image / GIF Pinterest
+                    # Téléchargement direct d'image / GIF Pinterest
                     if item.get("is_direct_download"):
                         try:
                             def check_transfer_state():
@@ -3685,6 +3693,9 @@ class DownloaderAPI:
                                 try:
                                     message = "Téléchargement direct impossible : " + str(exc)[:160]
                                     self._window.evaluate_js(f"updateDownloadProgress(0, {json.dumps(message)})")
+                                    self._window.evaluate_js(
+                                        f"markDownloadFailure({json.dumps(url)}, {json.dumps(message)})"
+                                    )
                                 except Exception:
                                     pass
                         continue
@@ -3843,8 +3854,11 @@ class DownloaderAPI:
 
                     last_pct = -1
                     last_time = 0
+                    last_error = ""
                     for line in iter(proc.stdout.readline, ""):
                         clean = line.strip()
+                        if "ERROR:" in clean or "HTTP Error 403" in clean or "HTTP Error 404" in clean:
+                            last_error = clean[:220]
                         if "[download]" in clean and "%" in clean:
                             m = re.search(r"(\d+\.\d+)%", clean)
                             if m:
@@ -3869,6 +3883,14 @@ class DownloaderAPI:
                                 if settings.get("notify") == "always":
                                     self._window.evaluate_js(f"showAppToast({json.dumps('Média téléchargé : ' + str(item.get('title', 'Média')))})")
                                 self._window.evaluate_js(f"markDownloadSuccess({json.dumps(url)})")
+                        except Exception:
+                            pass
+                    elif not self.is_cancelled and self._window:
+                        reason = last_error or f"yt-dlp a échoué (code {proc.returncode})."
+                        try:
+                            self._window.evaluate_js(
+                                f"markDownloadFailure({json.dumps(url)}, {json.dumps(reason)})"
+                            )
                         except Exception:
                             pass
 
