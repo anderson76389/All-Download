@@ -39,7 +39,7 @@ if __name__ == '__main__':
 # 2. Les deux editions (Portable et Classique) rangent les medias,
 # reglages, outils et journaux dans le dossier du logiciel.
 # L'installateur protege explicitement les dossiers personnels.
-# Seul le profil technique WebView2 reste dans LocalAppData.
+# WebView2 est aussi local dans Donnees/ ; Windows peut utiliser %TEMP% pour PyInstaller.
 LEGACY_APP_DIR = os.path.join(
     os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "AllMediaDownload"
 )
@@ -1466,11 +1466,12 @@ HTML_PAGE = """<!DOCTYPE html>
         <div class="setting-field">
           <label class="setting-label" for="setDownloadFolder">Emplacement actuel :</label>
           <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-            <input id="setDownloadFolder" type="text" class="setting-input" spellcheck="false" autocomplete="off" placeholder="C:\\Users\\...\\Téléchargements" style="flex:1 1 300px; min-width:220px;">
+            <input id="setDownloadFolder" type="text" class="setting-input" spellcheck="false" autocomplete="off" placeholder="All-Download ou un de ses sous-dossiers" style="flex:1 1 300px; min-width:220px;">
             <button type="button" class="btn-logs-card" onclick="browseDownloadFolder()" style="padding:10px 16px; white-space:nowrap;">Parcourir…</button>
             <button type="button" class="btn-logs-card" onclick="resetDownloadFolder()" style="padding:10px 16px; white-space:nowrap;">Par défaut</button>
           </div>
           <div class="setting-subtext">Vous pouvez choisir un dossier sur un autre disque (D:, E:, etc.) ou coller un chemin complet. Aucun fichier existant ne sera déplacé ni supprimé.</div>
+          <div style="font-size:11px; opacity:.75; margin-top:6px;">Pour les versions Windows, seuls All-Download et ses sous-dossiers sont autorisés. Aucun média n'est enregistré à l'extérieur.</div>
           <div id="downloadFolderError" role="alert" aria-live="polite" style="display:none; color:#e35f5f; margin-top:8px; font-size:12px;"></div>
         </div>
       </div>
@@ -2137,7 +2138,11 @@ HTML_PAGE = """<!DOCTYPE html>
   function browseDownloadFolder() {
     setDownloadFolderError('');
     callApi('browse_download_folder').then(path => {
-      if (path) document.getElementById('setDownloadFolder').value = path;
+      if (path && typeof path === 'object' && path.error) {
+        setDownloadFolderError(path.error);
+      } else if (typeof path === 'string' && path) {
+        document.getElementById('setDownloadFolder').value = path;
+      }
     }).catch(() => setDownloadFolderError("Impossible d'ouvrir le sélecteur de dossiers Windows."));
   }
 
@@ -3032,7 +3037,13 @@ class DownloaderAPI:
                 webview.FileDialog.FOLDER, directory=initial
             )
             if result:
-                return os.path.normpath(result[0])
+                selected = os.path.normpath(result[0])
+                root = get_application_root()
+                if root and not is_inside_application_folder(selected, root):
+                    return {
+                        "error": "Ce dossier est à l'extérieur d'All-Download. Choisissez All-Download ou un sous-dossier."
+                    }
+                return selected
         except Exception as exc:
             handle_exception(type(exc), exc, exc.__traceback__)
         return None
