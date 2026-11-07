@@ -17,5 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Syntaxe du prototype
         run: python -m py_compile scripts/probe_twitch_hls_preview.py
+      - name: Installer FFmpeg portable pour la validation vidéo
+        run: python -m pip install imageio-ffmpeg
       - name: Tester sans authentification les manifests de la VOD utilisateur et temoin
         run: python scripts/probe_twitch_hls_preview.py
