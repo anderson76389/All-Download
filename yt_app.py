@@ -2310,8 +2310,10 @@ HTML_PAGE = """<!DOCTYPE html>
   }
 
   function cancelDownloadsSafe() {
-    callApi('cancel_downloads');
-    resetDownloadUIState();
+    callApi('cancel_downloads').then(ok => {
+      if (ok !== true) showAppToast("Annulation impossible.");
+    }).catch(() => showAppToast("Annulation impossible."));
+    // Garder le verrou UI tant que le moteur termine ses nettoyages.
   }
 
   function pauseDownloadsSafe() {
@@ -2748,23 +2750,25 @@ HTML_PAGE = """<!DOCTYPE html>
   /* GESTION ANIMATION CHARGEMENT AVANT LE TÉLÉCHARGEMENT */
   // Empêcher deux soumissions parallèles pendant la réponse du pont Python.
   let downloadSubmissionPending = false;
+  let downloadJobActive = false;
   let queueGeneration = 0;
   let skeletonSequence = 0;
   function submitDownloads(items) {
-    if (downloadSubmissionPending) {
-      showAppToast('Une demande de téléchargement est déjà en cours.');
+    if (downloadSubmissionPending || downloadJobActive) {
+      showAppToast('Un téléchargement est déjà en cours.');
       return;
     }
     if (!items.length) return;
     downloadSubmissionPending = true;
+    downloadJobActive = true;
     startDownloadUIState();
     callApi('start_downloads', items.map(item => ({ ...item }))).then(result => {
       if (!(result === true || (result && result.success === true))) {
-        resetDownloadUIState();
+        finishDownloadUIState();
         showAppToast(result && result.error ? result.error : 'Téléchargement impossible.');
       }
     }).catch(() => {
-      resetDownloadUIState();
+      finishDownloadUIState();
       showAppToast('Impossible de démarrer les téléchargements.');
     }).finally(() => { downloadSubmissionPending = false; });
   }
@@ -2824,6 +2828,7 @@ HTML_PAGE = """<!DOCTYPE html>
   function finishDownloadUIState() {
     resetDownloadUIState();
     downloadSubmissionPending = false;
+    downloadJobActive = false;
   }
 
   function openExternal(url) {
