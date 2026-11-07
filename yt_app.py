@@ -2966,10 +2966,20 @@ class DownloaderAPI:
             )
         self.download_folder = choose_initial_download_folder(self.config)
         ensure_media_directories(self.download_folder)
-        # Corriger aussi le chemin déjà enregistré sur les anciennes versions,
-        # en conservant les réglages, cookies et autres préférences.
-        if (not self.config["download_folder_custom"]
-                and self.config.get("download_folder") != self.download_folder):
+        # Réécrire immédiatement toute ancienne destination extérieure afin
+        # qu'aucune mise à jour ne puisse la réactiver. Les anciens médias
+        # restent sur le disque, sans copie ni suppression implicite.
+        app_root = get_application_root()
+        if app_root:
+            is_subfolder = (os.path.normcase(os.path.realpath(self.download_folder))
+                            != os.path.normcase(os.path.realpath(app_root)))
+            changed = (self.config.get("download_folder") != self.download_folder
+                       or self.config.get("download_folder_custom") != is_subfolder)
+            if changed:
+                self.config["download_folder_custom"] = is_subfolder
+                self._save_config()
+        elif (not self.config["download_folder_custom"]
+              and self.config.get("download_folder") != self.download_folder):
             self._save_config()
         self.is_cancelled = False
         self.is_paused = False
