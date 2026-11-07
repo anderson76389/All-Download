@@ -41,17 +41,41 @@ class ZipFolderTests(unittest.TestCase):
             files = set(z.namelist())
             for cat in arch.MEDIA_DIRS:
                 if name == arch.PORTABLE_NAME:
-                    self.assertIn(cat + "/", files)
-                    self.assertTrue(z.getinfo(cat + "/").is_dir())
+                    entry = f"{arch.PORTABLE_ROOT}/{cat}/"
+                    self.assertIn(entry, files)
+                    self.assertTrue(z.getinfo(entry).is_dir())
                 else:
                     self.assertNotIn(cat + "/", files)
             self.assertFalse(any(".gitkeep" in entry for entry in files))
-            self.assertFalse(any(entry.startswith(("Donnees/", "bin/")) for entry in files))
-            self.assertIn("Code-source/yt_app.py", files)
+            if name == arch.PORTABLE_NAME:
+                prefix = arch.PORTABLE_ROOT + "/"
+                self.assertTrue(all(entry.startswith(prefix) for entry in files))
+                self.assertTrue(z.getinfo(prefix + "Donnees/").is_dir())
+                self.assertTrue(z.getinfo(prefix + "Donnees/bin/").is_dir())
+                self.assertFalse(any(entry.startswith(prefix + "Donnees/")
+                                     and entry not in (prefix + "Donnees/", prefix + "Donnees/bin/")
+                                     for entry in files))
+                self.assertIn(prefix + "All_Media_Download.exe", files)
+                self.assertIn(prefix + "Code-source/yt_app.py", files)
+            else:
+                self.assertFalse(any(entry.startswith(("Donnees/", "bin/")) for entry in files))
+                self.assertIn("Code-source/yt_app.py", files)
 
     def test_portable(self):
         arch.build_portable(self.root, self.out, [Path("yt_app.py")])
         self.check(arch.PORTABLE_NAME)
+        # Une extraction dans n'importe quel répertoire ne doit jamais
+        # disperser l'EXE, les catégories ou les données à sa racine.
+        destination = self.root / "Extraction"
+        with zipfile.ZipFile(self.out / arch.PORTABLE_NAME) as archive:
+            archive.extractall(destination)
+        self.assertEqual([entry.name for entry in destination.iterdir()],
+                         [arch.PORTABLE_ROOT])
+        inside = destination / arch.PORTABLE_ROOT
+        self.assertTrue((inside / "All_Media_Download.exe").is_file())
+        self.assertTrue((inside / "Donnees" / "bin").is_dir())
+        for category in arch.MEDIA_DIRS:
+            self.assertTrue((inside / category).is_dir())
 
     def test_classic(self):
         arch.build_classic(self.root, self.out, [Path("yt_app.py")])
