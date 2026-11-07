@@ -1,0 +1,85 @@
+name: Audit antimalware builds 166 et 167 (temporaire)
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/audit-defender-build167.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit-releases:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - name: Contrôler Defender et analyser les archives officielles SANS les lancer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $versions = @(
+            @{ Tag = 'build-166'; PortableSHA = '9e8e38801d667fab4aeeed67f7600645fccb6ad98110d316fec3103836ed151d'; ClassicSHA = 'ac94dc899538138be0d00c2fc338ae2ee70007002434a935e6751ec399a965a6' },
+            @{ Tag = 'build-167'; PortableSHA = '1d7b2ea50f5612fe82de89fa03eb9db68710447a3272cb7cd5fef98399263bbf'; ClassicSHA = '41f6b3f7570ae8e867b82b3cafe733a63e7a30eff382a32925333d594052973c' }
+          )
+          $scanAvailable = $false
+          try {
+            $defender = Get-MpComputerStatus -ErrorAction Stop
+            Write-Output ("DEFENDER_STATUS " + ($defender | Select-Object AMServiceEnabled,AntivirusEnabled,RealTimeProtectionEnabled,AntivirusSignatureVersion,AMEngineVersion | ConvertTo-Json -Compress))
+            $scanAvailable = [bool]($defender.AMServiceEnabled -and $defender.AntivirusEnabled)
+          } catch {
+            Write-Output ("DEFENDER_UNAVAILABLE " + $_.Exception.Message)
+          }
+          $root = Join-Path $env:RUNNER_TEMP 'all-download-release-security-audit'
+          New-Item -ItemType Directory -Force -Path $root | Out-Null
+          foreach ($version in $versions) {
+            foreach ($flavour in @('Portable','Classique')) {
+              $name = "All-Download-$flavour-Windows.zip"
+              $sha = if ($flavour -eq 'Portable') { $version.PortableSHA } else { $version.ClassicSHA }
+              $uri = "https://github.com/anderson76389/All-Download/releases/download/$($version.Tag)/$name"
+              $folder = Join-Path $root "$($version.Tag)-$flavour"
+              New-Item -ItemType Directory -Force -Path $folder | Out-Null
+              $archive = Join-Path $folder $name
+              Invoke-WebRequest -Uri $uri -OutFile $archive -MaximumRedirection 8
+              $actual = (Get-FileHash -Algorithm SHA256 -Path $archive).Hash.ToLowerInvariant()
+              if ($actual -ne $sha) { throw "SHA256 invalide $($version.Tag) $flavour" }
+              Write-Output "ARCHIVE_SHA256_VALID $($version.Tag) $flavour $actual"
+              $extracted = Join-Path $folder 'extracted'
+              try {
+                Expand-Archive -Path $archive -DestinationPath $extracted -Force -ErrorAction Stop
+                $exe = if ($flavour -eq 'Portable') {
+                  Join-Path $extracted 'All_Media_Download.exe'
+                } else {
+                  Join-Path $extracted 'All-Download-Setup.exe'
+                }
+                if (-not (Test-Path $exe -PathType Leaf)) { throw "EXE manquant ou supprimé par protection: $exe" }
+                $exeHash = (Get-FileHash -Algorithm SHA256 -Path $exe).Hash.ToLowerInvariant()
+                $signing = Get-AuthenticodeSignature -FilePath $exe
+                Write-Output "EXE_METADATA $($version.Tag) $flavour SHA256=$exeHash SIGNATURE=$($signing.Status) SIZE=$((Get-Item $exe).Length)"
+                if ($scanAvailable) {
+                  foreach ($path in @($archive,$exe)) {
+                    try {
+                      Start-MpScan -ScanType CustomScan -ScanPath $path -ErrorAction Stop
+                      Write-Output "DEFENDER_SCAN_COMPLETED $($version.Tag) $flavour $([IO.Path]::GetFileName($path))"
+                    } catch {
+                      Write-Output "DEFENDER_SCAN_ERROR $($version.Tag) $flavour $([IO.Path]::GetFileName($path)) $($_.Exception.Message)"
+                    }
+                  }
+                }
+              } catch {
+                Write-Output "EXTRACTION_OR_SCAN_ERROR $($version.Tag) $flavour $($_.Exception.Message)"
+              }
+            }
+          }
+          if ($scanAvailable) {
+            try {
+              Get-MpThreatDetection -ErrorAction Stop |
+                Select-Object ThreatID,ThreatName,Resources,InitialDetectionTime,ActionSuccess |
+                ConvertTo-Json -Depth 5 -Compress |
+                ForEach-Object { Write-Output "DEFENDER_DETECTIONS $_" }
+            } catch {
+              Write-Output "DEFENDER_HISTORY_UNAVAILABLE $($_.Exception.Message)"
+            }
+          } else {
+            Write-Output 'DEFENDER_SCAN_INCONCLUSIVE antivirus absent ou désactivé sur ce runner'
+          }
+          Write-Output 'SECURITY_AUDIT_DONE aucun executable installe ni lance'
