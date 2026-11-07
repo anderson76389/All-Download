@@ -25,7 +25,8 @@ import webview
 from twitch_vod import (twitch_vod_id, fallback_metadata, preferred_twitch_quality, ensure_cli_ready,
                         build_command as build_twitch_command, selected_quality_to_cli, progress_percentage,
                         CLI_FILENAME as TWITCH_CLI_FILENAME)
-from twitch_hls import (resolve_hls, media_paths as twitch_hls_paths,
+from twitch_hls import (resolve_hls, probe_native_height as twitch_hls_probe_native_height,
+                        media_paths as twitch_hls_paths,
                         ffmpeg_command as twitch_hls_ffmpeg_command,
                         progress_from_ffmpeg as twitch_hls_progress,
                         HLSUnavailable)
@@ -3252,36 +3253,21 @@ class DownloaderAPI:
             if self.is_cancelled:
                 return False, "Téléchargement annulé."
             status(0, f"[{idx}/{total}] Recherche d'un flux HLS Twitch accessible…")
-            transcode_height = None
-            transcode_fps = None
-            try:
-                manifest, label, duration, count = resolve_hls(item["url"], quality)
-            except HLSUnavailable:
-                # Certaines VOD Sub-only n'exposent que leur playlist "chunked":
-                # les profils 720p/480p retournent 403 mais la source reste
-                # accessible. Convertir cette source plutôt que livrer du
-                # 1080p en prétendant respecter la résolution 720p choisie.
-                selected = selected_quality_to_cli(quality)
-                match = re.fullmatch(r"(\d{3,4})p(\d{2,3})?", selected or "")
-                if not match or self.is_cancelled:
-                    raise
-                transcode_height = int(match.group(1))
-                transcode_fps = int(match.group(2)) if match.group(2) else None
-                status(0, f"[{idx}/{total}] Flux {quality} indisponible : adaptation de la source en {transcode_height}p…")
-                manifest, label, duration, count = resolve_hls(
-                    item["url"], "Meilleure qualité (Auto)"
-                )
-            status(0, f"[{idx}/{total}] Flux HLS trouvé : {label}, {count} segments.")
+            # Le profil « chunked » est une source native, mais son nom
+            # ne prouve aucune résolution. FFprobe confirme 1080p/720p ;
+            # les playlists explicitement 1080p/720p servent de repli.
+            probe = lambda playlist: (
+                twitch_hls_probe_native_height(FFPROBE_PATH, playlist)
+                if is_valid_windows_executable(FFPROBE_PATH) else None
+            )
+            manifest, label, duration, count = resolve_hls(
+                item["url"], quality, source_height_probe=probe
+            )
+            status(0, f"[{idx}/{total}] Flux Twitch natif {label} : {count} segments, sans réencodage.")
             temporary, final = twitch_hls_paths(
                 target_dir, item["url"], item.get("title", "VOD Twitch")
             )
-            if transcode_height:
-                command = twitch_hls_ffmpeg_command(
-                    FFMPEG_PATH, manifest, temporary,
-                    max_height=transcode_height, max_fps=transcode_fps
-                )
-            else:
-                command = twitch_hls_ffmpeg_command(FFMPEG_PATH, manifest, temporary)
+            command = twitch_hls_ffmpeg_command(FFMPEG_PATH, manifest, temporary)
             process = subprocess.Popen(
                 command,
                 stdin=subprocess.DEVNULL,
