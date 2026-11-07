@@ -109,6 +109,26 @@ class DownloadInteractionAuditTests(unittest.TestCase):
         with open(old_path, "rb") as file:
             self.assertEqual(file.read(), b"private media")
 
+    def test_invalid_config_and_partial_settings_keep_safe_defaults(self):
+        config_path = os.path.join(self.tmp.name, "corrupt.json")
+        with open(config_path, "w", encoding="utf-8") as file:
+            file.write("[]")
+        with patch.object(yt_app, "CONFIG_FILE", config_path):
+            self.assertEqual(self.api._load_config(), {})
+        with open(config_path, "w", encoding="utf-8") as file:
+            file.write('{"settings":null}')
+        with patch.object(yt_app, "CONFIG_FILE", config_path):
+            self.assertEqual(self.api._load_config(), {"settings": None})
+        self.api.config = {"settings": None}
+        self.assertEqual(self.api.get_app_settings()["video_format"], "MP4")
+        self.api.config = {"settings": {"theme": "dark"}}
+        merged = self.api.get_app_settings()
+        self.assertEqual(merged["theme"], "dark")
+        self.assertEqual(merged["audio_format"], "FLAC")
+        with patch.object(yt_app, "ensure_ytdlp_ready", return_value=False):
+            self.assertTrue(self.api.start_downloads([self.item])["success"])
+            self.wait_stopped()
+
     def test_failed_config_replacement_preserves_previous_settings(self):
         path = os.path.join(self.tmp.name, "config.json")
         original = {"settings": {"theme": "dark_pure"}, "cookie_browser": "none"}
