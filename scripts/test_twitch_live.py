@@ -15,7 +15,12 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import yt_app
 
-VOD = "https://www.twitch.tv/videos/2918765022"  # Kamet0, 03/11/2026, VOD publique.
+VODS = [
+    ("Kamet0", "https://www.twitch.tv/videos/2918765022"),
+    ("mistermv", "https://www.twitch.tv/videos/2906716261"),
+    ("StreamDatabase", "https://www.twitch.tv/videos/2905908970"),
+    ("mistermv2", "https://www.twitch.tv/videos/2908472298"),
+]
 
 class UiProbe:
     def __init__(self):
@@ -99,14 +104,21 @@ def main():
             print("CLI_COMMAND:", [x if x != args[0] else "TwitchDownloaderCLI.exe" for x in command], flush=True)
             return command
 
-        item = {"url": VOD, "mode": "Vidéo", "title": "Live Test Kamet0",
-                "selectedQuality": "Meilleure qualité (Auto)", "is_direct_download": False}
-        print("VOD_TEST:", VOD, flush=True)
-        with patch.object(yt_app, "build_twitch_command", short_clip_command), \
-             patch.object(yt_app.subprocess, "Popen", side_effect=logging_popen), \
-             patch.object(yt_app.threading, "Thread", ImmediateThread), \
-             patch.object(yt_app, "ensure_ytdlp_ready", side_effect=AssertionError("yt-dlp ne doit pas être nécessaire")):
-            api.start_downloads([item])
+        for channel, vod_url in VODS:
+            api._window.events.clear()
+            item = {"url": vod_url, "mode": "Vidéo", "title": "Live Test " + channel,
+                    "selectedQuality": "Meilleure qualité (Auto)", "is_direct_download": False}
+            print("VOD_TEST:", channel, vod_url, flush=True)
+            with patch.object(yt_app, "build_twitch_command", short_clip_command), \
+                 patch.object(yt_app.subprocess, "Popen", side_effect=logging_popen), \
+                 patch.object(yt_app.threading, "Thread", ImmediateThread), \
+                 patch.object(yt_app, "ensure_ytdlp_ready", side_effect=AssertionError("yt-dlp ne doit pas être nécessaire")):
+                api.start_downloads([item])
+            files = list((directory / "MEDIAS" / "AUTRES").glob("*.mp4"))
+            if files:
+                print("VOD_SUCCESS:", channel, vod_url, flush=True)
+                break
+            print("VOD_ACCESS_FAILURE:", channel, vod_url, flush=True)
 
         files = list((directory / "MEDIAS" / "AUTRES").glob("*.mp4"))
         print("MP4_OUTPUTS:", [(str(f), f.stat().st_size) for f in files], flush=True)
