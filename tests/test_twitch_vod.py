@@ -170,5 +170,68 @@ class IntegrationTests(unittest.TestCase):
             self.assertEqual(os.path.basename(twitch.call_args.args[1]), "AUTRES")
 
 
+    def test_twitch_cli_rejection_displays_real_error_not_clr_exit_code(self):
+        import io
+        import yt_app
+        api = yt_app.DownloaderAPI.__new__(yt_app.DownloaderAPI)
+        api._window = type("Ui", (), {"events": [], "evaluate_js": lambda self, x: self.events.append(x)})()
+        api.is_cancelled = False
+        api.is_paused = False
+        api._active_download_process = None
+        api._suspended_download_pids = []
+        class FakeProcess:
+            pid = 10001
+            stdout = io.StringIO(
+                "[STATUS] - Fetching Video Info [1/4]\\n"
+                "Unhandled exception. System.AggregateException: "
+                "(Insufficient access to VOD, OAuth may be required.)\\n"
+            )
+            def wait(self):
+                return 3762504530
+            def poll(self):
+                return 3762504530
+        with tempfile.TemporaryDirectory() as root, \
+             patch.object(yt_app, "BIN_DIR", root), \
+             patch.object(yt_app, "APP_DIR", root), \
+             patch.object(yt_app, "FFMPEG_PATH", os.path.join(root, "ffmpeg.exe")), \
+             patch.object(yt_app, "ensure_cli_ready", return_value=(True, "")), \
+             patch.object(yt_app, "is_valid_windows_executable", return_value=True), \
+             patch.object(yt_app, "build_twitch_command", return_value=["cmd"]), \
+             patch.object(yt_app.subprocess, "Popen", return_value=FakeProcess()):
+            success = api._download_twitch_video(
+                {"url": "https://twitch.tv/videos/1234567890"}, root,
+                "Meilleure qualité (Auto)", 1, 1
+            )
+        self.assertFalse(success)
+        self.assertTrue(any("refuse" in x and "showAppToast" in x
+                            for x in api._window.events))
+        self.assertFalse(any("3762504530" in x for x in api._window.events))
+
+    def test_queue_failure_is_reported_as_error_not_success(self):
+        import yt_app
+        api = yt_app.DownloaderAPI.__new__(yt_app.DownloaderAPI)
+        api.config = {}
+        api.is_cancelled = False
+        api.is_paused = False
+        api._active_download_process = None
+        api._suspended_download_pids = []
+        api._window = type("Ui", (), {"events": [], "evaluate_js": lambda self, x: self.events.append(x)})()
+        class ImmediateThread:
+            def __init__(self, target, **kwargs):
+                self.target = target
+            def start(self):
+                self.target()
+        with tempfile.TemporaryDirectory() as root:
+            api.download_folder = root
+            with patch.object(yt_app.threading, "Thread", ImmediateThread), \
+                 patch.object(yt_app, "ensure_ytdlp_ready") as ytdlp, \
+                 patch.object(api, "_download_twitch_video", return_value=False):
+                api.start_downloads([{"url": "https://twitch.tv/videos/1234567890",
+                                      "mode": "Vidéo"}])
+        ytdlp.assert_not_called()
+        self.assertTrue(any("avec erreurs" in x
+                            for x in api._window.events))
+
+
 if __name__ == "__main__":
     unittest.main()
