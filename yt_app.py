@@ -20,6 +20,7 @@ import ctypes
 from ctypes import wintypes
 import multiprocessing
 import tempfile
+import uuid
 from pathlib import Path
 import webview
 from twitch_vod import (twitch_vod_id, fallback_metadata, preferred_twitch_quality, ensure_cli_ready,
@@ -191,6 +192,7 @@ FFMPEG_URL = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/f
 # vide" comme une preuve qu'un outil Windows est executable.
 _BINARIES_LOCK = threading.RLock()
 _DOWNLOAD_LAUNCH_LOCK = threading.RLock()
+_CONFIG_WRITE_LOCK = threading.RLock()
 
 
 def is_valid_windows_executable(filename):
@@ -2926,13 +2928,26 @@ class DownloaderAPI:
         return {}
 
     def _save_config(self):
-        self.config["download_folder"] = self.download_folder
-        try:
-            with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-                json.dump(self.config, f, indent=4, ensure_ascii=False)
-            return True
-        except (OSError, TypeError, ValueError):
-            return False
+        """Écrire les paramètres atomiquement, sans tronquer l'ancien JSON."""
+        temporary = CONFIG_FILE + "." + uuid.uuid4().hex + ".tmp"
+        with _CONFIG_WRITE_LOCK:
+            self.config["download_folder"] = self.download_folder
+            try:
+                os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
+                with open(temporary, "w", encoding="utf-8") as f:
+                    json.dump(self.config, f, indent=4, ensure_ascii=False)
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(temporary, CONFIG_FILE)
+                return True
+            except (OSError, TypeError, ValueError):
+                return False
+            finally:
+                if os.path.exists(temporary):
+                    try:
+                        os.unlink(temporary)
+                    except OSError:
+                        pass
 
     def get_download_folder(self):
         return self.download_folder
