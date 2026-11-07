@@ -1,0 +1,38 @@
+name: Audit approfondi interactions All-Download (temporaire)
+
+on:
+  pull_request:
+    paths:
+      - "yt_app.py"
+      - "tests/**"
+      - ".github/workflows/audit-full-interactions.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  all-interactions:
+    runs-on: windows-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+      - name: Installer les dépendances Windows
+        run: python -m pip install pywebview==6.2.1 pythonnet==3.2.1 "psutil>=6.1,<8"
+      - name: Syntaxe Python, Twitch, fichiers, réglages et téléchargements
+        run: python -m py_compile yt_app.py twitch_vod.py twitch_hls.py
+      - name: Tous les tests de régression
+        run: python -m unittest discover -s tests -v
+      - name: Installer l'environnement DOM et Edge
+        shell: pwsh
+        run: |
+          npm install --no-save --no-package-lock --ignore-scripts jsdom@26.1.0 playwright-core@1.56.1
+          if ($LASTEXITCODE -ne 0) { throw "Dependencies JS unavailable" }
+          python -c 'import yt_app; from pathlib import Path; Path("tests/ui-test.html").write_text(yt_app.HTML_PAGE, encoding="utf-8")'
+          if ($LASTEXITCODE -ne 0) { throw "HTML extraction failed" }
+      - name: Audit de tous les boutons, menus et métadonnées dans le DOM
+        run: node tests/test_ui_buttons.cjs
+      - name: Audit interface Edge : tailles, écrans, thème clair sombre OLED
+        run: node tests/test_ui_responsive.cjs
