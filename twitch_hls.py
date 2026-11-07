@@ -19,7 +19,7 @@ from twitch_vod import twitch_vod_id, selected_quality_to_cli
 
 GQL_URL = "https://gql.twitch.tv/gql"
 PUBLIC_CLIENT_ID = "kimne78kx3ncx6brgo4mv6wki5h1ko"
-DEFAULT_QUALITIES = ("chunked", "1080p60", "1080p30", "720p60", "720p30", "480p30", "360p30", "160p30")
+DEFAULT_QUALITIES = ("chunked", "1080p60", "1080p30", "720p60", "720p30")
 STORYBOARD = re.compile(r"^/([A-Za-z0-9]{20}_[A-Za-z0-9_]+_\d+_\d+)/storyboards(?:/|$)")
 
 
@@ -170,6 +170,8 @@ def resolve_hls(url, quality="1080p (60fps)", timeout=12, source_height_probe=No
     max_height = int(selected_match.group(1))
     failures = []
     for name, candidate in manifest_candidates(preview, quality):
+        if name == "chunked" and source_height_probe is None:
+            continue
         try:
             count, duration = read_public_manifest(candidate, timeout=timeout)
             if name == "chunked":
