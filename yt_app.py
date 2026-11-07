@@ -2759,7 +2759,7 @@ HTML_PAGE = """<!DOCTYPE html>
     downloadSubmissionPending = true;
     startDownloadUIState();
     callApi('start_downloads', items.map(item => ({ ...item }))).then(result => {
-      if (result === false || (result && result.success === false)) {
+      if (!(result === true || (result && result.success === true))) {
         resetDownloadUIState();
         showAppToast(result && result.error ? result.error : 'Téléchargement impossible.');
       }
@@ -2863,13 +2863,17 @@ HTML_PAGE = """<!DOCTYPE html>
 
   updateGlobalQualityDropdown();
 
+  let appInitializationStarted = false;
   function initApp() {
+    if (appInitializationStarted || !window.pywebview || !window.pywebview.api ||
+        typeof window.pywebview.api.get_app_settings !== 'function') return;
+    appInitializationStarted = true;
     callApi('get_app_settings').then(s => {
       if (!s) return;
       if (s.theme) applyTheme(s.theme);
       configureQuickSelector(s);
       if (queue.length === 0) selectGlobalMode(s.sortie_type === 'audio' ? 'Audio' : 'Vidéo');
-    });
+    }).catch(() => { appInitializationStarted = false; });
   }
 
   window.addEventListener('pywebviewready', initApp);
