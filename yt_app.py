@@ -2288,7 +2288,8 @@ HTML_PAGE = """<!DOCTYPE html>
     if (!url) return;
     input.value = '';
 
-    const tempId = 'skel_' + Date.now();
+    const tempId = 'skel_' + (++skeletonSequence);
+    const requestGeneration = queueGeneration;
     const skelHtml = `
       <div class="skeleton-card" id="${tempId}">
         <div class="skeleton-thumb">
@@ -2310,6 +2311,7 @@ HTML_PAGE = """<!DOCTYPE html>
     callApi('extract_info', url).then(res => {
       const el = document.getElementById(tempId);
       if (el) el.remove();
+      if (requestGeneration !== queueGeneration) return;
 
       if (res && res.success) {
         res.data.mode = (res.data.mode === 'Image' || res.data.mode === 'GIF') ? res.data.mode : currentGlobalMode;
@@ -2344,6 +2346,7 @@ HTML_PAGE = """<!DOCTYPE html>
     }).catch(err => {
       const el = document.getElementById(tempId);
       if (el) el.remove();
+      if (requestGeneration !== queueGeneration) return;
       queue.push({ title: url, url: url, error: String(err), isError: true });
       renderCards();
       updateView();
@@ -2353,9 +2356,15 @@ HTML_PAGE = """<!DOCTYPE html>
   function updatePlaylistRange(idx) {
     const sInput = document.getElementById(`p_start_${idx}`);
     const eInput = document.getElementById(`p_end_${idx}`);
-    if (sInput && eInput) {
-      queue[idx].start_idx = parseInt(sInput.value) || 1;
-      queue[idx].end_idx = parseInt(eInput.value) || (queue[idx].item_count || 1);
+    const item = queue[idx];
+    if (sInput && eInput && item) {
+      const count = Math.max(1, Math.min(1000000, parseInt(item.item_count, 10) || 1));
+      const start = Math.max(1, Math.min(count, parseInt(sInput.value, 10) || 1));
+      const end = Math.max(start, Math.min(count, parseInt(eInput.value, 10) || count));
+      item.start_idx = start;
+      item.end_idx = end;
+      sInput.value = start;
+      eInput.value = end;
     }
   }
 
@@ -2628,6 +2637,7 @@ HTML_PAGE = """<!DOCTYPE html>
   }
 
   function clearQueue() {
+    queueGeneration += 1;
     queue = [];
     closeAllPopovers();
     renderCards();
@@ -2658,10 +2668,32 @@ HTML_PAGE = """<!DOCTYPE html>
   }
 
   /* GESTION ANIMATION CHARGEMENT AVANT LE TÉLÉCHARGEMENT */
+  // Empêcher deux soumissions parallèles pendant la réponse du pont Python.
+  let downloadSubmissionPending = false;
+  let queueGeneration = 0;
+  let skeletonSequence = 0;
+  function submitDownloads(items) {
+    if (downloadSubmissionPending) {
+      showAppToast('Une demande de téléchargement est déjà en cours.');
+      return;
+    }
+    if (!items.length) return;
+    downloadSubmissionPending = true;
+    startDownloadUIState();
+    callApi('start_downloads', items.map(item => ({ ...item }))).then(result => {
+      if (result === false || (result && result.success === false)) {
+        resetDownloadUIState();
+        showAppToast(result && result.error ? result.error : 'Téléchargement impossible.');
+      }
+    }).catch(() => {
+      resetDownloadUIState();
+      showAppToast('Impossible de démarrer les téléchargements.');
+    }).finally(() => { downloadSubmissionPending = false; });
+  }
   function startDownloadUIState() {
     const btn = document.querySelector('.btn-download-all');
     if (btn) {
-      btn.dataset.originalText = btn.innerHTML;
+      if (!btn.dataset.originalText) btn.dataset.originalText = btn.innerHTML;
       btn.innerHTML = '<span class="btn-spinner"></span>Préparation...';
       btn.style.pointerEvents = 'none';
       btn.style.opacity = '0.85';
@@ -2683,6 +2715,7 @@ HTML_PAGE = """<!DOCTYPE html>
       btn.innerHTML = btn.dataset.originalText;
       btn.style.pointerEvents = 'auto';
       btn.style.opacity = '1';
+      delete btn.dataset.originalText;
     }
     const bar = document.getElementById('progressFill');
     if (bar) {
@@ -2691,7 +2724,7 @@ HTML_PAGE = """<!DOCTYPE html>
   }
 
   function startDownloads() {
-    const valid = queue.filter(i => !i.isError);
+    const valid = queue.filter(i => !i.isError && i.status !== 'success');
     if (valid.length === 0) return;
     // 'valid' n'a pas forcement les memes index que la file d'attente
     // lorsqu'une entrée en erreur a ete retiree.
@@ -2700,14 +2733,19 @@ HTML_PAGE = """<!DOCTYPE html>
         updatePlaylistRange(index);
       }
     });
-    startDownloadUIState();
-    callApi('start_downloads', valid);
+    submitDownloads(valid);
   }
 
   function downloadSingle(idx) {
-    if (queue[idx].is_playlist || queue[idx].is_channel) updatePlaylistRange(idx);
-    startDownloadUIState();
-    callApi('start_downloads', [queue[idx]]);
+    const item = queue[idx];
+    if (!item || item.isError || item.status === 'success') return;
+    if (item.is_playlist || item.is_channel) updatePlaylistRange(idx);
+    submitDownloads([item]);
+  }
+
+  function finishDownloadUIState() {
+    resetDownloadUIState();
+    downloadSubmissionPending = false;
   }
 
   function openExternal(url) {
@@ -2734,8 +2772,8 @@ HTML_PAGE = """<!DOCTYPE html>
     document.getElementById('statusBar').innerText = statusText;
     appendTerminal(statusText);
 
-    if (pct >= 100 || statusText.toLowerCase().includes('terminé')) {
-      resetDownloadUIState();
+    if (/^(Traitement terminé|Terminé avec erreurs|Annulé)/.test(statusText)) {
+      finishDownloadUIState();
     }
   }
 
