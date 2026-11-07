@@ -32,7 +32,7 @@ class HLSFallbackTests(unittest.TestCase):
         opts = twitch_hls.manifest_candidates(PREVIEW, "1080p (60fps)")
         self.assertEqual(opts[0][0], "1080p60")
         self.assertTrue(opts[0][1].endswith("/1080p60/index-dvr.m3u8"))
-        self.assertTrue(any(q == "chunked" for q, _ in opts))
+        self.assertFalse(any(q == "chunked" for q, _ in opts))
         with self.assertRaises(twitch_hls.HLSUnavailable):
             twitch_hls.manifest_candidates("https://test.com/a", "auto")
 
