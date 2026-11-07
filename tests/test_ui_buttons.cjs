@@ -59,7 +59,7 @@ const backend = {
   cancel_downloads: () => {events.push(['cancel_downloads']);return true;},
   pause_downloads: () => {events.push(['pause_downloads']);return {success:true,mode:'active'};},
   resume_downloads: () => {events.push(['resume_downloads']);return {success:true};},
-  start_downloads: items => {events.push(['start_downloads',JSON.parse(JSON.stringify(items))]);return true;},
+  start_downloads: items => {events.push(['start_downloads',JSON.parse(JSON.stringify(items))]);setImmediate(()=>dom.window.finishDownloadUIState());return true;},
   extract_info: url => {
     events.push(['extract_info',url]);
     if(url.includes('untrusted-error')) return {success:false,error:'<svg onload="window.__evil=1"></svg>'};
