@@ -107,7 +107,7 @@ def ensure_deno_ready(bin_dir, validator):
         if _valid_deno(target, validator):
             return True, ""
         archive_path = target + ".zip.part"
-        temporary = target + ".tmp"
+        temporary = target + ".tmp.exe"
         try:
             os.makedirs(bin_dir, exist_ok=True)
             url, size, expected_hash = _release_asset()
