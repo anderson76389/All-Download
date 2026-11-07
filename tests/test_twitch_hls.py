@@ -49,6 +49,38 @@ class HLSFallbackTests(unittest.TestCase):
         generic = [name for name, _ in twitch_hls.manifest_candidates(PREVIEW, "720p")]
         self.assertEqual(generic[0], "720p60")
 
+    def test_twitch_selected_quality_uses_full_storyboard_path_not_quality_number(self):
+        expected = "abcd1234abcd1234abcd_exemple_12345_1711234567"
+        profiles = twitch_hls.manifest_candidates(PREVIEW, "1080p (60fps)")
+        self.assertEqual([x for x, _ in profiles][:3],
+                         ["1080p60", "1080p30", "720p60"])
+        for name, url in profiles:
+            self.assertIn("/" + expected + "/" + name + "/index-dvr.m3u8", url)
+            self.assertNotIn("/1080/" + name, url)
+        manual_720 = twitch_hls.manifest_candidates(PREVIEW, "720p (60fps)")
+        self.assertEqual(manual_720[0][0], "720p60")
+        self.assertNotIn("1080p60", [x for x, _ in manual_720])
+        self.assertTrue(all("/" + expected + "/" in url for _, url in manual_720))
+
+    def test_twitch_1080_automatically_tries_720_when_1080_missing(self):
+        checked = []
+        def probe(url, timeout=12):
+            checked.append(url)
+            if "/720p60/" in url:
+                return (40, 400.0)
+            raise HTTPError(url, 403, "Forbidden", None, None)
+        with patch.object(twitch_hls, "metadata_for_vod",
+                          return_value={"seekPreviewsURL": PREVIEW}), \
+             patch.object(twitch_hls, "read_public_manifest", side_effect=probe):
+            manifest, quality, duration, count = twitch_hls.resolve_hls(
+                "https://www.twitch.tv/videos/2919531847", "1080p (60fps)")
+        self.assertEqual(quality, "720p60")
+        self.assertEqual((duration, count), (400.0, 40))
+        self.assertIn("/720p60/index-dvr.m3u8", manifest)
+        self.assertIn("/1080p60/", checked[0])
+        self.assertIn("/1080p30/", checked[1])
+        self.assertIn("/720p60/", checked[2])
+
     def test_read_manifest_parses_fragment_duration(self):
         response = io.BytesIO(PLAYLIST.encode("utf-8"))
         response.url = PREVIEW

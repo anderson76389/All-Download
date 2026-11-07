@@ -47,6 +47,28 @@ TWITCH_VIDEO_QUALITIES = [
 ]
 
 
+
+TWITCH_DEFAULT_QUALITY = "1080p (60fps)"
+
+
+def preferred_twitch_quality(formats):
+    """1080p en priorité, puis 720p si la carte connaît déjà les formats.
+
+    Sans métadonnées fiables, proposer 1080p ; HLS tentera 720p au moment
+    du téléchargement, sans requêtes répétées sur Twitch pour afficher le menu.
+    """
+    options = [value for value in (formats or []) if isinstance(value, str)]
+    for height in (1080, 720):
+        found = next((
+            value for value in options
+            if re.fullmatch(rf"{height}p(?:\s*\(\d{{2,3}}fps\))?", value)
+        ), None)
+        if found:
+            return found
+    return next((value for value in options if re.fullmatch(r"\d{3,4}p(?:\s*\(\d{2,3}fps\))?", value)),
+                TWITCH_DEFAULT_QUALITY)
+
+
 def fallback_metadata(url, formats=None):
     """Carte Twitch avec choix de qualité, même si yt-dlp refuse la VOD.
 
@@ -57,11 +79,11 @@ def fallback_metadata(url, formats=None):
     vod_id = twitch_vod_id(url)
     if not vod_id:
         return None
-    quality = "Meilleure qualité (Auto)"
-    formats = [quality] + [
+    formats = ["Meilleure qualité (Auto)"] + [
         value for value in (formats if formats is not None else TWITCH_VIDEO_QUALITIES[1:])
         if value in TWITCH_VIDEO_QUALITIES[1:]
     ]
+    quality = preferred_twitch_quality(formats)
     return {
         "title": "VOD Twitch " + vod_id,
         "thumbnail": "",

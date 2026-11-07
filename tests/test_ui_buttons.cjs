@@ -64,6 +64,7 @@ const backend = {
     events.push(['extract_info',url]);
     if(url.includes('denied')) return {success:false,error:'Accès refusé'};
     if(url.includes('/playlist?')) return {success:true,data:{...playlist,url}};
+    if(url.includes('twitch.tv/videos/2222222222')) return {success:true,data:{...media,url,formats:['Meilleure qualité (Auto)','720p','480p']}};
     return {success:true,data:{...media,url}};
   }
 };
@@ -257,6 +258,28 @@ async function run() {
   assert.equal(win.eval('queue[0].status'),'success');
   action('[onclick="clearSuccess();"]');
   assert.equal(win.eval('queue.length'),0);
+
+  // Twitch : 1080p par défaut, 720p si pas de 1080, choix manuel conservé.
+  win.selectGlobalMode('Vidéo');
+  input.value='https://www.twitch.tv/videos/1111111111';
+  win.addVideo();
+  await flush();
+  assert.equal(win.eval('queue[0].selectedQuality'),'1080p');
+  assert.match(doc.querySelector('.media-card').textContent,/TWITCH/);
+  win.setCardMode(0,'Audio');
+  win.setCardMode(0,'Vidéo');
+  assert.equal(win.eval('queue[0].selectedQuality'),'1080p');
+  win.setCardQuality(0,'720p','720p (HD)');
+  assert.equal(win.eval('queue[0].selectedQuality'),'720p');
+  action('.media-card [title="Télécharger"]');
+  await flush();
+  assert.equal(events.findLast(e=>e[0]==='start_downloads')[1][0].selectedQuality,'720p');
+  win.clearQueue();
+  input.value='https://www.twitch.tv/videos/2222222222';
+  win.addVideo();
+  await flush();
+  assert.equal(win.eval('queue[0].selectedQuality'),'720p');
+  win.clearQueue();
 
   // Erreur d'extraction : boutons Cookies, Logs et Réessayer.
   win.clearQueue();
