@@ -26,6 +26,7 @@ import webview
 from twitch_vod import (twitch_vod_id, fallback_metadata, preferred_twitch_quality, ensure_cli_ready,
                         build_command as build_twitch_command, selected_quality_to_cli, progress_percentage,
                         CLI_FILENAME as TWITCH_CLI_FILENAME)
+from deno_runtime import is_youtube_url, ensure_deno_ready
 from twitch_hls import (resolve_hls, probe_native_height as twitch_hls_probe_native_height,
                         media_paths as twitch_hls_paths,
                         ffmpeg_command as twitch_hls_ffmpeg_command,
@@ -209,7 +210,9 @@ except Exception:
         pass
 
 YTDLP_PATH = os.path.join(BIN_DIR, "yt-dlp.exe")
+DENO_PATH = os.path.join(BIN_DIR, "deno.exe")
 FFMPEG_PATH = os.path.join(BIN_DIR, "ffmpeg.exe")
+FFPROBE_PATH = os.path.join(BIN_DIR, "ffprobe.exe")
 
 YTDLP_URL = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
 FFMPEG_URL = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
@@ -245,6 +248,32 @@ def is_valid_windows_executable(filename):
                     and int.from_bytes(signature[4:6], "little") == 0x8664)
     except (OSError, ValueError, OverflowError):
         return False
+
+
+def local_ytdlp_environment():
+    """Deno ne doit jamais créer de cache permanent hors d'All-Download."""
+    environment = os.environ.copy()
+    environment["DENO_DIR"] = os.path.join(APP_DIR, "cache", "deno")
+    environment["DENO_NO_UPDATE_CHECK"] = "1"
+    return environment
+
+
+def youtube_js_args(url):
+    """Ajouter Deno local à yt-dlp seulement pour YouTube, sans bloquer les autres sites.
+
+    yt-dlp.exe embarque déjà EJS : seul le moteur JS deno.exe est à récupérer.
+    En cas d'échec d'installation, yt-dlp conserve son fonctionnement habituel.
+    """
+    if not is_youtube_url(url) or not is_valid_windows_executable(YTDLP_PATH):
+        return []
+    try:
+        available, message = ensure_deno_ready(BIN_DIR, is_valid_windows_executable)
+        if available:
+            return ["--js-runtimes", "deno:" + DENO_PATH]
+        log_startup_phase("Deno facultatif indisponible : " + str(message)[:140])
+    except Exception as exc:
+        log_startup_phase("Deno facultatif : " + str(exc)[:140])
+    return []
 
 
 def ensure_ytdlp_ready():
@@ -3350,7 +3379,7 @@ class DownloaderAPI:
             "--force-ipv4",
             "--socket-timeout", "15",
             "--retries", "3"
-        ] + self._get_cookie_args()
+        ] + self._get_cookie_args() + youtube_js_args(url)
 
         imp_val = settings.get("impersonation", "none")
         if imp_val == "random":
@@ -3381,7 +3410,8 @@ class DownloaderAPI:
                 universal_newlines=True,
                 encoding='utf-8',
                 errors='replace',
-                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
+                env=local_ytdlp_environment(),
             )
             stdout, stderr = proc.communicate(timeout=60)
             
@@ -3573,7 +3603,11 @@ class DownloaderAPI:
                     pass
 
     def _download_twitch_video(self, item, target_dir, quality, idx, total):
-        """Exécuter le CLI officiel en conservant pause, annulation et suivi."""
+        """CLI Twitch historique en priorité, HLS natif même si le CLI manque.
+
+        Les deux chemins utilisent FFmpeg local, la même qualité demandée,
+        le même dossier TWITCH et le contrôle d'annulation existant.
+        """
         def status(pct, message, toast=False):
             try:
                 if self._window:
@@ -3587,6 +3621,30 @@ class DownloaderAPI:
             except Exception:
                 pass
 
+        def fallback_to_native_hls(cli_error):
+            if self.is_cancelled:
+                return False
+            # Le secours HLS doit pouvoir s'exécuter sans TwitchDownloaderCLI.
+            # FFmpeg est la seule dépendance d'exécution de ce moteur.
+            if not is_valid_windows_executable(FFMPEG_PATH):
+                status(0, f"[{idx}/{total}] Préparation de FFmpeg pour Twitch HLS…")
+                setup_binaries()
+            if not is_valid_windows_executable(FFMPEG_PATH):
+                status(0, "FFmpeg est absent ou invalide : Twitch HLS indisponible.", True)
+                return False
+            status(0, f"[{idx}/{total}] Secours HLS Twitch indépendant du CLI…")
+            self._active_download_process = None
+            success, reason = self._download_twitch_hls(
+                item, target_dir, quality, idx, total, status
+            )
+            if success:
+                return True
+            if not self.is_cancelled:
+                message = ("Erreur Twitch : " + str(cli_error or "CLI indisponible")[:150]
+                           + (" / HLS : " + str(reason)[:170] if reason else ""))
+                status(0, message, True)
+            return False
+
         proc = None
         try:
             if self.is_cancelled:
@@ -3595,16 +3653,14 @@ class DownloaderAPI:
             cli_path = os.path.join(BIN_DIR, TWITCH_CLI_FILENAME)
             ready, reason = ensure_cli_ready(BIN_DIR, is_valid_windows_executable)
             if not ready:
-                status(0, "TwitchDownloaderCLI indisponible : " + reason[:240], True)
-                return False
-            # Le CLI utilise le même FFmpeg vérifié que yt-dlp : ni nouveau
-            # FFmpeg à installer séparément, ni dépendance à son interface WPF.
+                return fallback_to_native_hls(
+                    "TwitchDownloaderCLI indisponible : " + str(reason)[:170]
+                )
             if not is_valid_windows_executable(FFMPEG_PATH):
                 status(0, f"[{idx}/{total}] Préparation de FFmpeg…")
                 setup_binaries()
             if not is_valid_windows_executable(FFMPEG_PATH):
-                status(0, "FFmpeg est absent ou invalide pour cette VOD Twitch.", True)
-                return False
+                return fallback_to_native_hls("FFmpeg absent ou invalide")
             if self.is_cancelled:
                 return False
 
@@ -3636,9 +3692,6 @@ class DownloaderAPI:
                 clean = line.strip()
                 if not clean:
                     continue
-                # Certaines versions du CLI .NET se terminent en exception
-                # non gérée plutôt qu'avec une ligne [ERROR]. Ne pas perdre
-                # la véritable raison au profit du code CLR 0xE0434352.
                 if "Insufficient access to VOD" in clean:
                     last_error = (
                         "Twitch refuse l'accès à cette VOD. Elle peut être "
@@ -3659,25 +3712,16 @@ class DownloaderAPI:
             if self.is_cancelled:
                 return False
             if returncode != 0:
-                # Un refus "subscriber-only" du CLI ne prouve pas que le CDN
-                # HLS ne propose pas un manifest utilisable. L'essai reste
-                # indépendant de l'extension Chrome et de ses serveurs privés.
-                self._active_download_process = None
-                success, reason = self._download_twitch_hls(
-                    item, target_dir, quality, idx, total, status
-                )
-                if success:
-                    return True
-                if not self.is_cancelled:
-                    initial = last_error or f"TwitchDownloaderCLI a échoué (code {returncode})."
-                    status(0, "Erreur Twitch : " + initial[:170] +
-                           (" / HLS : " + reason[:170] if reason else ""), True)
-                return False
+                initial = last_error or f"TwitchDownloaderCLI a échoué (code {returncode})."
+                return fallback_to_native_hls(initial)
             return True
         except (OSError, ValueError, subprocess.SubprocessError) as exc:
-            if not self.is_cancelled:
-                status(0, "Erreur TwitchDownloaderCLI : " + str(exc)[:240], True)
-            return False
+            # Si le CLI s'est interrompu au milieu du flux, arrêter d'abord
+            # son processus pour ne pas le laisser écrire pendant le HLS.
+            if proc is not None and proc.poll() is None:
+                kill_process_tree(proc.pid)
+            self._active_download_process = None
+            return fallback_to_native_hls("TwitchDownloaderCLI : " + str(exc)[:170])
         finally:
             if proc is not None and proc.poll() is None:
                 kill_process_tree(proc.pid)
@@ -3816,7 +3860,7 @@ class DownloaderAPI:
                         "--socket-timeout", "15",
                         "-P", target_dir,
                         "-o", f"{sanitize_filename(item.get('title', 'Media'))}.%(ext)s" if "v.pinimg.com" in url else "%(title)s.%(ext)s"
-                    ] + self._get_cookie_args()
+                    ] + self._get_cookie_args() + youtube_js_args(url)
 
                     if "twitter.com" in url or "x.com" in url:
                         cmd.extend(["--extractor-args", "twitter:api=syndication"])
@@ -3951,7 +3995,8 @@ class DownloaderAPI:
                         encoding='utf-8',
                         errors='replace',
                         bufsize=1,
-                        creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+                        creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
+                        env=local_ytdlp_environment(),
                     )
 
                     self._active_download_process = proc
@@ -4115,7 +4160,7 @@ def _setup_binaries_locked():
         if not is_valid_windows_executable(YTDLP_PATH):
             safe_download_file(YTDLP_URL, YTDLP_PATH)
 
-        probe_path = os.path.join(BIN_DIR, "ffprobe.exe")
+        probe_path = FFPROBE_PATH
         if not is_valid_windows_executable(FFMPEG_PATH) or not is_valid_windows_executable(probe_path):
             zip_p = os.path.join(APP_DIR, "ffmpeg.zip")
             if not safe_download_file(FFMPEG_URL, zip_p):

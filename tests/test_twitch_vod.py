@@ -387,5 +387,125 @@ class IntegrationTests(unittest.TestCase):
 
 
 
+    def test_native_hls_ffprobe_path_is_defined_in_packaged_application(self):
+        import yt_app
+        self.assertEqual(yt_app.FFPROBE_PATH,
+                         os.path.join(yt_app.BIN_DIR, "ffprobe.exe"))
+        self.assertTrue(yt_app.FFPROBE_PATH.endswith("ffprobe.exe"))
+
+    def test_no_cli_download_or_github_access_still_uses_native_hls(self):
+        import yt_app
+        api = yt_app.DownloaderAPI.__new__(yt_app.DownloaderAPI)
+        api._window = None
+        api.is_cancelled = False
+        api.is_paused = False
+        api._active_download_process = None
+        with tempfile.TemporaryDirectory() as root, \
+             patch.object(yt_app, "ensure_cli_ready",
+                          return_value=(False, "GitHub indisponible")) as cli, \
+             patch.object(yt_app, "is_valid_windows_executable", return_value=True), \
+             patch.object(yt_app.subprocess, "Popen",
+                          side_effect=AssertionError("Le CLI absent ne doit jamais être lancé")) as launch, \
+             patch.object(api, "_download_twitch_hls",
+                          return_value=(True, "")) as hls:
+            ok = api._download_twitch_video(
+                {"url": "https://twitch.tv/videos/2919531847", "title": "Amine"},
+                root, "1080p (60fps)", 1, 1
+            )
+        self.assertTrue(ok)
+        cli.assert_called_once()
+        launch.assert_not_called()
+        hls.assert_called_once()
+        self.assertEqual(hls.call_args.args[2], "1080p (60fps)")
+        self.assertFalse(api.is_cancelled)
+
+    def test_cli_launch_exception_falls_back_to_native_hls(self):
+        import yt_app
+        api = yt_app.DownloaderAPI.__new__(yt_app.DownloaderAPI)
+        api._window = None
+        api.is_cancelled = False
+        api._active_download_process = None
+        with tempfile.TemporaryDirectory() as root, \
+             patch.object(yt_app, "ensure_cli_ready", return_value=(True, "")), \
+             patch.object(yt_app, "is_valid_windows_executable", return_value=True), \
+             patch.object(yt_app, "build_twitch_command",
+                          return_value=["TwitchDownloaderCLI.exe"]), \
+             patch.object(yt_app.subprocess, "Popen", side_effect=OSError("blocked by Windows")), \
+             patch.object(api, "_download_twitch_hls",
+                          return_value=(True, "")) as hls:
+            self.assertTrue(api._download_twitch_video(
+                {"url": "https://twitch.tv/videos/2919531847"},
+                root, "720p (60fps)", 1, 1
+            ))
+        hls.assert_called_once()
+        self.assertEqual(hls.call_args.args[2], "720p (60fps)")
+
+    def test_healthy_cli_is_still_prioritized_and_not_duplicated_by_hls(self):
+        import yt_app
+        api = yt_app.DownloaderAPI.__new__(yt_app.DownloaderAPI)
+        api._window = None
+        api.is_cancelled = False
+        api._active_download_process = None
+        class DoneProcess:
+            pid = 10001
+            stdout = io.StringIO("[STATUS] Downloading 100%\n")
+            def poll(self):
+                return 0
+            def wait(self):
+                return 0
+        with tempfile.TemporaryDirectory() as root, \
+             patch.object(yt_app, "ensure_cli_ready", return_value=(True, "")), \
+             patch.object(yt_app, "is_valid_windows_executable", return_value=True), \
+             patch.object(yt_app, "build_twitch_command",
+                          return_value=["TwitchDownloaderCLI.exe", "videodownload"]) as cli_command, \
+             patch.object(yt_app.subprocess, "Popen",
+                          return_value=DoneProcess()) as launch, \
+             patch.object(api, "_download_twitch_hls") as hls:
+            self.assertTrue(api._download_twitch_video(
+                {"url": "https://twitch.tv/videos/2919531847"},
+                root, "1080p (60fps)", 1, 1
+            ))
+        cli_command.assert_called_once()
+        launch.assert_called_once()
+        hls.assert_not_called()
+        self.assertIsNone(api._active_download_process)
+
+    def test_cancellation_does_not_trigger_an_extra_hls_download(self):
+        import yt_app
+        api = yt_app.DownloaderAPI.__new__(yt_app.DownloaderAPI)
+        api._window = None
+        api.is_cancelled = True
+        api._active_download_process = None
+        with tempfile.TemporaryDirectory() as root, \
+             patch.object(yt_app, "ensure_cli_ready") as cli, \
+             patch.object(api, "_download_twitch_hls") as hls:
+            self.assertFalse(api._download_twitch_video(
+                {"url": "https://twitch.tv/videos/2919531847"},
+                root, "1080p (60fps)", 1, 1
+            ))
+        cli.assert_not_called()
+        hls.assert_not_called()
+
+    def test_no_unverified_ffmpeg_means_hls_not_launched(self):
+        import yt_app
+        api = yt_app.DownloaderAPI.__new__(yt_app.DownloaderAPI)
+        api._window = None
+        api.is_cancelled = False
+        api._active_download_process = None
+        with tempfile.TemporaryDirectory() as root, \
+             patch.object(yt_app, "ensure_cli_ready",
+                          return_value=(False, "offline")), \
+             patch.object(yt_app, "is_valid_windows_executable", return_value=False), \
+             patch.object(yt_app, "setup_binaries") as provision, \
+             patch.object(api, "_download_twitch_hls") as hls:
+            self.assertFalse(api._download_twitch_video(
+                {"url": "https://twitch.tv/videos/2919531847"},
+                root, "1080p (60fps)", 1, 1
+            ))
+        provision.assert_called_once()
+        hls.assert_not_called()
+
+
+
 if __name__ == "__main__":
     unittest.main()

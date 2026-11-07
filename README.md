@@ -57,14 +57,18 @@ Pour les liens de VOD du type `https://www.twitch.tv/videos/1234567890`, **All-D
 - Les VOD Twitch en mode **Vidéo** sont rangées dans le dossier **TWITCH/**, à côté de VIDÉOS, AUDIOS et AUTRES. Les anciennes VOD stockées dans AUTRES ne sont **ni déplacées ni supprimées**. L’option **Rename** du CLI évite d’écraser un fichier du même nom.
 - All-Download réutilise son propre FFmpeg. Le CLI télécharge les VOD vidéo en **MP4** ; il ne gère pas ici la sortie MKV, les options SponsorBlock, la conversion audio ni les réglages de proxy d'yt-dlp.
 - Si yt-dlp ne peut pas obtenir les métadonnées Twitch, une carte **« VOD Twitch + identifiant »** est ajoutée avec un **menu de qualité**. **1080p natif est sélectionné par défaut ; si aucun flux 1080p natif n’est accessible, seul le 720p natif est essayé**. Aucun réencodage, conversion ni agrandissement : le moteur HLS conserve la vidéo et l’audio d’origine avec FFmpeg `-c copy` (remux MP4). La résolution du flux **source (« chunked »)** est contrôlée par FFprobe avant utilisation : une source de résolution inconnue ou inférieure n’est jamais renommée en « 1080p ». Si ni le 1080p ni le 720p ne sont disponibles, un message d’erreur est affiché au lieu de fabriquer une qualité artificielle. Le menu conserve les choix manuels et le mode **Auto** ; une résolution inférieure choisie explicitement est récupérée en natif, sans conversion. Cette règle ne concerne que les VOD Twitch : YouTube et les autres plateformes ne changent pas.
-- Quand TwitchDownloaderCLI refuse une VOD, All-Download essaie **automatiquement un secours HLS indépendant** : métadonnées publiques Twitch, recherche d’une playlist CDN accessible sans connexion, puis assemblage par le FFmpeg déjà installé. Cette méthode a été validée sur un extrait réel de la VOD `2919531847` (chaîne aminematue) sans cookie OAuth. Elle ne sollicite ni la base privée ni les serveurs de l’extension Chrome Twitch VOD Downloader. Elle peut toutefois échouer pour certaines VOD, dont les flux ne sont plus disponibles.
+- Si TwitchDownloaderCLI **est absent, ne peut pas être téléchargé, ne démarre pas ou refuse une VOD**, All-Download essaie **automatiquement son secours HLS indépendant** : métadonnées publiques Twitch, recherche d’une playlist CDN accessible sans connexion, puis assemblage par le FFmpeg déjà installé. Cette méthode a été validée sur un extrait réel de la VOD `2919531847` (chaîne aminematue) sans cookie OAuth. Elle ne sollicite ni la base privée ni les serveurs de l’extension Chrome Twitch VOD Downloader. Elle peut toutefois échouer pour certaines VOD, dont les flux ne sont plus disponibles.
 - Les vidéos HLS sont enregistrées en **MP4**, avec fichiers temporaires nettoyés, sans écrasement des médias existants, et avec progression, pause/reprise et annulation pilotées par la file d’attente actuelle.
 - Les **clips Twitch**, les modes **Audio/GIF**, YouTube et tous les autres sites restent gérés par **yt-dlp**, sans changement de leur fonctionnement. L’accès HLS dépend des playlists encore accessibles sur le CDN Twitch ; il n’est pas garanti pour toutes les VOD, notamment celles supprimées ou expirées.
-- Une connexion est nécessaire au premier téléchargement pour obtenir le CLI. En cas d'indisponibilité de GitHub ou du fichier, All-Download affiche une erreur et conserve les autres moteurs utilisables.
+- Le CLI reste prioritaire quand il fonctionne et est téléchargé depuis GitHub au premier besoin. **Si GitHub ou TwitchDownloaderCLI est indisponible**, le secours HLS est utilisable directement, à condition que FFmpeg soit installé et que Twitch fournisse encore un flux accessible. Les flux protégés ou supprimés ne sont pas garantis.
 
 **Crédits :** [TwitchDownloader de lay295](https://github.com/lay295/TwitchDownloader), distribué sous [licence MIT](https://github.com/lay295/TwitchDownloader/blob/master/LICENSE.txt). TwitchDownloader n'est pas affilié à Twitch.
 
 ---
+
+### Compatibilité YouTube : Deno local et facultatif
+
+Le moteur yt-dlp officiel embarque déjà les scripts EJS de YouTube. Lorsque l'application analyse ou télécharge une URL YouTube, elle peut installer **`deno.exe` Windows x64** dans `All-Download/Donnees/bin/`, en utilisant la release officielle `denoland/deno` (taille et empreinte SHA-256 GitHub vérifiées, version minimale validée). Deno est transmis explicitement à **yt-dlp pour YouTube uniquement** ; aucun compte, installation système ou PATH n'est nécessaire. Il ne modifie pas le téléchargement Twitch, Pinterest ou d'autres sites. **Si Deno ne peut pas être installé, yt-dlp conserve son comportement actuel** : certaines vidéos YouTube peuvent alors avoir moins de formats disponibles.
 
 ## 💻 Deux versions Windows, le même All-Download
 
@@ -76,7 +80,7 @@ Pour les liens de VOD du type `https://www.twitch.tv/videos/1234567890`, **All-D
 
 **Important :** la version Classique actuelle utilise le même moteur autonome que la Portable. Elle **ne repose plus sur l'ancien dossier `_internal`** qui pouvait provoquer l'erreur `Python.Runtime.dll` sur certains PC.
 
-**Configuration requise :** Windows 10/11 **x64 (64 bits)** et WebView2. La compilation utilise Python et un EXE x64 ; **x86 (32 bits) n'est pas pris en charge**. Une connexion Internet est nécessaire pour récupérer les contenus et, au besoin, yt-dlp et FFmpeg au premier lancement.
+**Configuration requise :** Windows 10/11 **x64 (64 bits)** et WebView2. La compilation utilise Python et un EXE x64 ; **x86 (32 bits) n'est pas pris en charge**. Une connexion Internet est nécessaire pour récupérer les contenus et, au besoin, yt-dlp et FFmpeg au premier lancement. Pour une compatibilité YouTube améliorée, **Deno x64** est récupéré automatiquement au premier téléchargement YouTube et conservé localement dans `Donnees/bin/deno.exe`, sans installation globale ni modification du PATH. En cas d'indisponibilité de Deno, yt-dlp continue avec les capacités disponibles.
 
 ---
 
@@ -104,7 +108,7 @@ Pour les liens de VOD du type `https://www.twitch.tv/videos/1234567890`, **All-D
 ├── 📦 AUTRES/        Autres médias et plateformes
 └── 📁 Donnees/       Données personnelles des deux éditions
     ├── config.json   Réglages du logiciel
-    ├── bin/          yt-dlp, FFmpeg et ffprobe
+    ├── bin/          yt-dlp, FFmpeg, ffprobe, Deno et TwitchDownloaderCLI (facultatifs)
     ├── cache/        Cache yt-dlp et fichiers Twitch temporaires
     ├── webview/         Profil WebView2 local (Portable)
     ├── webview-classique/  Profil WebView2 local (Classique)
