@@ -26,6 +26,7 @@ import webview
 from twitch_vod import (twitch_vod_id, fallback_metadata, preferred_twitch_quality, ensure_cli_ready,
                         build_command as build_twitch_command, selected_quality_to_cli, progress_percentage,
                         CLI_FILENAME as TWITCH_CLI_FILENAME)
+from deno_runtime import is_youtube_url, ensure_deno_ready
 from twitch_hls import (resolve_hls, probe_native_height as twitch_hls_probe_native_height,
                         media_paths as twitch_hls_paths,
                         ffmpeg_command as twitch_hls_ffmpeg_command,
@@ -209,6 +210,7 @@ except Exception:
         pass
 
 YTDLP_PATH = os.path.join(BIN_DIR, "yt-dlp.exe")
+DENO_PATH = os.path.join(BIN_DIR, "deno.exe")
 FFMPEG_PATH = os.path.join(BIN_DIR, "ffmpeg.exe")
 
 YTDLP_URL = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
@@ -245,6 +247,24 @@ def is_valid_windows_executable(filename):
                     and int.from_bytes(signature[4:6], "little") == 0x8664)
     except (OSError, ValueError, OverflowError):
         return False
+
+
+def youtube_js_args(url):
+    """Ajouter Deno local à yt-dlp seulement pour YouTube, sans bloquer les autres sites.
+
+    yt-dlp.exe embarque déjà EJS : seul le moteur JS deno.exe est à récupérer.
+    En cas d'échec d'installation, yt-dlp conserve son fonctionnement habituel.
+    """
+    if not is_youtube_url(url) or not is_valid_windows_executable(YTDLP_PATH):
+        return []
+    try:
+        available, message = ensure_deno_ready(BIN_DIR, is_valid_windows_executable)
+        if available:
+            return ["--js-runtimes", "deno:" + DENO_PATH]
+        log_startup_phase("Deno facultatif indisponible : " + str(message)[:140])
+    except Exception as exc:
+        log_startup_phase("Deno facultatif : " + str(exc)[:140])
+    return []
 
 
 def ensure_ytdlp_ready():
@@ -3350,7 +3370,7 @@ class DownloaderAPI:
             "--force-ipv4",
             "--socket-timeout", "15",
             "--retries", "3"
-        ] + self._get_cookie_args()
+        ] + self._get_cookie_args() + youtube_js_args(url)
 
         imp_val = settings.get("impersonation", "none")
         if imp_val == "random":
@@ -3825,7 +3845,7 @@ class DownloaderAPI:
                         "--socket-timeout", "15",
                         "-P", target_dir,
                         "-o", f"{sanitize_filename(item.get('title', 'Media'))}.%(ext)s" if "v.pinimg.com" in url else "%(title)s.%(ext)s"
-                    ] + self._get_cookie_args()
+                    ] + self._get_cookie_args() + youtube_js_args(url)
 
                     if "twitter.com" in url or "x.com" in url:
                         cmd.extend(["--extractor-args", "twitter:api=syndication"])
