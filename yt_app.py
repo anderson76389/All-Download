@@ -2801,6 +2801,7 @@ HTML_PAGE = """<!DOCTYPE html>
     }
     const bar = document.getElementById('progressFill');
     if (bar) {
+      if (bar.classList.contains('indeterminate')) bar.style.width = '0%';
       bar.classList.remove('indeterminate');
     }
   }
@@ -2941,7 +2942,8 @@ class DownloaderAPI:
         if os.path.exists(CONFIG_FILE):
             try:
                 with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    loaded = json.load(f)
+                    return loaded if isinstance(loaded, dict) else {}
             except Exception: pass
         return {}
 
@@ -2988,7 +2990,7 @@ class DownloaderAPI:
         return None
 
     def get_app_settings(self):
-        return self.config.get("settings", {
+        defaults = {
             "sortie_type": "video",
             "video_format": "MP4",
             "post_process_video": "Aucun",
@@ -3014,7 +3016,9 @@ class DownloaderAPI:
             "proxy_url": "",
             "impersonation": "none",
             "extractor_args": ""
-        })
+        }
+        saved = self.config.get("settings") if isinstance(self.config, dict) else None
+        return {**defaults, **saved} if isinstance(saved, dict) else defaults
 
     def save_quick_selector_value(self, kind, value):
         """Enregistrer les choix de la barre du bas, sans écraser les autres options."""
