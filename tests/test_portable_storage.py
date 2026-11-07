@@ -201,6 +201,18 @@ class PortableStorageTests(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(self.legacy, "AllMediaDownload")))
         self.assertFalse(os.path.exists(os.path.join(self.portable, "Donnees")))
 
+    def test_twitch_dotnet_runtime_cache_is_local(self):
+        app = self.load_mode()
+        with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
+            yt_app.sys, "executable", self.exe
+        ):
+            env = app["local_twitch_environment"]()
+        expected = os.path.join(self.portable, "Donnees", "cache", "dotnet")
+        self.assertEqual(env["DOTNET_CLI_HOME"], expected)
+        self.assertEqual(env["DOTNET_BUNDLE_EXTRACT_BASE_DIR"],
+                         os.path.join(expected, "bundles"))
+        self.assertTrue(os.path.isdir(os.path.join(expected, "bundles")))
+
     def test_webview_profiles_remain_inside_each_windows_application(self):
         app = self.load_mode()
         with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
