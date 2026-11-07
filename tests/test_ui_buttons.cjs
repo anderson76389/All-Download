@@ -370,17 +370,6 @@ async function run() {
   win.updatePlaylistRange(1);
   assert.equal(win.eval('queue[1].start_idx'),1);
   assert.equal(win.eval('queue[1].end_idx'),12);
-  // Une analyse restée en vol ne réintroduit pas une carte après vider la file.
-  let finishExtraction;
-  const oldExtract = win.pywebview.api.extract_info;
-  win.pywebview.api.extract_info = () => new Promise(resolve => { finishExtraction = resolve; });
-  input.value='https://example.com/slow-async';
-  win.addVideo();
-  win.clearQueue();
-  finishExtraction({success:true,data:{...media,title:'Ancienne requête'}});
-  await flush();
-  assert.equal(win.eval('queue.length'),0,'Une requête tardive a recréé une carte supprimée');
-  win.pywebview.api.extract_info = oldExtract;
   // Changer de thème depuis l'interface et vérifier le même accent violet.
   for (const theme of ['light','dark','dark_pure']) {
     win.applyTheme(theme);
@@ -393,6 +382,17 @@ async function run() {
   win.clearQueue();
   assert.equal(win.eval('queue.length'),0);
   assert.equal(doc.getElementById('emptyView').style.display,'flex');
+  // Une analyse restée en vol ne réintroduit pas une carte après vider la file.
+  let finishExtraction;
+  const oldExtract = win.pywebview.api.extract_info;
+  win.pywebview.api.extract_info = () => new Promise(resolve => { finishExtraction = resolve; });
+  input.value='https://example.com/slow-async';
+  win.addVideo();
+  win.clearQueue();
+  finishExtraction({success:true,data:{...media,title:'Ancienne requête'}});
+  await flush();
+  assert.equal(win.eval('queue.length'),0,'Une requête tardive a recréé une carte supprimée');
+  win.pywebview.api.extract_info = oldExtract;
   validate();
   console.log('OK : boutons, formulaires, thèmes, cookies, file d’attente, qualité, playlist, navigation, API Python simulée');
   console.log('Gestionnaires HTML vérifiés : '+verifyInlineHandlers());
