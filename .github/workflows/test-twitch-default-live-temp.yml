@@ -1,0 +1,25 @@
+name: Test reel Twitch defaut 1080 puis 720 (temporaire)
+
+on:
+  pull_request:
+    paths:
+      - "scripts/test_twitch_default_live_temp.py"
+      - ".github/workflows/test-twitch-default-live-temp.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  check-real-vod:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+      - name: Installer les dependances tests
+        run: python -m pip install pywebview==6.2.1 pythonnet==3.2.1 "psutil>=6.1,<8"
+      - name: Test reel 1080p 720p MP4 sans OAuth
+        timeout-minutes: 8
+        run: python scripts/test_twitch_default_live_temp.py
