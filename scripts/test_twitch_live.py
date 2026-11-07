@@ -16,6 +16,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import yt_app
 
 VODS = [
+    ("Twitch_officiel", "https://www.twitch.tv/videos/2915087502"),
+    ("Chess", "https://www.twitch.tv/videos/2861629857"),
+    ("Twitch_officiel_spooky", "https://www.twitch.tv/videos/2914142284"),
     ("Kamet0", "https://www.twitch.tv/videos/2918765022"),
     ("mistermv", "https://www.twitch.tv/videos/2906716261"),
     ("StreamDatabase", "https://www.twitch.tv/videos/2905908970"),
