@@ -94,4 +94,10 @@ def main():
         }), flush=True)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except BaseException as exc:
+        import traceback
+        traceback.print_exc(file=sys.stdout)
+        sys.stdout.flush()
+        raise SystemExit(1) from exc
