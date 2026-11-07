@@ -459,6 +459,18 @@ def save_direct_media(url, target_dir, title, on_chunk=None):
                 pass
 
 
+def local_twitch_environment():
+    """Garder les éventuelles extractions .NET du CLI dans Donnees/cache."""
+    env = os.environ.copy()
+    if get_application_root():
+        dotnet_dir = os.path.join(APP_DIR, "cache", "dotnet")
+        bundle_dir = os.path.join(dotnet_dir, "bundles")
+        os.makedirs(bundle_dir, exist_ok=True)
+        env["DOTNET_CLI_HOME"] = dotnet_dir
+        env["DOTNET_BUNDLE_EXTRACT_BASE_DIR"] = bundle_dir
+    return env
+
+
 def kill_process_tree(pid):
     try:
         if sys.platform == "win32":
@@ -3612,6 +3624,7 @@ class DownloaderAPI:
                 errors="replace",
                 bufsize=1,
                 creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+                env=local_twitch_environment(),
             )
             self._active_download_process = proc
             if self.is_cancelled:
