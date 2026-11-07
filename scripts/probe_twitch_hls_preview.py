@@ -75,6 +75,37 @@ def check_manifest(url):
         return {"state": type(exc).__name__, "detail": str(exc)[:90]}
 
 
+
+def test_mp4_stream(url, vod_id):
+    """Télécharge 6 secondes en dossier TEMP puis vérifie la lecture vidéo."""
+    import subprocess
+    import tempfile
+    from pathlib import Path
+    import imageio_ffmpeg
+    ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
+    with tempfile.TemporaryDirectory(prefix="twitch_hls_six_seconds_") as tmp:
+        output = Path(tmp) / ("Twitch_" + vod_id + "_test.mp4")
+        command = [
+            ffmpeg, "-nostdin", "-hide_banner", "-loglevel", "warning",
+            "-i", url, "-t", "6", "-map", "0:v:0", "-map", "0:a?",
+            "-c", "copy", "-movflags", "+faststart", "-n", str(output)
+        ]
+        process = subprocess.run(command, capture_output=True, text=True,
+                                 errors="replace", timeout=120)
+        print("FFMPEG_DOWNLOAD", process.returncode, "stderr", process.stderr[-1800:], flush=True)
+        if process.returncode != 0 or not output.is_file():
+            print("MP4_RESULT FAIL_DOWNLOAD", flush=True)
+            return
+        size = output.stat().st_size
+        verify = subprocess.run(
+            [ffmpeg, "-nostdin", "-v", "error", "-i", str(output),
+             "-t", "3", "-f", "null", "NUL"],
+            capture_output=True, text=True, errors="replace", timeout=60
+        )
+        print("MP4_RESULT", "VALID" if verify.returncode == 0 and size > 30000 else "INVALID",
+              "size_bytes", size, "decode_exit", verify.returncode,
+              "decode_errors", verify.stderr[-1300:], flush=True)
+
 def main():
     for label, vid in VODS:
         info, errors = metadata(vid)
@@ -100,6 +131,8 @@ def main():
                 break
         print("RESULT", label, "HLS_PUBLIC_FOUND" if reached else
               "NO_HLS_PUBLIC_FOUND_FROM_PREVIEW", flush=True)
+        if reached and label == "utilisateur":
+            test_mp4_stream(url, vid)
 
 
 if __name__ == "__main__":
