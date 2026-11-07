@@ -72,10 +72,24 @@ def portable_root_is_writable(root):
 
 
 APP_ROOT = get_application_root()
-APP_DATA_LOCAL = bool(APP_ROOT and portable_root_is_writable(APP_ROOT))
-PORTABLE_DATA_LOCAL = bool(APP_DATA_LOCAL and get_portable_root())
-APP_DIR = (os.path.join(APP_ROOT, "Donnees")
-           if APP_DATA_LOCAL else LEGACY_APP_DIR)
+# Aucun EXE Windows ne doit écrire ses données permanentes hors d'All-Download.
+# En lecture seule, montrer une erreur au lieu de choisir un dossier AppData.
+if APP_ROOT and not portable_root_is_writable(APP_ROOT):
+    _message = (
+        "Le dossier All-Download est protégé contre l'écriture.\n\n"
+        "Déplacez la version Portable vers un dossier modifiable, "
+        "ou réinstallez la version Classique dans un emplacement modifiable.\n"
+        "Aucun fichier n'a été déplacé vers un autre dossier."
+    )
+    try:
+        ctypes.windll.user32.MessageBoxW(0, _message, "All-Download : dossier protégé", 0x10)
+    except (AttributeError, OSError):
+        pass
+    raise PermissionError(_message)
+APP_DATA_LOCAL = bool(APP_ROOT)
+PORTABLE_DATA_LOCAL = bool(APP_ROOT and get_portable_root())
+# AppData ne sert qu'aux anciennes données à importer ou au mode source.
+APP_DIR = os.path.join(APP_ROOT, "Donnees") if APP_ROOT else LEGACY_APP_DIR
 BIN_DIR = os.path.join(APP_DIR, "bin")
 CONFIG_FILE = os.path.join(APP_DIR, "config.json")
 HTML_FILE = os.path.join(APP_DIR, "index.html")
@@ -253,12 +267,36 @@ def is_legacy_download_folder(path):
         return False
 
 
-def choose_initial_download_folder(config):
-    """Portable + Classique : categories pres de l'EXE si ecriture autorisee.
+def is_inside_application_folder(path, root=None):
+    """Bloquer chemins externes, '..' et jonctions vers un autre dossier."""
+    root = root or get_application_root()
+    if not root or not isinstance(path, str) or not os.path.isabs(path):
+        return False
+    try:
+        candidate = os.path.normcase(os.path.realpath(path))
+        base = os.path.normcase(os.path.realpath(root))
+        return os.path.commonpath((candidate, base)) == base
+    except (OSError, ValueError, TypeError):
+        return False
 
-    Respecter un vrai choix personnalise. Aucun media de l'ancien emplacement
-    automatique n'est deplace ou supprime lors de la mise a jour.
+
+def choose_initial_download_folder(config):
+    """Les EXE restent dans All-Download, même avec une ancienne configuration.
+
+    Une ancienne destination extérieure n'est plus réutilisée ; son contenu
+    n'est jamais déplacé ni supprimé. Un sous-dossier interne reste autorisé.
     """
+    if not isinstance(config, dict):
+        config = {}
+    application_root = get_application_root()
+    if application_root:
+        saved = config.get("download_folder")
+        if (config.get("download_folder_custom") is True
+                and is_inside_application_folder(saved, application_root)):
+            return os.path.normpath(saved)
+        return application_root
+
+    # Exécution depuis les sources : chemins de développement historiques.
     saved = config.get("download_folder")
     custom = config.get("download_folder_custom")
     saved_is_old_auto = (
@@ -3049,6 +3087,12 @@ class DownloaderAPI:
         if not os.path.isabs(requested):
             return {"success": False, "error": "Indiquez un chemin absolu (C:\\..., D:\\... ou un dossier réseau)."}
         requested = os.path.normpath(requested)
+        app_root = get_application_root()
+        if app_root and not is_inside_application_folder(requested, app_root):
+            return {
+                "success": False,
+                "error": "Les téléchargements doivent rester dans All-Download (ou un sous-dossier de celui-ci)."
+            }
         try:
             ensure_media_directories(requested)
             import tempfile
@@ -4079,16 +4123,17 @@ WEBVIEW_STARTUP_TIMEOUT = 35  # Laisse terminer les demarrages WebView2 lents (<
 
 
 def get_gui_webview_storage_path(argv=None):
-    """Profil de secours distinct pour ne pas reutiliser un cache encore verrouille.
+    """Profils WebView2 dans All-Download/Donnees, récupération séparée.
 
-    Le processus GUI initial conserve le profil habituel, les seules relances
-    automatiques utilisent le profil "recuperation".
+    Les caches de l'ancienne version situés dans AppData ne sont pas supprimés.
     """
     arguments = list(sys.argv[1:] if argv is None else argv)
     name = "webview" if get_portable_root() else "webview-classique"
     if WEBVIEW_RETRY_FLAG in arguments or STARTUP_RETRY_FLAG in arguments:
         name += "-recuperation"
-    return os.path.join(LEGACY_APP_DIR, name)
+    app_root = get_application_root()
+    return (os.path.join(app_root, "Donnees", name) if app_root
+            else os.path.join(APP_DIR, name))
 
 
 def restart_after_webview_timeout(argv=None):
@@ -4236,12 +4281,10 @@ if __name__ == '__main__':
             raise RuntimeError("Failed to resolve Python.Runtime.Loader.Initialize [test]")
 
         # Les outils ne sont lances qu'apres l'evenement HTML charge.
-        # Le profil WebView2 vit dans LocalAppData (toujours modifiable),
-        # jamais pres de l'EXE qui peut etre dans Program Files ou dans un ZIP.
+        # WebView2 doit être conservé dans Donnees/ à côté de l'EXE ;
+        # l'installation Windows se fait dans un dossier modifiable.
         # Mode prive conserve : pas de cookies ni de sessions persistantes.
-        # WebView2 garde son profil interne dans AppData pour eviter les
-        # blocages de premiere initialisation Windows. Cela ne change PAS
-        # l'emplacement des medias, reglages, outils ou journaux Portable.
+        # Le profil initial et celui de récupération vivent dans Donnees/.
         # Test d'integration: forcer une initialisation sans signal HTML pour
         # verifier le vrai mecanisme de recuperation dans un EXE Windows.
         simulated_hang = os.environ.pop("ALL_DOWNLOAD_TEST_WEBVIEW_HANG_ONCE", None) == "1"
