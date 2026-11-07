@@ -250,6 +250,14 @@ def is_valid_windows_executable(filename):
         return False
 
 
+def local_ytdlp_environment():
+    """Deno ne doit jamais créer de cache permanent hors d'All-Download."""
+    environment = os.environ.copy()
+    environment["DENO_DIR"] = os.path.join(APP_DIR, "cache", "deno")
+    environment["DENO_NO_UPDATE_CHECK"] = "1"
+    return environment
+
+
 def youtube_js_args(url):
     """Ajouter Deno local à yt-dlp seulement pour YouTube, sans bloquer les autres sites.
 
@@ -3402,7 +3410,8 @@ class DownloaderAPI:
                 universal_newlines=True,
                 encoding='utf-8',
                 errors='replace',
-                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
+                env=local_ytdlp_environment(),
             )
             stdout, stderr = proc.communicate(timeout=60)
             
@@ -3986,7 +3995,8 @@ class DownloaderAPI:
                         encoding='utf-8',
                         errors='replace',
                         bufsize=1,
-                        creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+                        creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
+                        env=local_ytdlp_environment(),
                     )
 
                     self._active_download_process = proc
