@@ -18,7 +18,7 @@ from twitch_vod import twitch_vod_id, selected_quality_to_cli
 
 GQL_URL = "https://gql.twitch.tv/gql"
 PUBLIC_CLIENT_ID = "kimne78kx3ncx6brgo4mv6wki5h1ko"
-DEFAULT_QUALITIES = ("chunked", "1080p60", "720p60", "720p30", "480p30", "360p30", "160p30")
+DEFAULT_QUALITIES = ("chunked", "1080p60", "1080p30", "720p60", "720p30", "480p30", "360p30", "160p30")
 STORYBOARD = re.compile(r"^/([A-Za-z0-9]{20}_[A-Za-z0-9_]+_\d+_\d+)/storyboards(?:/|$)")
 
 
@@ -74,18 +74,18 @@ def manifest_candidates(preview_url, quality):
     if not isinstance(preview_url, str) or not is_twitch_cdn(preview_url):
         raise HLSUnavailable("URL de storyboard Twitch absente ou non reconnue.")
     parsed = urllib.parse.urlsplit(preview_url)
-    match = STORYBOARD.match(parsed.path)
-    if not match:
+    storyboard_match = STORYBOARD.match(parsed.path)
+    if not storyboard_match:
         raise HLSUnavailable("Format des aperçus de cette VOD non compatible.")
     selected = selected_quality_to_cli(quality)
     if selected:
         # Une résolution demandée est une limite supérieure, pas une préférence
         # facultative : ne jamais répondre "1080p source" pour une demande 720p.
-        match = re.fullmatch(r"(\d{3,4})p(\d{2,3})?", selected)
-        if not match:
+        quality_match = re.fullmatch(r"(\d{3,4})p(\d{2,3})?", selected)
+        if not quality_match:
             raise HLSUnavailable("Qualité Twitch non reconnue.")
-        height = int(match.group(1))
-        max_fps = int(match.group(2)) if match.group(2) else None
+        height = int(quality_match.group(1))
+        max_fps = int(quality_match.group(2)) if quality_match.group(2) else None
         choices = []
         for name in DEFAULT_QUALITIES:
             parsed_quality = re.fullmatch(r"(\d{3,4})p(\d{2,3})", name)
@@ -99,7 +99,7 @@ def manifest_candidates(preview_url, quality):
     else:
         qualities = DEFAULT_QUALITIES
     return [(q, urllib.parse.urlunsplit(
-        ("https", parsed.netloc, "/" + match.group(1) + "/" + q + "/index-dvr.m3u8", "", "")
+        ("https", parsed.netloc, "/" + storyboard_match.group(1) + "/" + q + "/index-dvr.m3u8", "", "")
     )) for q in qualities]
 
 
