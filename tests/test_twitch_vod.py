@@ -387,6 +387,12 @@ class IntegrationTests(unittest.TestCase):
 
 
 
+    def test_native_hls_ffprobe_path_is_defined_in_packaged_application(self):
+        import yt_app
+        self.assertEqual(yt_app.FFPROBE_PATH,
+                         os.path.join(yt_app.BIN_DIR, "ffprobe.exe"))
+        self.assertTrue(yt_app.FFPROBE_PATH.endswith("ffprobe.exe"))
+
     def test_no_cli_download_or_github_access_still_uses_native_hls(self):
         import yt_app
         api = yt_app.DownloaderAPI.__new__(yt_app.DownloaderAPI)
