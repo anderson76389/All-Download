@@ -34,5 +34,5 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "HTML extraction failed" }
       - name: Audit de tous les boutons, menus et métadonnées dans le DOM
         run: node tests/test_ui_buttons.cjs
-      - name: Audit interface Edge : tailles, écrans, thème clair sombre OLED
+      - name: "Audit interface Edge : tailles, écrans, thèmes clair sombre OLED"
         run: node tests/test_ui_responsive.cjs
