@@ -71,21 +71,25 @@ def portable_root_is_writable(root):
         return False
 
 
-APP_ROOT = get_application_root()
-# Aucun EXE Windows ne doit écrire ses données permanentes hors d'All-Download.
-# En lecture seule, montrer une erreur au lieu de choisir un dossier AppData.
-if APP_ROOT and not portable_root_is_writable(APP_ROOT):
-    _message = (
-        "Le dossier All-Download est protégé contre l'écriture.\n\n"
+def stop_if_local_storage_is_read_only():
+    """Aucune migration cachée vers AppData si All-Download est non modifiable."""
+    message = (
+        "Le dossier All-Download (ou Donnees) est protégé contre l'écriture.\n\n"
         "Déplacez la version Portable vers un dossier modifiable, "
         "ou réinstallez la version Classique dans un emplacement modifiable.\n"
-        "Aucun fichier n'a été déplacé vers un autre dossier."
+        "Aucun nouveau fichier n'a été déplacé ailleurs."
     )
     try:
-        ctypes.windll.user32.MessageBoxW(0, _message, "All-Download : dossier protégé", 0x10)
+        ctypes.windll.user32.MessageBoxW(0, message, "All-Download : dossier protégé", 0x10)
     except (AttributeError, OSError):
         pass
-    raise PermissionError(_message)
+    raise PermissionError(message)
+
+
+APP_ROOT = get_application_root()
+# Aucun EXE Windows ne doit écrire ses données permanentes hors d'All-Download.
+if APP_ROOT and not portable_root_is_writable(APP_ROOT):
+    stop_if_local_storage_is_read_only()
 APP_DATA_LOCAL = bool(APP_ROOT)
 PORTABLE_DATA_LOCAL = bool(APP_ROOT and get_portable_root())
 # AppData ne sert qu'aux anciennes données à importer ou au mode source.
@@ -96,8 +100,16 @@ HTML_FILE = os.path.join(APP_DIR, "index.html")
 CRASH_LOG = os.path.join(APP_DIR, "crash_log.txt")
 STARTUP_LOG = os.path.join(APP_DIR, "startup_log.txt")
 
-os.makedirs(APP_DIR, exist_ok=True)
-os.makedirs(BIN_DIR, exist_ok=True)
+try:
+    os.makedirs(APP_DIR, exist_ok=True)
+    os.makedirs(BIN_DIR, exist_ok=True)
+except OSError:
+    if APP_ROOT:
+        stop_if_local_storage_is_read_only()
+    raise
+if APP_ROOT and (not portable_root_is_writable(APP_DIR)
+                 or not portable_root_is_writable(BIN_DIR)):
+    stop_if_local_storage_is_read_only()
 
 
 def import_legacy_portable_settings():
