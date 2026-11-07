@@ -25,7 +25,7 @@ import webview
 from twitch_vod import (twitch_vod_id, fallback_metadata, ensure_cli_ready,
                         build_command as build_twitch_command, progress_percentage,
                         CLI_FILENAME as TWITCH_CLI_FILENAME)
-from twitch_hls import (resolve_hls, media_paths as twitch_hls_paths,
+from twitch_hls import (resolve_hls, available_hls_formats, media_paths as twitch_hls_paths,
                         ffmpeg_command as twitch_hls_ffmpeg_command,
                         progress_from_ffmpeg as twitch_hls_progress,
                         HLSUnavailable)
@@ -3050,6 +3050,17 @@ class DownloaderAPI:
         self.is_paused = False
         return {"success": True}
 
+    def _twitch_info_fallback(self, url):
+        """Carte qualité Twitch, avec détection rapide des profils HLS accessibles."""
+        try:
+            discovered = available_hls_formats(url, timeout=5)
+            if discovered:
+                return fallback_metadata(url, formats=discovered)
+        except (HLSUnavailable, OSError, ValueError, TimeoutError):
+            pass
+        # Un échec de sondage ne doit jamais rendre la VOD impossible à ajouter.
+        return fallback_metadata(url)
+
     def extract_info(self, raw_url):
         url = normalize_media_url(raw_url)
 
@@ -3068,7 +3079,7 @@ class DownloaderAPI:
 
         if not ensure_ytdlp_ready():
             if twitch_vod_id(url):
-                return {"success": True, "data": fallback_metadata(url)}
+                return {"success": True, "data": self._twitch_info_fallback(url)}
             return {
                 "success": False,
                 "error": "yt-dlp est absent ou invalide. Impossible de recuperer "
@@ -3120,7 +3131,7 @@ class DownloaderAPI:
                 # Les métadonnées Twitch restent facultatives : le CLI sait
                 # télécharger une VOD avec son identifiant uniquement.
                 if twitch_vod_id(url):
-                    return {"success": True, "data": fallback_metadata(url)}
+                    return {"success": True, "data": self._twitch_info_fallback(url)}
                 err_lower = stderr.lower()
                 is_restricted = False
                 if any(k in err_lower for k in ["sign in", "confirm your age", "age-restricted", "age restricted", "inappropriate"]):
@@ -3216,11 +3227,11 @@ class DownloaderAPI:
         except subprocess.TimeoutExpired:
             if proc: kill_process_tree(proc.pid)
             if twitch_vod_id(url):
-                return {"success": True, "data": fallback_metadata(url)}
+                return {"success": True, "data": self._twitch_info_fallback(url)}
             return {"success": False, "error": "Délai d'attente dépassé lors de l'analyse."}
         except Exception as e:
             if twitch_vod_id(url):
-                return {"success": True, "data": fallback_metadata(url)}
+                return {"success": True, "data": self._twitch_info_fallback(url)}
             return {"success": False, "error": str(e)}
         finally:
             gc.collect()
