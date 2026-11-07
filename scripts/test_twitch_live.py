@@ -66,6 +66,31 @@ def main():
         api._active_download_process = None
         api._suspended_download_pids = []
         yt_app.ensure_media_directories(api.download_folder)
+        # Diagnostic CLI : aide en console avant le vrai téléchargement.
+        from twitch_vod import ensure_cli_ready, CLI_FILENAME
+        ok, reason = ensure_cli_ready(str(bin_dir), yt_app.is_valid_windows_executable)
+        assert ok, "Installation du CLI impossible: " + reason
+        cli_path = str(bin_dir / CLI_FILENAME)
+        probe = subprocess.run([cli_path, "videodownload", "--help"],
+                               capture_output=True, text=True, encoding="utf-8",
+                               errors="replace", timeout=30)
+        print("CLI_HELP_RC:", probe.returncode, "OUTPUT:", probe.stdout[-1800:],
+              "STDERR:", probe.stderr[-1800:], flush=True)
+        real_popen = subprocess.Popen
+
+        def logging_popen(*args, **kwargs):
+            process = real_popen(*args, **kwargs)
+            if process.stdout is not None:
+                real_pipe = process.stdout
+                class LoggingPipe:
+                    def readline(self):
+                        line = real_pipe.readline()
+                        if line:
+                            print("CLI_OUTPUT:", repr(line[:1000]), flush=True)
+                        return line
+                process.stdout = LoggingPipe()
+            return process
+
         real_builder = yt_app.build_twitch_command
 
         def short_clip_command(*args, **kwargs):
@@ -78,6 +103,7 @@ def main():
                 "selectedQuality": "Meilleure qualité (Auto)", "is_direct_download": False}
         print("VOD_TEST:", VOD, flush=True)
         with patch.object(yt_app, "build_twitch_command", short_clip_command), \
+             patch.object(yt_app.subprocess, "Popen", side_effect=logging_popen), \
              patch.object(yt_app.threading, "Thread", ImmediateThread), \
              patch.object(yt_app, "ensure_ytdlp_ready", side_effect=AssertionError("yt-dlp ne doit pas être nécessaire")):
             api.start_downloads([item])
