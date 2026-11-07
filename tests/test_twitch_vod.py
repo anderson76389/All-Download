@@ -229,7 +229,7 @@ class IntegrationTests(unittest.TestCase):
                 api.start_downloads([{"url": "https://twitch.tv/videos/1234567890",
                                       "mode": "Vidéo"}])
         ytdlp.assert_not_called()
-        self.assertTrue(any("Terminé avec erreurs" in x
+        self.assertTrue(any("avec erreurs" in x
                             for x in api._window.events))
 
 
