@@ -122,6 +122,21 @@ def main():
 
         files = list((directory / "MEDIAS" / "AUTRES").glob("*.mp4"))
         print("MP4_OUTPUTS:", [(str(f), f.stat().st_size) for f in files], flush=True)
+        if not files and Path(yt_app.YTDLP_PATH).is_file():
+            for channel, vod_url in (VODS[0], VODS[1]):
+                try:
+                    probe_yt = subprocess.run(
+                        [yt_app.YTDLP_PATH, "--ignore-config", "--no-warnings",
+                         "--skip-download", "--no-playlist", "--print", "%(id)s %(title)s",
+                         vod_url],
+                        capture_output=True, text=True, encoding="utf-8",
+                        errors="replace", timeout=45
+                    )
+                    print("YTDLP_PROBE:", channel, "returncode", probe_yt.returncode,
+                          "stdout", probe_yt.stdout[-800:],
+                          "stderr", probe_yt.stderr[-1300:], flush=True)
+                except Exception as err:
+                    print("YTDLP_PROBE_ERROR:", channel, str(err), flush=True)
         assert len(files) == 1 and files[0].stat().st_size >= 30000, "Aucun MP4 téléchargé ou fichier incomplet"
         assert any("markDownloadSuccess(" in event for event in api._window.events), "Interface non notifiée du succès"
         details = subprocess.run([ffprobe, "-v", "error", "-show_entries",
