@@ -57,6 +57,7 @@ Name: "{app}\CHAÎNES"; Flags: uninsneveruninstall
 Name: "{app}\GIFS"; Flags: uninsneveruninstall
 Name: "{app}\PLAYLIST"; Flags: uninsneveruninstall
 Name: "{app}\VIDÉOS"; Flags: uninsneveruninstall
+Name: "{app}\TWITCH"; Flags: uninsneveruninstall
 Name: "{app}\Donnees"; Flags: uninsneveruninstall
 
 [Icons]
