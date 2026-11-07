@@ -3279,7 +3279,20 @@ class DownloaderAPI:
                 clean = line.strip()
                 if not clean:
                     continue
-                if "[ERROR]" in clean:
+                # Certaines versions du CLI .NET se terminent en exception
+                # non gérée plutôt qu'avec une ligne [ERROR]. Ne pas perdre
+                # la véritable raison au profit du code CLR 0xE0434352.
+                if "Insufficient access to VOD" in clean:
+                    last_error = (
+                        "Twitch refuse l'accès à cette VOD. Elle peut être "
+                        "restreinte, nécessiter OAuth ou être inaccessible "
+                        "depuis ce réseau."
+                    )
+                elif "Invalid VOD" in clean:
+                    last_error = "VOD Twitch introuvable, supprimée ou expirée."
+                elif "[ERROR]" in clean and not last_error:
+                    last_error = clean[:240]
+                elif "Unhandled exception" in clean and not last_error:
                     last_error = clean[:240]
                 pct = progress_percentage(clean)
                 if pct is not None and pct != last_pct:
@@ -3588,8 +3601,10 @@ class DownloaderAPI:
                 if self._window:
                     if self.is_cancelled:
                         status = f"Annulé – {completed}/{total} élément(s) téléchargé(s)."
-                    else:
+                    elif completed == total:
                         status = f"Traitement terminé – {completed}/{total} élément(s) téléchargé(s)."
+                    else:
+                        status = f"Terminé avec erreurs – {completed}/{total} élément(s) téléchargé(s)."
                     self._window.evaluate_js(f"updateDownloadProgress(100, {json.dumps(status)})")
                     if settings.get("notify") in ("finish", "always"):
                         self._window.evaluate_js(f"showAppToast({json.dumps(status)})")
