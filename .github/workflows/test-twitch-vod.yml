@@ -1,0 +1,36 @@
+name: Vérification Twitch VOD (sans publication)
+
+on:
+  pull_request:
+    paths:
+      - "yt_app.py"
+      - "twitch_vod.py"
+      - "tests/**"
+      - ".github/workflows/test-twitch-vod.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Tests Python Windows x64
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Dépendances de test de l'application
+        run: python -m pip install pywebview==6.2.1 pythonnet==3.2.1 "psutil>=6.1,<8"
+
+      - name: Vérifier la syntaxe
+        run: python -m py_compile yt_app.py twitch_vod.py
+
+      - name: Tests hors réseau et non-régression
+        run: python -m unittest discover -s tests -v
