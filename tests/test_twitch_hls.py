@@ -104,6 +104,18 @@ class HLSFallbackTests(unittest.TestCase):
             self.assertNotEqual(temp, tmp2)
             self.assertEqual(output.read_bytes(), b"user existing media")
 
+    def test_requested_720_transcodes_source_without_upscaling(self):
+        url = twitch_hls.manifest_candidates(PREVIEW, "auto")[0][1]
+        command = twitch_hls.ffmpeg_command(
+            "C:/app/ffmpeg.exe", url, "D:/out.mp4", max_height=720, max_fps=30
+        )
+        self.assertIn("scale=-2:min(ih\\,720)", command)
+        self.assertIn("libx264", command)
+        self.assertEqual(command[command.index("-r") + 1], "30")
+        self.assertNotIn("-c", command)
+        with self.assertRaises(twitch_hls.HLSUnavailable):
+            twitch_hls.ffmpeg_command("ffmpeg", url, "out.mp4", max_height=0)
+
     def test_ffmpeg_arguments_no_shell(self):
         url = twitch_hls.manifest_candidates(PREVIEW, "auto")[0][1]
         cmd = twitch_hls.ffmpeg_command("C:/app/bin/ffmpeg.exe", url, "D:/sample.part.mp4")
