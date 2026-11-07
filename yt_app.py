@@ -2227,7 +2227,7 @@ HTML_PAGE = """<!DOCTYPE html>
         html += `
           <div class="log-banner">
             <div class="badge-fail">! Échec</div>
-            <div class="banner-text"><b>${item.title}</b><br><span style="color:#aaa;">${item.error}</span></div>
+            <div class="banner-text"><b>${escapeHtml(item.title)}</b><br><span style="color:#aaa;">${escapeHtml(item.error)}</span></div>
           </div>`;
       });
       errList.innerHTML = html;
@@ -2295,7 +2295,7 @@ HTML_PAGE = """<!DOCTYPE html>
           <svg style="width:32px;height:32px;fill:currentColor;" viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg>
         </div>
         <div style="flex:1;">
-          <div class="card-title" style="font-size:14px; font-weight:600;">${url}</div>
+          <div class="card-title" style="font-size:14px; font-weight:600;">${escapeHtml(url)}</div>
           <div class="skeleton-bar"><div class="skeleton-fill"></div></div>
           <div class="skeleton-status" style="font-size:11px; margin-top:4px; font-weight:600;">Récupération des métadonnées...</div>
         </div>
@@ -2359,6 +2359,18 @@ HTML_PAGE = """<!DOCTYPE html>
     }
   }
 
+  // Toutes les métadonnées proviennent de sites externes : jamais de HTML actif.
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[ch]);
+  }
+  function safeThumbnailUrl(value) {
+    try {
+      const url = new URL(String(value || ''));
+      return ['https:', 'http:'].includes(url.protocol) ? escapeHtml(url.href) : '';
+    } catch (_) { return ''; }
+  }
   function renderCards() {
     const list = document.getElementById('cardList');
     list.innerHTML = '';
@@ -2367,7 +2379,8 @@ HTML_PAGE = """<!DOCTYPE html>
       const card = document.createElement('div');
       card.className = 'media-card' + (item.isError ? ' error' : '');
 
-      const thumbImg = item.thumbnail ? `<img class="thumb" src="${item.thumbnail}" onerror="this.style.display='none'">` : '';
+      const thumbnail = safeThumbnailUrl(item.thumbnail);
+      const thumbImg = thumbnail ? `<img class="thumb" src="${thumbnail}" onerror="this.style.display='none'">` : '';
 
       if (item.isError) {
         const badgeText = item.isRestricted ? "🔒 Contenu Restreint (+18 / Privé)" : "Erreur d'accès";
@@ -2375,7 +2388,7 @@ HTML_PAGE = """<!DOCTYPE html>
           <div class="thumb-container" style="background:#ff4d4f;">${thumbImg}</div>
           <div class="card-body">
             <div class="card-title-row">
-              <div class="card-title">${item.title}</div>
+              <div class="card-title">${escapeHtml(item.title)}</div>
             </div>
             <div class="card-bottom-row">
               <div class="error-badge">
@@ -2401,9 +2414,9 @@ HTML_PAGE = """<!DOCTYPE html>
           </div>
         `;
       } else if (item.is_playlist || item.is_channel) {
-        const count = item.item_count || 1;
-        const startVal = item.start_idx || 1;
-        const endVal = item.end_idx || count;
+        const count = Math.min(1000000, Math.max(1, parseInt(item.item_count, 10) || 1));
+        const startVal = Math.max(1, Math.min(count, parseInt(item.start_idx, 10) || 1));
+        const endVal = Math.max(startVal, Math.min(count, parseInt(item.end_idx, 10) || count));
 
         let plQualOptions = '';
         if (item.mode === 'Audio') {
@@ -2430,8 +2443,8 @@ HTML_PAGE = """<!DOCTYPE html>
           <div class="thumb-container">${thumbImg}</div>
           <div class="card-body">
             <div class="card-title-row" style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
-              <div class="card-title">${item.title}</div>
-              <div class="playlist-count-text" style="font-size:12px; font-weight:600; white-space:nowrap; flex-shrink:0;">${countLabel}</div>
+              <div class="card-title">${escapeHtml(item.title)}</div>
+              <div class="playlist-count-text" style="font-size:12px; font-weight:600; white-space:nowrap; flex-shrink:0;">${escapeHtml(countLabel)}</div>
             </div>
             <div class="playlist-label">Sélectionnez les éléments à télécharger :</div>
             <div class="card-bottom-row">
@@ -2443,7 +2456,7 @@ HTML_PAGE = """<!DOCTYPE html>
               </div>
               <div style="display:flex; align-items:center; gap:8px; margin-left:auto; flex-wrap:wrap;">
                 <div class="pill-dropdown" onclick="toggleDropdown('pl_mode_pop_${index}', event)">
-                  <span>${item.mode || 'Vidéo'}</span>
+                  <span>${escapeHtml(item.mode || 'Vidéo')}</span>
                   <svg class="svg-icon" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
                   <div class="dropdown-popover" id="pl_mode_pop_${index}">
                     <div class="dropdown-item ${item.mode==='Vidéo'?'selected':''}" onclick="setCardMode(${index}, 'Vidéo', event)"><span class="check">${item.mode==='Vidéo'?'✓':''}</span>Vidéo</div>
@@ -2452,7 +2465,7 @@ HTML_PAGE = """<!DOCTYPE html>
                 </div>
 
                 <div class="pill-dropdown" onclick="toggleDropdown('pl_qual_pop_${index}', event)">
-                  <span>${item.selectedQualityLabel || (item.mode==='Audio'?'FLAC (selon la source)':'Meilleure qualité (Auto)')}</span>
+                  <span>${escapeHtml(item.selectedQualityLabel || (item.mode==='Audio'?'FLAC (selon la source)':'Meilleure qualité (Auto)'))}</span>
                   <svg class="svg-icon" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
                   <div class="dropdown-popover" id="pl_qual_pop_${index}">
                     ${plQualOptions}
@@ -2495,9 +2508,9 @@ HTML_PAGE = """<!DOCTYPE html>
             <div class="dropdown-item selected"><span class="check">✓</span>Qualité Originale</div>
           `;
         } else {
-          item.formats.forEach(f => {
+          (Array.isArray(item.formats) ? item.formats : []).forEach((f, formatIndex) => {
             const isSel = item.selectedQuality === f;
-            qualPopoverHtml += `<div class="dropdown-item ${isSel?'selected':''}" onclick="setCardQuality(${index}, '${f}', '${f}', event)"><span class="check">${isSel?'✓':''}</span>${f}</div>`;
+            qualPopoverHtml += `<div class="dropdown-item ${isSel?'selected':''}" onclick="setCardFormat(${index}, ${formatIndex}, event)"><span class="check">${isSel?'✓':''}</span>${escapeHtml(f)}</div>`;
           });
         }
 
@@ -2523,13 +2536,13 @@ HTML_PAGE = """<!DOCTYPE html>
           <div class="thumb-container">${thumbImg}</div>
           <div class="card-body">
             <div class="card-title-row">
-              <div class="card-title">${item.title}</div>
+              <div class="card-title">${escapeHtml(item.title)}</div>
             </div>
             <div class="card-bottom-row">
-              <div class="card-meta">Durée : ${item.duration} &nbsp;•&nbsp; ${destInfo}</div>
+              <div class="card-meta">Durée : ${escapeHtml(item.duration)} &nbsp;•&nbsp; ${destInfo}</div>
               <div class="card-controls">
                 <div class="pill-dropdown" onclick="toggleDropdown('card_mode_pop_${index}', event)">
-                  <span>${item.mode}</span>
+                  <span>${escapeHtml(item.mode)}</span>
                   <svg class="svg-icon" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
                   <div class="dropdown-popover" id="card_mode_pop_${index}">
                     <div class="dropdown-item ${item.mode==='Vidéo'?'selected':''}" onclick="setCardMode(${index}, 'Vidéo', event)"><span class="check">${item.mode==='Vidéo'?'✓':''}</span>Vidéo</div>
@@ -2539,7 +2552,7 @@ HTML_PAGE = """<!DOCTYPE html>
                 </div>
 
                 <div class="pill-dropdown" onclick="toggleDropdown('card_qual_pop_${index}', event)">
-                  <span>${item.selectedQualityLabel || item.selectedQuality}</span>
+                  <span>${escapeHtml(item.selectedQualityLabel || item.selectedQuality)}</span>
                   <svg class="svg-icon" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
                   <div class="dropdown-popover" id="card_qual_pop_${index}">
                     ${qualPopoverHtml}
@@ -2586,6 +2599,13 @@ HTML_PAGE = """<!DOCTYPE html>
     renderCards();
   }
 
+  function setCardFormat(idx, formatIndex, e) {
+    const item = queue[idx];
+    if (!item || !Array.isArray(item.formats)) return;
+    const value = item.formats[formatIndex];
+    if (typeof value !== 'string') return;
+    setCardQuality(idx, value, value, e);
+  }
   function setCardQuality(idx, val, label, e) {
     if (e) { e.stopPropagation(); }
     queue[idx].selectedQuality = val;
