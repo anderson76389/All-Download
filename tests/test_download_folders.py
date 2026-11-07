@@ -328,6 +328,23 @@ class DownloadFolderTests(unittest.TestCase):
         self.assertIsNone(api.browse_download_folder())
         self.assertEqual(api.download_folder, self.root)
 
+    def test_compiled_browse_rejects_external_folder_without_changing_destination(self):
+        api = self.create_api()
+        with tempfile.TemporaryDirectory() as outside:
+            class Window:
+                def create_file_dialog(self, *_args, **_kwargs):
+                    return [outside]
+
+            api._window = Window()
+            with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
+                yt_app.sys, "executable",
+                os.path.join(self.root, "All_Media_Download.exe")
+            ):
+                result = api.browse_download_folder()
+            self.assertIsInstance(result, dict)
+            self.assertIn("extérieur", result["error"])
+            self.assertEqual(api.download_folder, self.root)
+
     def test_reset_to_default_unshares_auto_destinations(self):
         api = self.create_api()
         automatic = os.path.join(self.root, "Default")
