@@ -16,13 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import yt_app
 
 VODS = [
-    ("Twitch_officiel", "https://www.twitch.tv/videos/2915087502"),
-    ("Chess", "https://www.twitch.tv/videos/2861629857"),
-    ("Twitch_officiel_spooky", "https://www.twitch.tv/videos/2914142284"),
-    ("Kamet0", "https://www.twitch.tv/videos/2918765022"),
-    ("mistermv", "https://www.twitch.tv/videos/2906716261"),
-    ("StreamDatabase", "https://www.twitch.tv/videos/2905908970"),
-    ("mistermv2", "https://www.twitch.tv/videos/2908472298"),
+    ("VOD_utilisateur_2919531847", "https://www.twitch.tv/videos/2919531847"),
 ]
 
 class UiProbe:
@@ -126,7 +120,7 @@ def main():
         files = list((directory / "MEDIAS" / "AUTRES").glob("*.mp4"))
         print("MP4_OUTPUTS:", [(str(f), f.stat().st_size) for f in files], flush=True)
         if not files and Path(yt_app.YTDLP_PATH).is_file():
-            for channel, vod_url in (VODS[0], VODS[1]):
+            for channel, vod_url in VODS:
                 try:
                     probe_yt = subprocess.run(
                         [yt_app.YTDLP_PATH, "--ignore-config", "--no-warnings",
