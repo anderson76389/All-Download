@@ -1,0 +1,21 @@
+name: Diagnostic HLS extension Twitch (temporaire)
+
+on:
+  pull_request:
+    paths:
+      - "scripts/probe_twitch_hls_preview.py"
+      - ".github/workflows/diagnose-twitch-hls.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  preview-probe:
+    runs-on: windows-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntaxe du prototype
+        run: python -m py_compile scripts/probe_twitch_hls_preview.py
+      - name: Tester sans authentification les manifests de la VOD utilisateur et temoin
+        run: python scripts/probe_twitch_hls_preview.py
