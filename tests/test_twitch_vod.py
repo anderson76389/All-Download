@@ -253,9 +253,31 @@ class IntegrationTests(unittest.TestCase):
                             for x in api._window.events))
 
 
-    def test_twitch_manual_quality_falls_back_to_source_transcoding(self):
+    def test_twitch_hls_does_not_convert_when_no_native_quality_exists(self):
         import yt_app
         from twitch_hls import HLSUnavailable
+        api = yt_app.DownloaderAPI.__new__(yt_app.DownloaderAPI)
+        api._window = None
+        api.is_cancelled = False
+        api._active_download_process = None
+        with tempfile.TemporaryDirectory() as root:
+            with patch.object(yt_app, "resolve_hls",
+                              side_effect=HLSUnavailable("Aucun 1080p ou 720p natif")) as lookup, \
+                 patch.object(yt_app.subprocess, "Popen") as popen, \
+                 patch.object(yt_app, "twitch_hls_ffmpeg_command") as convert:
+                success, reason = api._download_twitch_hls(
+                    {"url": "https://twitch.tv/videos/2919531847", "title": "Test"},
+                    root, "1080p (60fps)", 1, 1, lambda *args: None
+                )
+            self.assertFalse(success)
+            self.assertIn("Aucun 1080p ou 720p natif", reason)
+            lookup.assert_called_once()
+            self.assertTrue(callable(lookup.call_args.kwargs["source_height_probe"]))
+            popen.assert_not_called()
+            convert.assert_not_called()
+
+    def test_twitch_hls_preserves_native_stream_without_transcoding(self):
+        import yt_app
         api = yt_app.DownloaderAPI.__new__(yt_app.DownloaderAPI)
         api._window = None
         api.is_cancelled = False
@@ -272,28 +294,28 @@ class IntegrationTests(unittest.TestCase):
             final = os.path.join(root, "Twitch_2919531847.mp4")
             def fake_open(*args, **kwargs):
                 with open(temp, "wb") as output:
-                    output.write(b"valid video" * 200)
+                    output.write(b"native media" * 200)
                 return FakeProcess()
-            with patch.object(yt_app, "resolve_hls", side_effect=[
-                    HLSUnavailable("HTTP 403"),
-                    ("https://example.cloudfront.net/stream/chunked/index-dvr.m3u8",
-                     "chunked", 8030, 803)
-                ]) as resolver, \
+            with patch.object(yt_app, "resolve_hls", return_value=(
+                    "https://example.cloudfront.net/stream/720p60/index-dvr.m3u8",
+                    "720p60", 8030, 803)) as lookup, \
                  patch.object(yt_app, "twitch_hls_paths",
                               return_value=(__import__("pathlib").Path(temp), __import__("pathlib").Path(final))), \
                  patch.object(yt_app, "twitch_hls_ffmpeg_command",
-                              return_value=["ffmpeg"]) as builder, \
-                 patch.object(yt_app.subprocess, "Popen", side_effect=fake_open):
+                              return_value=["ffmpeg", "-c", "copy"]) as builder, \
+                 patch.object(yt_app.subprocess, "Popen", side_effect=fake_open) as popen:
                 success, reason = api._download_twitch_hls(
                     {"url": "https://twitch.tv/videos/2919531847", "title": "Test"},
-                    root, "720p (60fps)", 1, 1, lambda *args: None
+                    root, "1080p (60fps)", 1, 1, lambda *args: None
                 )
             self.assertTrue(success, reason)
             self.assertTrue(os.path.isfile(final))
-            self.assertEqual(resolver.call_count, 2)
-            self.assertEqual(resolver.call_args_list[1].args[1], "Meilleure qualité (Auto)")
-            self.assertEqual(builder.call_args.kwargs["max_height"], 720)
-            self.assertEqual(builder.call_args.kwargs["max_fps"], 60)
+            lookup.assert_called_once()
+            builder.assert_called_once()
+            self.assertEqual(len(builder.call_args.args), 3)
+            self.assertEqual(builder.call_args.kwargs, {})
+            self.assertNotIn("-vf", popen.call_args.args[0])
+            self.assertIn("copy", popen.call_args.args[0])
 
     def test_twitch_cli_refusal_retries_hls_and_succeeds(self):
         import yt_app

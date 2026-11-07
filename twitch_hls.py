@@ -8,6 +8,7 @@ Twitch VOD Downloader 3.26 transmise par le propriétaire du projet.
 import json
 import os
 import re
+import subprocess
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -18,7 +19,7 @@ from twitch_vod import twitch_vod_id, selected_quality_to_cli
 
 GQL_URL = "https://gql.twitch.tv/gql"
 PUBLIC_CLIENT_ID = "kimne78kx3ncx6brgo4mv6wki5h1ko"
-DEFAULT_QUALITIES = ("chunked", "1080p60", "1080p30", "720p60", "720p30", "480p30", "360p30", "160p30")
+DEFAULT_QUALITIES = ("chunked", "1080p60", "1080p30", "720p60", "720p30")
 STORYBOARD = re.compile(r"^/([A-Za-z0-9]{20}_[A-Za-z0-9_]+_\d+_\d+)/storyboards(?:/|$)")
 
 
@@ -71,6 +72,12 @@ def metadata_for_vod(vod_id, timeout=18):
 
 
 def manifest_candidates(preview_url, quality):
+    """Sources Twitch natives uniquement, jamais de résolution fabriquée.
+
+    Défaut 1080p -> 720p uniquement. Une qualité manuelle (ex. 480p)
+    reste possible, mais sans baisse silencieuse ou conversion.
+    Le profil "chunked" n'est retenu que si FFprobe confirme sa hauteur.
+    """
     if not isinstance(preview_url, str) or not is_twitch_cdn(preview_url):
         raise HLSUnavailable("URL de storyboard Twitch absente ou non reconnue.")
     parsed = urllib.parse.urlsplit(preview_url)
@@ -78,29 +85,46 @@ def manifest_candidates(preview_url, quality):
     if not storyboard_match:
         raise HLSUnavailable("Format des aperçus de cette VOD non compatible.")
     selected = selected_quality_to_cli(quality)
-    if selected:
-        # Une résolution demandée est une limite supérieure, pas une préférence
-        # facultative : ne jamais répondre "1080p source" pour une demande 720p.
-        quality_match = re.fullmatch(r"(\d{3,4})p(\d{2,3})?", selected)
-        if not quality_match:
-            raise HLSUnavailable("Qualité Twitch non reconnue.")
-        height = int(quality_match.group(1))
-        max_fps = int(quality_match.group(2)) if quality_match.group(2) else None
-        choices = []
-        for name in DEFAULT_QUALITIES:
-            parsed_quality = re.fullmatch(r"(\d{3,4})p(\d{2,3})", name)
-            if parsed_quality and int(parsed_quality.group(1)) <= height:
-                if int(parsed_quality.group(1)) == height and max_fps and int(parsed_quality.group(2)) > max_fps:
-                    continue
-                choices.append(name)
-        qualities = tuple(choices)
-        if not qualities:
-            raise HLSUnavailable("Aucune qualité HLS inférieure ou égale à la résolution choisie.")
-    else:
-        qualities = DEFAULT_QUALITIES
-    return [(q, urllib.parse.urlunsplit(
-        ("https", parsed.netloc, "/" + storyboard_match.group(1) + "/" + q + "/index-dvr.m3u8", "", "")
-    )) for q in qualities]
+    if not selected:
+        selected = "1080p60"
+    match = re.fullmatch(r"(\d{3,4})p(\d{2,3})?", selected)
+    if not match:
+        raise HLSUnavailable("Qualité Twitch non reconnue.")
+    height = int(match.group(1))
+    max_fps = int(match.group(2)) if match.group(2) else 120
+    allowed_heights = (1080, 720) if height == 1080 else (height,)
+    candidates = ["chunked"] if height in (1080, 720) else []
+    for h in allowed_heights:
+        for fps in (60, 30):
+            if fps <= max_fps:
+                candidates.append(f"{h}p{fps}")
+    return [(name, urllib.parse.urlunsplit(
+        ("https", parsed.netloc, "/" + storyboard_match.group(1) + "/" +
+         name + "/index-dvr.m3u8", "", "")
+    )) for name in candidates]
+
+
+def probe_native_height(ffprobe_path, manifest_url, timeout=25):
+    """Inspecte la hauteur d'un flux source, sans enregistrer ni réencoder."""
+    if not is_twitch_cdn(manifest_url):
+        raise HLSUnavailable("Source Twitch non reconnue.")
+    try:
+        result = subprocess.run(
+            [str(ffprobe_path), "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=height", "-of", "json", manifest_url],
+            stdin=subprocess.DEVNULL, capture_output=True,
+            text=True, errors="replace", timeout=timeout,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+        )
+        if result.returncode != 0:
+            return None
+        for stream in json.loads(result.stdout[:8192]).get("streams", []):
+            height = stream.get("height")
+            if isinstance(height, int) and 144 <= height <= 4320:
+                return height
+    except (subprocess.SubprocessError, ValueError, OSError, TypeError):
+        return None
+    return None
 
 
 def read_public_manifest(url, timeout=12):
@@ -130,8 +154,8 @@ def read_public_manifest(url, timeout=12):
     return len(durations), sum(durations)
 
 
-def resolve_hls(url, quality="Meilleure qualité (Auto)", timeout=12):
-    """(manifest_url, nom_qualité, durée, nombre_segments); aucune vidéo téléchargée."""
+def resolve_hls(url, quality="1080p (60fps)", timeout=12, source_height_probe=None):
+    """(manifest_url, qualité native, durée, segments), sans conversion."""
     vod_id = twitch_vod_id(url)
     if not vod_id:
         raise HLSUnavailable("URL Twitch VOD invalide.")
@@ -139,14 +163,35 @@ def resolve_hls(url, quality="Meilleure qualité (Auto)", timeout=12):
     preview = meta.get("seekPreviewsURL")
     if not preview:
         raise HLSUnavailable("Twitch ne fournit pas de storyboard pour cette VOD.")
+    selected = selected_quality_to_cli(quality) or "1080p60"
+    selected_match = re.fullmatch(r"(\d{3,4})p(\d{2,3})?", selected)
+    if not selected_match:
+        raise HLSUnavailable("Qualité Twitch invalide.")
+    max_height = int(selected_match.group(1))
     failures = []
     for name, candidate in manifest_candidates(preview, quality):
+        if name == "chunked" and source_height_probe is None:
+            continue
         try:
             count, duration = read_public_manifest(candidate, timeout=timeout)
+            if name == "chunked":
+                # Le nom « source » ne prouve ni 1080p ni 720p : FFprobe doit
+                # confirmer la résolution native avant tout téléchargement.
+                if source_height_probe is None:
+                    continue
+                height = source_height_probe(candidate)
+                allowed = (1080, 720) if max_height == 1080 else (max_height,)
+                if height not in allowed:
+                    failures.append(f"source: hauteur native {height or 'inconnue'}p")
+                    continue
+                return candidate, f"source native {height}p", duration, count
             return candidate, name, duration, count
         except (HLSUnavailable, urllib.error.URLError, TimeoutError, OSError) as exc:
             failures.append(f"{name}: {str(exc)[:65]}")
-    raise HLSUnavailable("Aucun flux HLS accessible : " + "; ".join(failures[:2]))
+    raise HLSUnavailable(
+        "Aucun flux Twitch natif disponible dans la qualité choisie (1080p ou 720p). "
+        + "; ".join(failures[:2])
+    )
 
 
 def media_paths(target_dir, url, title):
@@ -170,31 +215,16 @@ def media_paths(target_dir, url, title):
     return temp, filename
 
 
-def ffmpeg_command(ffmpeg_path, manifest_url, temp_path, max_height=None, max_fps=None):
+def ffmpeg_command(ffmpeg_path, manifest_url, temp_path):
+    """Remux HLS en MP4 sans réencodage ni filtre de résolution."""
     if not is_twitch_cdn(manifest_url):
         raise HLSUnavailable("URL de playlist Twitch non autorisée.")
-    command = [
+    return [
         str(ffmpeg_path), "-nostdin", "-hide_banner", "-loglevel", "warning",
-        "-progress", "pipe:1", "-i", manifest_url, "-map", "0:v:0", "-map", "0:a?",
+        "-progress", "pipe:1", "-i", manifest_url,
+        "-map", "0:v:0", "-map", "0:a?", "-c", "copy",
+        "-movflags", "+faststart", "-n", str(temp_path),
     ]
-    if max_height is not None:
-        if not isinstance(max_height, int) or not 144 <= max_height <= 4320:
-            raise HLSUnavailable("Résolution de conversion Twitch invalide.")
-        # Respect de la qualité choisie même lorsque seule la source est
-        # téléchargeable. min(ih, max_height) interdit tout agrandissement.
-        command += [
-            "-vf", f"scale=-2:min(ih\\,{max_height})",
-            "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
-            "-c:a", "copy",
-        ]
-        if max_fps is not None:
-            if not isinstance(max_fps, int) or not 24 <= max_fps <= 120:
-                raise HLSUnavailable("Fréquence Twitch invalide.")
-            command += ["-r", str(max_fps)]
-    else:
-        command += ["-c", "copy"]
-    command += ["-movflags", "+faststart", "-n", str(temp_path)]
-    return command
 
 
 def progress_from_ffmpeg(line, duration):
