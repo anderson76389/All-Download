@@ -59,13 +59,13 @@ class DownloadFolderTests(unittest.TestCase):
         ):
             self.assertEqual(yt_app.choose_initial_download_folder({}), self.root)
 
-    def test_installed_version_falls_back_when_application_is_read_only(self):
+    def test_installed_version_never_falls_back_outside_application_root(self):
         with open(os.path.join(self.root, ".all-download-installed"), "w", encoding="utf-8") as f:
             f.write("installed")
         with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
             yt_app.sys, "executable", os.path.join(self.root, "All_Media_Download.exe")
         ), patch.object(yt_app, "portable_root_is_writable", return_value=False):
-            self.assertEqual(yt_app.choose_initial_download_folder({}), yt_app.DEFAULT_DOWNLOAD_BASE)
+            self.assertEqual(yt_app.choose_initial_download_folder({}), self.root)
 
     def test_custom_destination_is_preserved(self):
         yt_app.ensure_media_directories(self.root)
@@ -74,7 +74,7 @@ class DownloadFolderTests(unittest.TestCase):
             yt_app.sys, "executable", os.path.join(self.root, "All_Media_Download.exe")
         ):
             self.assertEqual(
-                yt_app.choose_initial_download_folder({"download_folder": other}), other
+                yt_app.choose_initial_download_folder({"download_folder": other, "download_folder_custom": True}), other
             )
 
     def test_no_portable_folders_creates_categories_next_to_exe(self):
@@ -140,11 +140,70 @@ class DownloadFolderTests(unittest.TestCase):
             yt_app.sys, "executable", os.path.join(legacy_dir, "All_Media_Download.exe")
         ):
             selected = yt_app.choose_initial_download_folder({"download_folder": legacy_dir})
-            self.assertEqual(selected, new_dir)
+            self.assertEqual(selected, legacy_dir)
             yt_app.ensure_media_directories(selected)
             self.assertTrue(os.path.isfile(os.path.join(legacy_dir, "yt_app.py")))
             self.assertTrue(os.path.isdir(os.path.join(legacy_dir, "VIDÉOS")))
-            self.assertTrue(os.path.isdir(os.path.join(new_dir, "VIDÉOS")))
+            self.assertFalse(os.path.exists(os.path.join(new_dir, "VIDÉOS")))
+
+    def test_compiled_exe_does_not_reuse_old_external_custom_folder(self):
+        import json
+        with tempfile.TemporaryDirectory() as outside:
+            original_media = os.path.join(outside, "VIDÉOS", "ancienne.mp4")
+            os.makedirs(os.path.dirname(original_media))
+            with open(original_media, "wb") as file:
+                file.write(b"original-preserved")
+            cfg = os.path.join(self.root, "Donnees", "config.json")
+            os.makedirs(os.path.dirname(cfg))
+            with open(cfg, "w", encoding="utf-8") as file:
+                json.dump({
+                    "settings": {"theme": "dark_pure"},
+                    "cookie_browser": "firefox",
+                    "download_folder": outside,
+                    "download_folder_custom": True,
+                }, file)
+            with patch.object(yt_app, "CONFIG_FILE", cfg), patch.object(
+                yt_app.sys, "frozen", True, create=True
+            ), patch.object(yt_app.sys, "executable",
+                            os.path.join(self.root, "All_Media_Download.exe")):
+                api = yt_app.DownloaderAPI()
+                self.assertEqual(api.download_folder, self.root)
+                self.assertEqual(api.get_default_download_folder(), self.root)
+                self.assertFalse(api.config["download_folder_custom"])
+                self.assertEqual(api.config["settings"]["theme"], "dark_pure")
+                self.assertEqual(api.config["cookie_browser"], "firefox")
+                with open(cfg, encoding="utf-8") as file:
+                    self.assertEqual(json.load(file)["download_folder"], self.root)
+                before = dict(api.config)
+                rejected = api.save_app_settings({"theme": "light"}, outside)
+                self.assertFalse(rejected["success"])
+                self.assertIn("All-Download", rejected["error"])
+                self.assertEqual(api.config, before)
+            with open(original_media, "rb") as file:
+                self.assertEqual(file.read(), b"original-preserved")
+            self.assertTrue(os.path.isdir(os.path.join(self.root, "TWITCH")))
+
+    def test_compiled_exe_allows_only_subfolders_inside_all_download(self):
+        config_file = os.path.join(self.root, "config-internal.json")
+        with tempfile.TemporaryDirectory() as outside:
+            with patch.object(yt_app, "CONFIG_FILE", config_file), patch.object(
+                yt_app.sys, "frozen", True, create=True
+            ), patch.object(yt_app.sys, "executable",
+                            os.path.join(self.root, "All_Media_Download.exe")):
+                api = self.create_api()
+                api.config = {"settings": {"theme": "dark"}}
+                internal = os.path.join(self.root, "Mes medias")
+                result = api.save_app_settings({"theme": "dark"}, internal)
+                self.assertTrue(result["success"], result)
+                self.assertEqual(api.download_folder, internal)
+                self.assertTrue(os.path.isdir(os.path.join(internal, "TWITCH")))
+                self.assertEqual(yt_app.choose_initial_download_folder(api.config), internal)
+                for invalid in (outside, os.path.join(self.root, "..", "outside"),
+                                os.path.join(outside, "All-Download")):
+                    result = api.save_app_settings({"theme": "light"}, invalid)
+                    self.assertFalse(result["success"], result)
+                    self.assertEqual(api.download_folder, internal)
+                self.assertFalse(os.path.exists(os.path.join(outside, "All-Download")))
 
     def test_legacy_config_is_rewritten_without_losing_preferences(self):
         import json
