@@ -38,12 +38,15 @@ class StartupRecoveryTests(unittest.TestCase):
             initial = yt_app.get_gui_webview_storage_path([])
             retry = yt_app.get_gui_webview_storage_path([yt_app.WEBVIEW_RETRY_FLAG])
             self.assertNotEqual(initial, retry)
+            self.assertEqual(initial, os.path.join(self.temp.name, "Donnees", "webview"))
+            self.assertEqual(retry, os.path.join(self.temp.name, "Donnees", "webview-recuperation"))
             self.assertTrue(retry.endswith("webview-recuperation"))
             self.assertEqual(retry, yt_app.get_gui_webview_storage_path([yt_app.STARTUP_RETRY_FLAG]))
             marker = os.path.join(self.temp.name, ".all-download-installed")
             with open(marker, "w") as file:
                 file.write("installed")
-            self.assertTrue(yt_app.get_gui_webview_storage_path([]).endswith("webview-classique"))
+            self.assertEqual(yt_app.get_gui_webview_storage_path([]),
+                             os.path.join(self.temp.name, "Donnees", "webview-classique"))
             self.assertTrue(yt_app.get_gui_webview_storage_path([yt_app.WEBVIEW_RETRY_FLAG]).endswith("webview-classique-recuperation"))
 
     def test_webview_hang_relaunches_windows_exe_only_once(self):

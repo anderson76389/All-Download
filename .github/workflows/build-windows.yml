@@ -541,8 +541,8 @@ jobs:
           - Portable : executable autonome sans installation.
           - Classique : All-Download-Setup.exe, raccourcis Windows et desinstallation.
           - Les deux utilisent le moteur autonome compatible (aucun dossier _internal a distribuer).
-          - Les deux editions utilisent les six categories et Donnees/ a cote de leur EXE.
-          - Le ZIP Portable contient les six dossiers, aucun faux yt-dlp.exe, ffmpeg.exe, ffprobe.exe, ni Donnees/ du runner. Les vrais outils sont telecharges et verifies en PE x64 au premier lancement, avec remplacement des invalides.
+          - Les deux editions utilisent les sept categories, les outils, les reglages et le profil WebView2 dans All-Download a cote de leur EXE.
+          - Le ZIP Portable extrait un unique dossier All-Download/ avec sept categories et Donnees/bin vides, sans faux exe ni medias personnels du runner. Les vrais outils sont telecharges et verifies en PE x64 au premier lancement.
           - Le ZIP Classique contient uniquement l'installateur et les sources, sans dossiers medias parasites.
           - Test CI obligatoire : executable yt-dlp officiel telecharge et lance avec --version sur Windows x64.
           - La mise a jour et la desinstallation Classique conservent medias et reglages personnels.

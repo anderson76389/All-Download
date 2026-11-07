@@ -164,11 +164,14 @@ class PortableStorageTests(unittest.TestCase):
         with open(legacy_config, encoding="utf-8") as file:
             self.assertEqual(json.load(file)["download_folder"], old_root)
 
-    def test_classic_custom_destination_survives_upgrade(self):
+    def test_classic_migrates_external_custom_path_without_deleting_old_files(self):
         previous = os.path.join(self.legacy, "AllMediaDownload")
         os.makedirs(previous)
         custom = os.path.join(self.home, "Mes-Medias")
         os.makedirs(custom)
+        old_file = os.path.join(custom, "mon-ancien-media.mp4")
+        with open(old_file, "wb") as media:
+            media.write(b"ancienne video")
         with open(os.path.join(previous, "config.json"), "w", encoding="utf-8") as file:
             json.dump({"download_folder": custom, "download_folder_custom": True}, file)
         app = self.load_mode(installed=True)
@@ -176,8 +179,56 @@ class PortableStorageTests(unittest.TestCase):
             yt_app.sys, "frozen", True, create=True
         ), patch.object(yt_app.sys, "executable", self.exe):
             api = yt_app.DownloaderAPI()
-        self.assertEqual(api.download_folder, custom)
-        self.assertTrue(api.config["download_folder_custom"])
+        self.assertEqual(api.download_folder, self.portable)
+        self.assertFalse(api.config["download_folder_custom"])
+        with open(app["CONFIG_FILE"], encoding="utf-8") as file:
+            self.assertEqual(json.load(file)["download_folder"], self.portable)
+        with open(old_file, "rb") as media:
+            self.assertEqual(media.read(), b"ancienne video")
+
+    def test_read_only_portable_refuses_external_fallback(self):
+        # Un EXE Windows sur clé USB verrouillée ne doit PAS créer config,
+        # cache ou téléchargements dans %LOCALAPPDATA%.
+        with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
+            yt_app.sys, "executable", self.exe
+        ), patch.object(yt_app.tempfile, "TemporaryFile",
+                        side_effect=PermissionError("read-only")), patch.dict(
+            os.environ, {"LOCALAPPDATA": self.legacy}
+        ), patch.object(yt_app.ctypes.windll.user32, "MessageBoxW", return_value=1) as dialog:
+            with self.assertRaisesRegex(PermissionError, "All-Download"):
+                runpy.run_path(yt_app.__file__, run_name="all_download_read_only_test")
+            dialog.assert_called_once()
+        self.assertFalse(os.path.exists(os.path.join(self.legacy, "AllMediaDownload")))
+        self.assertFalse(os.path.exists(os.path.join(self.portable, "Donnees")))
+
+    def test_twitch_dotnet_runtime_cache_is_local(self):
+        app = self.load_mode()
+        with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
+            yt_app.sys, "executable", self.exe
+        ):
+            env = app["local_twitch_environment"]()
+        expected = os.path.join(self.portable, "Donnees", "cache", "dotnet")
+        self.assertEqual(env["DOTNET_CLI_HOME"], expected)
+        self.assertEqual(env["DOTNET_BUNDLE_EXTRACT_BASE_DIR"],
+                         os.path.join(expected, "bundles"))
+        self.assertTrue(os.path.isdir(os.path.join(expected, "bundles")))
+
+    def test_webview_profiles_remain_inside_each_windows_application(self):
+        app = self.load_mode()
+        with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
+            yt_app.sys, "executable", self.exe
+        ):
+            base = app["get_gui_webview_storage_path"]([])
+            recovery = app["get_gui_webview_storage_path"]([app["WEBVIEW_RETRY_FLAG"]])
+        self.assertEqual(base, os.path.join(self.portable, "Donnees", "webview"))
+        self.assertEqual(recovery, os.path.join(self.portable, "Donnees", "webview-recuperation"))
+        self.assertFalse(base.startswith(self.legacy))
+        app = self.load_mode(installed=True)
+        with patch.object(yt_app.sys, "frozen", True, create=True), patch.object(
+            yt_app.sys, "executable", self.exe
+        ):
+            classic = app["get_gui_webview_storage_path"]([])
+        self.assertEqual(classic, os.path.join(self.portable, "Donnees", "webview-classique"))
 
 
 if __name__ == "__main__":

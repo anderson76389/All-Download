@@ -39,7 +39,7 @@ if __name__ == '__main__':
 # 2. Les deux editions (Portable et Classique) rangent les medias,
 # reglages, outils et journaux dans le dossier du logiciel.
 # L'installateur protege explicitement les dossiers personnels.
-# Seul le profil technique WebView2 reste dans LocalAppData.
+# WebView2 est aussi local dans Donnees/ ; Windows peut utiliser %TEMP% pour PyInstaller.
 LEGACY_APP_DIR = os.path.join(
     os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "AllMediaDownload"
 )
@@ -71,19 +71,46 @@ def portable_root_is_writable(root):
         return False
 
 
+def stop_if_local_storage_is_read_only():
+    """Aucune migration cachée vers AppData si All-Download est non modifiable."""
+    message = (
+        "Le dossier All-Download (ou Donnees) est protégé contre l'écriture.\n\n"
+        "Déplacez la version Portable vers un dossier modifiable, "
+        "ou réinstallez la version Classique dans un emplacement modifiable.\n"
+        "Aucun nouveau fichier n'a été déplacé ailleurs."
+    )
+    try:
+        ctypes.windll.user32.MessageBoxW(0, message, "All-Download : dossier protégé", 0x10)
+    except (AttributeError, OSError):
+        pass
+    raise PermissionError(message)
+
+
 APP_ROOT = get_application_root()
-APP_DATA_LOCAL = bool(APP_ROOT and portable_root_is_writable(APP_ROOT))
-PORTABLE_DATA_LOCAL = bool(APP_DATA_LOCAL and get_portable_root())
-APP_DIR = (os.path.join(APP_ROOT, "Donnees")
-           if APP_DATA_LOCAL else LEGACY_APP_DIR)
+# Aucun EXE Windows ne doit écrire ses données permanentes hors d'All-Download.
+if APP_ROOT and not portable_root_is_writable(APP_ROOT):
+    stop_if_local_storage_is_read_only()
+APP_DATA_LOCAL = bool(APP_ROOT)
+PORTABLE_DATA_LOCAL = bool(APP_ROOT and get_portable_root())
+# AppData ne sert qu'aux anciennes données à importer ou au mode source.
+APP_DIR = os.path.join(APP_ROOT, "Donnees") if APP_ROOT else LEGACY_APP_DIR
 BIN_DIR = os.path.join(APP_DIR, "bin")
+YTDLP_CACHE_DIR = os.path.join(APP_DIR, "cache", "yt-dlp")
 CONFIG_FILE = os.path.join(APP_DIR, "config.json")
 HTML_FILE = os.path.join(APP_DIR, "index.html")
 CRASH_LOG = os.path.join(APP_DIR, "crash_log.txt")
 STARTUP_LOG = os.path.join(APP_DIR, "startup_log.txt")
 
-os.makedirs(APP_DIR, exist_ok=True)
-os.makedirs(BIN_DIR, exist_ok=True)
+try:
+    os.makedirs(APP_DIR, exist_ok=True)
+    os.makedirs(BIN_DIR, exist_ok=True)
+except OSError:
+    if APP_ROOT:
+        stop_if_local_storage_is_read_only()
+    raise
+if APP_ROOT and (not portable_root_is_writable(APP_DIR)
+                 or not portable_root_is_writable(BIN_DIR)):
+    stop_if_local_storage_is_read_only()
 
 
 def import_legacy_portable_settings():
@@ -253,12 +280,36 @@ def is_legacy_download_folder(path):
         return False
 
 
-def choose_initial_download_folder(config):
-    """Portable + Classique : categories pres de l'EXE si ecriture autorisee.
+def is_inside_application_folder(path, root=None):
+    """Bloquer chemins externes, '..' et jonctions vers un autre dossier."""
+    root = root or get_application_root()
+    if not root or not isinstance(path, str) or not os.path.isabs(path):
+        return False
+    try:
+        candidate = os.path.normcase(os.path.realpath(path))
+        base = os.path.normcase(os.path.realpath(root))
+        return os.path.commonpath((candidate, base)) == base
+    except (OSError, ValueError, TypeError):
+        return False
 
-    Respecter un vrai choix personnalise. Aucun media de l'ancien emplacement
-    automatique n'est deplace ou supprime lors de la mise a jour.
+
+def choose_initial_download_folder(config):
+    """Les EXE restent dans All-Download, même avec une ancienne configuration.
+
+    Une ancienne destination extérieure n'est plus réutilisée ; son contenu
+    n'est jamais déplacé ni supprimé. Un sous-dossier interne reste autorisé.
     """
+    if not isinstance(config, dict):
+        config = {}
+    application_root = get_application_root()
+    if application_root:
+        saved = config.get("download_folder")
+        if (config.get("download_folder_custom") is True
+                and is_inside_application_folder(saved, application_root)):
+            return os.path.normpath(saved)
+        return application_root
+
+    # Exécution depuis les sources : chemins de développement historiques.
     saved = config.get("download_folder")
     custom = config.get("download_folder_custom")
     saved_is_old_auto = (
@@ -406,6 +457,18 @@ def save_direct_media(url, target_dir, title, on_chunk=None):
                 os.unlink(temp_path)
             except OSError:
                 pass
+
+
+def local_twitch_environment():
+    """Garder les éventuelles extractions .NET du CLI dans Donnees/cache."""
+    env = os.environ.copy()
+    if get_application_root():
+        dotnet_dir = os.path.join(APP_DIR, "cache", "dotnet")
+        bundle_dir = os.path.join(dotnet_dir, "bundles")
+        os.makedirs(bundle_dir, exist_ok=True)
+        env["DOTNET_CLI_HOME"] = dotnet_dir
+        env["DOTNET_BUNDLE_EXTRACT_BASE_DIR"] = bundle_dir
+    return env
 
 
 def kill_process_tree(pid):
@@ -1428,11 +1491,12 @@ HTML_PAGE = """<!DOCTYPE html>
         <div class="setting-field">
           <label class="setting-label" for="setDownloadFolder">Emplacement actuel :</label>
           <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-            <input id="setDownloadFolder" type="text" class="setting-input" spellcheck="false" autocomplete="off" placeholder="C:\\Users\\...\\Téléchargements" style="flex:1 1 300px; min-width:220px;">
+            <input id="setDownloadFolder" type="text" class="setting-input" spellcheck="false" autocomplete="off" placeholder="All-Download ou un de ses sous-dossiers" style="flex:1 1 300px; min-width:220px;">
             <button type="button" class="btn-logs-card" onclick="browseDownloadFolder()" style="padding:10px 16px; white-space:nowrap;">Parcourir…</button>
             <button type="button" class="btn-logs-card" onclick="resetDownloadFolder()" style="padding:10px 16px; white-space:nowrap;">Par défaut</button>
           </div>
           <div class="setting-subtext">Vous pouvez choisir un dossier sur un autre disque (D:, E:, etc.) ou coller un chemin complet. Aucun fichier existant ne sera déplacé ni supprimé.</div>
+          <div style="font-size:11px; opacity:.75; margin-top:6px;">Pour les versions Windows, seuls All-Download et ses sous-dossiers sont autorisés. Aucun média n'est enregistré à l'extérieur.</div>
           <div id="downloadFolderError" role="alert" aria-live="polite" style="display:none; color:#e35f5f; margin-top:8px; font-size:12px;"></div>
         </div>
       </div>
@@ -2099,7 +2163,11 @@ HTML_PAGE = """<!DOCTYPE html>
   function browseDownloadFolder() {
     setDownloadFolderError('');
     callApi('browse_download_folder').then(path => {
-      if (path) document.getElementById('setDownloadFolder').value = path;
+      if (path && typeof path === 'object' && path.error) {
+        setDownloadFolderError(path.error);
+      } else if (typeof path === 'string' && path) {
+        document.getElementById('setDownloadFolder').value = path;
+      }
     }).catch(() => setDownloadFolderError("Impossible d'ouvrir le sélecteur de dossiers Windows."));
   }
 
@@ -2928,10 +2996,20 @@ class DownloaderAPI:
             )
         self.download_folder = choose_initial_download_folder(self.config)
         ensure_media_directories(self.download_folder)
-        # Corriger aussi le chemin déjà enregistré sur les anciennes versions,
-        # en conservant les réglages, cookies et autres préférences.
-        if (not self.config["download_folder_custom"]
-                and self.config.get("download_folder") != self.download_folder):
+        # Réécrire immédiatement toute ancienne destination extérieure afin
+        # qu'aucune mise à jour ne puisse la réactiver. Les anciens médias
+        # restent sur le disque, sans copie ni suppression implicite.
+        app_root = get_application_root()
+        if app_root:
+            is_subfolder = (os.path.normcase(os.path.realpath(self.download_folder))
+                            != os.path.normcase(os.path.realpath(app_root)))
+            changed = (self.config.get("download_folder") != self.download_folder
+                       or self.config.get("download_folder_custom") != is_subfolder)
+            if changed:
+                self.config["download_folder_custom"] = is_subfolder
+                self._save_config()
+        elif (not self.config["download_folder_custom"]
+              and self.config.get("download_folder") != self.download_folder):
             self._save_config()
         self.is_cancelled = False
         self.is_paused = False
@@ -2984,7 +3062,13 @@ class DownloaderAPI:
                 webview.FileDialog.FOLDER, directory=initial
             )
             if result:
-                return os.path.normpath(result[0])
+                selected = os.path.normpath(result[0])
+                root = get_application_root()
+                if root and not is_inside_application_folder(selected, root):
+                    return {
+                        "error": "Ce dossier est à l'extérieur d'All-Download. Choisissez All-Download ou un sous-dossier."
+                    }
+                return selected
         except Exception as exc:
             handle_exception(type(exc), exc, exc.__traceback__)
         return None
@@ -3049,6 +3133,12 @@ class DownloaderAPI:
         if not os.path.isabs(requested):
             return {"success": False, "error": "Indiquez un chemin absolu (C:\\..., D:\\... ou un dossier réseau)."}
         requested = os.path.normpath(requested)
+        app_root = get_application_root()
+        if app_root and not is_inside_application_folder(requested, app_root):
+            return {
+                "success": False,
+                "error": "Les téléchargements doivent rester dans All-Download (ou un sous-dossier de celui-ci)."
+            }
         try:
             ensure_media_directories(requested)
             import tempfile
@@ -3255,6 +3345,7 @@ class DownloaderAPI:
 
         cmd = [
             YTDLP_PATH, "-J",
+            "--cache-dir", YTDLP_CACHE_DIR,
             "--no-warnings",
             "--force-ipv4",
             "--socket-timeout", "15",
@@ -3533,6 +3624,7 @@ class DownloaderAPI:
                 errors="replace",
                 bufsize=1,
                 creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+                env=local_twitch_environment(),
             )
             self._active_download_process = proc
             if self.is_cancelled:
@@ -3716,6 +3808,7 @@ class DownloaderAPI:
                 # Téléchargement universel via yt-dlp
                     cmd = [
                         YTDLP_PATH,
+                        "--cache-dir", YTDLP_CACHE_DIR,
                         "--ffmpeg-location", BIN_DIR,
                         "--windows-filenames",
                         "--newline",
@@ -4079,16 +4172,17 @@ WEBVIEW_STARTUP_TIMEOUT = 35  # Laisse terminer les demarrages WebView2 lents (<
 
 
 def get_gui_webview_storage_path(argv=None):
-    """Profil de secours distinct pour ne pas reutiliser un cache encore verrouille.
+    """Profils WebView2 dans All-Download/Donnees, récupération séparée.
 
-    Le processus GUI initial conserve le profil habituel, les seules relances
-    automatiques utilisent le profil "recuperation".
+    Les caches de l'ancienne version situés dans AppData ne sont pas supprimés.
     """
     arguments = list(sys.argv[1:] if argv is None else argv)
     name = "webview" if get_portable_root() else "webview-classique"
     if WEBVIEW_RETRY_FLAG in arguments or STARTUP_RETRY_FLAG in arguments:
         name += "-recuperation"
-    return os.path.join(LEGACY_APP_DIR, name)
+    app_root = get_application_root()
+    return (os.path.join(app_root, "Donnees", name) if app_root
+            else os.path.join(APP_DIR, name))
 
 
 def restart_after_webview_timeout(argv=None):
@@ -4236,12 +4330,10 @@ if __name__ == '__main__':
             raise RuntimeError("Failed to resolve Python.Runtime.Loader.Initialize [test]")
 
         # Les outils ne sont lances qu'apres l'evenement HTML charge.
-        # Le profil WebView2 vit dans LocalAppData (toujours modifiable),
-        # jamais pres de l'EXE qui peut etre dans Program Files ou dans un ZIP.
+        # WebView2 doit être conservé dans Donnees/ à côté de l'EXE ;
+        # l'installation Windows se fait dans un dossier modifiable.
         # Mode prive conserve : pas de cookies ni de sessions persistantes.
-        # WebView2 garde son profil interne dans AppData pour eviter les
-        # blocages de premiere initialisation Windows. Cela ne change PAS
-        # l'emplacement des medias, reglages, outils ou journaux Portable.
+        # Le profil initial et celui de récupération vivent dans Donnees/.
         # Test d'integration: forcer une initialisation sans signal HTML pour
         # verifier le vrai mecanisme de recuperation dans un EXE Windows.
         simulated_hang = os.environ.pop("ALL_DOWNLOAD_TEST_WEBVIEW_HANG_ONCE", None) == "1"

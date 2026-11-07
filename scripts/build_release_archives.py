@@ -1,6 +1,7 @@
 """Publier deux ZIP complets : Portable et Windows Classique (installateur).
 
-Le ZIP Portable inclut ses sept dossiers vides. Le ZIP Classique ne contient
+Le ZIP Portable contient un unique dossier All-Download/ incluant les sept
+sous-dossiers. Le ZIP Classique ne contient
 aucun dossier media parasite hors du programme installe. Les deux archives
 incluent les logos et les sources, sans fichiers personnels.
 """
@@ -14,6 +15,7 @@ import zipfile
 MEDIA_DIRS = ("AUDIOS", "AUTRES", "CHAÎNES", "GIFS", "PLAYLIST", "VIDÉOS", "TWITCH")
 SOURCES = "Code-source"
 PORTABLE_NAME = "All-Download-Portable-Windows.zip"
+PORTABLE_ROOT = "All-Download"
 CLASSIC_NAME = "All-Download-Classique-Windows.zip"
 
 
@@ -26,9 +28,9 @@ def repository_files(root: Path) -> list[Path]:
     return tracked
 
 
-def add_source(archive: zipfile.ZipFile, root: Path, tracked: list[Path]) -> None:
+def add_source(archive: zipfile.ZipFile, root: Path, tracked: list[Path], prefix: str = "") -> None:
     for relative in tracked:
-        archive.write(root / relative, f"{SOURCES}/{relative.as_posix()}")
+        archive.write(root / relative, f"{prefix}{SOURCES}/{relative.as_posix()}")
 
 
 def check_zip(zip_path: Path, tracked: list[Path], executable: str) -> None:
@@ -37,9 +39,14 @@ def check_zip(zip_path: Path, tracked: list[Path], executable: str) -> None:
         if broken:
             raise ValueError(f"ZIP corrompu : {broken}")
         names = set(archive.namelist())
-        needed = {executable, "logo.ico", "logo.jpg"}
+        prefix = f"{PORTABLE_ROOT}/" if zip_path.name == PORTABLE_NAME else ""
+        needed = {prefix + executable, prefix + "logo.ico", prefix + "logo.jpg"}
         if zip_path.name == PORTABLE_NAME:
-            needed.update(f"{name}/" for name in MEDIA_DIRS)
+            if any(not name.startswith(prefix) for name in names):
+                raise ValueError("Le ZIP Portable ne doit rien extraire hors du dossier All-Download.")
+            needed.add(prefix)
+            needed.update((prefix + "Donnees/", prefix + "Donnees/bin/"))
+            needed.update(f"{prefix}{name}/" for name in MEDIA_DIRS)
         else:
             stray = sorted(n for n in names if n in {f"{d}/" for d in MEDIA_DIRS})
             if stray:
@@ -48,12 +55,15 @@ def check_zip(zip_path: Path, tracked: list[Path], executable: str) -> None:
             # Le runner cree des pseudo executables MZ lors des tests GUI.
             # Donnees/ ne doit JAMAIS entrer dans la release : ni outils
             # factices, ni config, ni logs, ni medias personnels.
-            forbidden = [name for name in names if name.startswith(("Donnees/", "bin/"))]
+            allowed_empty_dirs = {prefix + "Donnees/", prefix + "Donnees/bin/"}
+            forbidden = [name for name in names
+                         if name.startswith((prefix + "Donnees/", prefix + "bin/"))
+                         and name not in allowed_empty_dirs]
             if forbidden:
                 raise ValueError(f"Fichiers du runner trouves dans le ZIP Portable : {sorted(forbidden)}")
         if any(path.endswith(".gitkeep") for path in names):
             raise ValueError("Les ZIP ne doivent contenir aucun .gitkeep")
-        needed.update(f"{SOURCES}/{path.as_posix()}" for path in tracked)
+        needed.update(f"{prefix}{SOURCES}/{path.as_posix()}" for path in tracked)
         missing = needed - names
         if missing:
             raise ValueError(f"ZIP incomplet : {sorted(missing)}")
@@ -67,17 +77,20 @@ def build_portable(root: Path, output: Path, tracked: list[Path]) -> None:
     if not (app / "All_Media_Download.exe").is_file():
         raise FileNotFoundError("L'EXE Portable est absent")
     with zipfile.ZipFile(output / PORTABLE_NAME, "w", zipfile.ZIP_DEFLATED, compresslevel=6, allowZip64=True) as zf:
+        zf.writestr(f"{PORTABLE_ROOT}/", "")
+        zf.writestr(f"{PORTABLE_ROOT}/Donnees/", "")
+        zf.writestr(f"{PORTABLE_ROOT}/Donnees/bin/", "")
         for category in MEDIA_DIRS:
-            zf.writestr(f"{category}/", "")
-        # Ne distribuer que l'EXE et les logos. Les categories sont ajoutees
-        # explicitement comme dossiers vides ; Donnees/ est cree au premier
-        # lancement et les outils reels sont telecharges puis verifies.
+            zf.writestr(f"{PORTABLE_ROOT}/{category}/", "")
+        # Distribuer uniquement des dossiers de base VIDES. Les réglages,
+        # les médias et les outils du runner sont toujours exclus. Les vrais
+        # exécutables sont téléchargés et vérifiés après le premier démarrage.
         for filename in ("All_Media_Download.exe", "logo.ico", "logo.jpg"):
             path = app / filename
             if not path.is_file():
                 raise FileNotFoundError(f"Fichier Portable obligatoire absent : {path}")
-            zf.write(path, filename)
-        add_source(zf, root, tracked)
+            zf.write(path, f"{PORTABLE_ROOT}/{filename}")
+        add_source(zf, root, tracked, prefix=f"{PORTABLE_ROOT}/")
     check_zip(output / PORTABLE_NAME, tracked, "All_Media_Download.exe")
 
 
