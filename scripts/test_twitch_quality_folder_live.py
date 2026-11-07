@@ -45,26 +45,6 @@ def main():
 
         previous = root / "MEDIAS" / "AUTRES" / "Twitch_2919531847_ancien.mp4"
         previous.write_bytes(b"old file not touched")
-        import twitch_hls
-        from urllib.parse import urlsplit
-        real_meta = twitch_hls.metadata_for_vod
-        def diagnose_meta(*args, **kwargs):
-            data = real_meta(*args, **kwargs)
-            preview = data.get("seekPreviewsURL") or ""
-            parsed = urlsplit(preview)
-            print("GQL_PREVIEW:", parsed.hostname, parsed.path.split("/")[:3], flush=True)
-            return data
-        twitch_hls.metadata_for_vod = diagnose_meta
-        real_read = twitch_hls.read_public_manifest
-        def diagnose_read(url, timeout=12):
-            try:
-                result = real_read(url, timeout=timeout)
-                print("HLS_HTTP_200:", urlsplit(url).hostname, urlsplit(url).path.split("/")[-2], result[0], flush=True)
-                return result
-            except Exception as exc:
-                print("HLS_HTTP_FAIL:", urlsplit(url).hostname, urlsplit(url).path.split("/")[-2], type(exc).__name__, str(exc)[:90], flush=True)
-                raise
-        twitch_hls.read_public_manifest = diagnose_read
         with patch.object(yt_app, "ensure_ytdlp_ready", return_value=False):
             data = api.extract_info(VOD)
         assert data.get("success"), data
