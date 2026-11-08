@@ -158,8 +158,7 @@ jobs:
           TAG="android-v0.3.0-beta"
           APK="All-Download-Android-0.3.0-beta.apk"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Android beta release already exists; refreshing Android-only assets."
-            gh release upload "$TAG" "$APK" "${APK}.sha256" --repo "$GITHUB_REPOSITORY" --clobber
+            echo "Release Android $TAG déjà publiée : conservation stricte de l'APK et de sa signature, aucun écrasement."
           else
             gh release create "$TAG" "$APK" "${APK}.sha256" \
               --repo "$GITHUB_REPOSITORY" \
