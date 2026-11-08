@@ -334,7 +334,7 @@ class AndroidSmokeTest {
     @Test fun privateUpdateApkProviderAndChecksumRulesWorkWithoutBrowser() {
         val name = "All-Download-Android-0.5.0-beta.apk"
         val digest = "f".repeat(64)
-        assertEquals(digest, AndroidApkInstaller.readChecksum("$digest  $name\\n", name))
+        assertEquals(digest, AndroidApkInstaller.readChecksum("$digest  $name\n", name))
         assertNull(AndroidApkInstaller.readChecksum("$digest  other.apk", name))
         assertNull(AndroidApkInstaller.readChecksum("bad  $name", name))
         assertTrue(AndroidApkInstaller.isTrustedDownloadHost("github.com"))
@@ -416,7 +416,7 @@ class AndroidSmokeTest {
                 "https://example.com.evil@attacker"))
             assertFalse(DownloadOptions.validProxy("javascript:alert(1)"))
             assertFalse(DownloadOptions.validProxy("http://127.0.0.1:0"))
-            assertEquals(5, context.packageManager.getPackageInfo(context.packageName, 0)
+            assertEquals(6, context.packageManager.getPackageInfo(context.packageName, 0)
                 .versionCode)
         } finally {
             instrumentation.runOnMainSync { activity.finish() }
