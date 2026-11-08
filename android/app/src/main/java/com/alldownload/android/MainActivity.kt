@@ -12,6 +12,7 @@ import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -64,8 +65,8 @@ class MainActivity : Activity() {
         2 -> Palette(Color.BLACK, Color.rgb(14, 14, 14),
             Color.rgb(20, 20, 20), Color.rgb(42, 42, 42),
             Color.WHITE, Color.rgb(161, 161, 170), palePurple)
-        else -> Palette(Color.rgb(20, 20, 20), Color.rgb(33, 33, 33),
-            Color.rgb(24, 24, 24), Color.rgb(53, 53, 53),
+        else -> Palette(Color.rgb(17, 18, 24), Color.rgb(27, 28, 36),
+            Color.rgb(35, 36, 46), Color.rgb(51, 53, 66),
             Color.rgb(243, 244, 246), Color.rgb(161, 161, 170), palePurple)
     }
 
@@ -374,6 +375,10 @@ class MainActivity : Activity() {
         settingsPage.visibility = if (tab == 3) View.VISIBLE else View.GONE
         if (tab == 3) ensureSettingsPanels()
         styleNavigation()
+        // The fixed progress dock belongs to the download screens.
+        val statusDock = homePage.findViewById<View>(R.id.statusFooterCard)
+        if (statusDock.parent != homePage)
+            statusDock.visibility = if (tab < 2) View.VISIBLE else View.GONE
         if (tab == 0) renderHomeQueue()
         if (tab == 1) {
             lastQueueRevision = -1L
@@ -450,8 +455,8 @@ class MainActivity : Activity() {
             homeQueuePreview.addView(LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                setPadding(dp(12), dp(26), dp(12), dp(30))
-                addView(text("↓", 34, palette().accent, true).apply {
+                setPadding(dp(12), dp(15), dp(12), dp(17))
+                addView(text("↓", 24, palette().accent, true).apply {
                     gravity = Gravity.CENTER
                 })
                 addView(text("Votre file d'attente est vide", 15,
@@ -472,7 +477,7 @@ class MainActivity : Activity() {
             "En cours : " + jobs.count { it.status == DownloadQueue.RUNNING } +
                 " · En attente : " + jobs.count { it.status == DownloadQueue.WAITING } +
                 " · Terminés : " + jobs.count { it.status == DownloadQueue.DONE }))
-        jobs.asReversed().take(5).forEach { job ->
+        jobs.asReversed().take(3).forEach { job ->
             val stateLabel = when (job.status) {
                 DownloadQueue.RUNNING -> "Téléchargement"
                 DownloadQueue.WAITING -> "En attente"
@@ -504,8 +509,8 @@ class MainActivity : Activity() {
             queueList.addView(LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                setPadding(dp(12), dp(44), dp(12), dp(36))
-                addView(text("↓", 40, colors.accent, true).apply {
+                setPadding(dp(12), dp(26), dp(12), dp(24))
+                addView(text("↓", 28, colors.accent, true).apply {
                     gravity = Gravity.CENTER
                 })
                 addView(text("Votre file d'attente est vide", 17,
@@ -524,8 +529,8 @@ class MainActivity : Activity() {
         for (job in jobs.asReversed().take(queueVisible)) {
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(dp(12), dp(12), dp(12), dp(12))
-                background = rounded(colors.panel, colors.border, 16)
+                setPadding(dp(14), dp(13), dp(14), dp(12))
+                background = rounded(colors.panel, colors.border, 18)
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT).apply {
@@ -562,7 +567,7 @@ class MainActivity : Activity() {
                 background = rounded(colors.input, colors.border, 11)
                 contentDescription = "Type de média : $media"
             }
-            row.addView(thumbnail, LinearLayout.LayoutParams(dp(56), dp(56)).apply {
+            row.addView(thumbnail, LinearLayout.LayoutParams(dp(46), dp(46)).apply {
                 marginEnd = dp(12)
             })
             val details = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -662,7 +667,7 @@ class MainActivity : Activity() {
                 filesList.removeAllViews()
                 for ((name, symbol, count) in counts) {
                     val item = infoCard(symbol + "  " + name,
-                        "$count fichier(s) · Téléchargements/All-Download/" + name)
+                        "$count fichier(s) · Ouvrir le dossier")
                     item.setOnClickListener { showFolderContents(name) }
                     filesList.addView(item)
                 }
@@ -727,7 +732,7 @@ class MainActivity : Activity() {
                     if (folder.count == 0) "Aucun fichier dans ce dossier."
                     else "${folder.count} fichier(s)"))
                 folder.entries.forEach { entry ->
-                    val card = infoCard("◉  " + entry.name, "Toucher pour ouvrir")
+                    val card = infoCard("◉  " + entry.name, "Ouvrir")
                     card.setOnClickListener {
                         try {
                             startActivity(Intent(Intent.ACTION_VIEW).apply {
@@ -755,11 +760,11 @@ class MainActivity : Activity() {
         val colors = palette()
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(17), dp(16), dp(17))
-            background = rounded(colors.panel, colors.border, 12)
+            setPadding(dp(15), dp(13), dp(15), dp(13))
+            background = rounded(colors.panel, colors.border, 17)
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) }
-            addView(text(title, 17, colors.foreground, true))
+            addView(text(title, 15, colors.foreground, true))
             addView(text(description, 12, colors.muted, false).apply {
                 setPadding(0, dp(7), 0, 0)
                 maxLines = 3
@@ -804,34 +809,43 @@ class MainActivity : Activity() {
         }
 
 
-    /** Translucent native glass: gradient and rim, no GPU-intensive backdrop capture. */
-    private fun glassSurface(sidebar: Boolean = false): GradientDrawable {
+    /** Low-power native Liquid Glass: translucent gradient, rim and static highlight. */
+    private fun glassSurface(sidebar: Boolean = false): android.graphics.drawable.Drawable {
         val light = themeChoice() == 1
-        val shades = if (light) intArrayOf(
-            Color.argb(248, 255, 255, 255), Color.argb(231, 244, 240, 253),
-            Color.argb(240, 232, 225, 249)
-        ) else if (themeChoice() == 2) intArrayOf(
-            Color.argb(242, 49, 36, 75), Color.argb(236, 20, 17, 31),
-            Color.argb(245, 8, 8, 17)
-        ) else intArrayOf(
-            Color.argb(242, 65, 50, 96), Color.argb(236, 32, 28, 52),
-            Color.argb(247, 23, 22, 39)
-        )
-        return GradientDrawable(GradientDrawable.Orientation.TL_BR, shades).apply {
-            cornerRadius = dp(12).toFloat()
-            setStroke(dp(1), if (light) Color.rgb(226, 232, 240)
-                else Color.rgb(58, 52, 70))
+        val oled = themeChoice() == 2
+        val radius = dp(if (sidebar) 22 else 30).toFloat()
+        val shades = when {
+            light -> intArrayOf(Color.argb(248,255,255,255),
+                Color.argb(232,243,238,251), Color.argb(245,235,230,249))
+            oled -> intArrayOf(Color.argb(242,44,34,62),
+                Color.argb(234,18,17,26), Color.argb(248,8,8,14))
+            else -> intArrayOf(Color.argb(242,54,43,82),
+                Color.argb(233,34,30,53), Color.argb(248,23,23,37))
+        }
+        val base = GradientDrawable(GradientDrawable.Orientation.TL_BR, shades).apply {
+            cornerRadius = radius
+            setStroke(dp(1), if (light) Color.argb(171,202,189,226)
+                else Color.argb(130,149,130,185))
+        }
+        val shine = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(if (light) Color.argb(112,255,255,255)
+                else Color.argb(65,255,255,255), Color.TRANSPARENT)).apply {
+            cornerRadius = radius
+        }
+        return LayerDrawable(arrayOf(base, shine)).apply {
+            setLayerInset(1, dp(2), dp(2), dp(2), dp(2))
         }
     }
 
-    /** Rectangular Windows-inspired tabs, with the original vector pictograms. */
     private fun navigationPill(selected: Boolean): GradientDrawable {
-        val colors = palette()
-        return rounded(if (selected) purple else colors.input,
-            if (selected) purple else colors.border, 10)
+        if (!selected) return rounded(Color.TRANSPARENT, Color.TRANSPARENT, 22)
+        return GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(
+            Color.rgb(135,80,238), Color.rgb(101,55,201))).apply {
+            cornerRadius = dp(22).toFloat()
+            setStroke(dp(1), Color.argb(150,210,193,255))
+        }
     }
 
-    /** One navigation implementation, four unchanged actions, two responsive layouts. */
     private fun styleNavigation() {
         val wide = resources.configuration.screenWidthDp >= 600
         val colors = palette()
@@ -856,9 +870,9 @@ class MainActivity : Activity() {
                 button.setCompoundDrawablesRelative(null, icon, null, null)
                 button.gravity = Gravity.CENTER
                 button.text = shortNames[index]
-                button.textSize = 10f
+                button.textSize = 10.5f
                 button.setPadding(dp(1), dp(5), dp(1), dp(4))
-                button.compoundDrawablePadding = dp(3)
+                button.compoundDrawablePadding = dp(4)
             }
             button.backgroundTintList = null
             button.background = navigationPill(index == selectedTab)
@@ -909,7 +923,7 @@ class MainActivity : Activity() {
                 }
             }
             if (view.tag == "card") {
-                view.background = rounded(colors.panel, colors.border, 12)
+                view.background = rounded(colors.panel, colors.border, 17)
                 view.elevation = 0f
             }
             if (view.tag == "input" && view !is EditText) {
@@ -999,7 +1013,7 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         (footer.parent as? ViewGroup)?.removeView(footer)
         footer.background = glassSurface()
-        footer.setPadding(dp(12), dp(7), dp(12), dp(8))
+        footer.setPadding(dp(14), dp(8), dp(14), dp(9))
         shell.addView(footer, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT).apply {
@@ -1012,16 +1026,16 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         menu.setBackgroundColor(Color.TRANSPARENT)
         tabs.forEach { button ->
-            button.layoutParams = LinearLayout.LayoutParams(0, dp(61), 1f).apply {
+            button.layoutParams = LinearLayout.LayoutParams(0, dp(60), 1f).apply {
                 marginStart = dp(2)
                 marginEnd = dp(2)
             }
         }
         bar.backgroundTintList = null
         bar.background = glassSurface()
-        bar.elevation = dp(7).toFloat()
+        bar.elevation = dp(5).toFloat()
         bar.clipToOutline = true
-        bar.setPadding(dp(5), dp(5), dp(5), dp(5))
+        bar.setPadding(dp(6), dp(6), dp(6), dp(6))
         bar.isHorizontalScrollBarEnabled = false
         bar.isFillViewport = true
         shell.addView(bar, LinearLayout.LayoutParams(
