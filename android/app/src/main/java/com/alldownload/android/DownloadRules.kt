@@ -38,12 +38,21 @@ internal object DownloadRules {
             Regex("^/videos/[0-9]{5,20}/?$").matches(parsed.path.orEmpty())
     }
 
+    /** Twitch VODs and clips belong to TWITCH, not the generic AUTRES folder. */
+    fun isTwitchContentHost(url: String): Boolean {
+        val host = uri(url)?.host?.lowercase() ?: return false
+        return host in setOf(
+            "twitch.tv", "www.twitch.tv", "m.twitch.tv",
+            "clips.twitch.tv", "player.twitch.tv"
+        )
+    }
+
     fun categoryFor(url: String, mode: Int): String {
         if (mode == 5) return "PLAYLIST"
         if (mode == 6) return "CHAÎNES"
         if (mode in 1..3) return "AUDIOS"
         if (mode == 4) return "GIFS"
-        if (isTwitchVod(url)) return "TWITCH"
+        if (isTwitchContentHost(url)) return "TWITCH"
         val host = uri(url)?.host?.lowercase().orEmpty()
         return if (host == "youtu.be" || host == "youtube.com" ||
             host.endsWith(".youtube.com")) "VIDÉOS" else "AUTRES"
