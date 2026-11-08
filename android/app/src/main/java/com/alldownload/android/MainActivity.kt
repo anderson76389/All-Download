@@ -18,6 +18,8 @@ import android.widget.TextView
 import android.widget.Toast
 
 class MainActivity : Activity() {
+    companion object { private const val PICK_COOKIES = 441 }
+
     private lateinit var urlInput: EditText
     private lateinit var modeSpinner: Spinner
     private lateinit var qualitySpinner: Spinner
@@ -25,6 +27,9 @@ class MainActivity : Activity() {
     private lateinit var cancelButton: Button
     private lateinit var progressBar: ProgressBar
     private lateinit var statusText: TextView
+    private lateinit var cookieStatus: TextView
+    private lateinit var importCookiesButton: Button
+    private lateinit var removeCookiesButton: Button
 
     private val handler = Handler(Looper.getMainLooper())
     private val refresh = object : Runnable {
@@ -34,6 +39,8 @@ class MainActivity : Activity() {
             cancelButton.isEnabled = state.busy
             progressBar.progress = state.progress
             statusText.text = state.message
+            importCookiesButton.isEnabled = !state.busy
+            removeCookiesButton.isEnabled = !state.busy && CookieStore.existing(this@MainActivity) != null
             handler.postDelayed(this, 650)
         }
     }
@@ -48,6 +55,24 @@ class MainActivity : Activity() {
         cancelButton = findViewById(R.id.cancelButton)
         progressBar = findViewById(R.id.progressBar)
         statusText = findViewById(R.id.statusText)
+        cookieStatus = findViewById(R.id.cookieStatus)
+        importCookiesButton = findViewById(R.id.importCookiesButton)
+        removeCookiesButton = findViewById(R.id.removeCookiesButton)
+        updateCookieStatus()
+        importCookiesButton.setOnClickListener {
+            val pick = Intent(Intent.ACTION_OPEN_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .setType("*/*")
+            startActivityForResult(pick, PICK_COOKIES)
+        }
+        removeCookiesButton.setOnClickListener {
+            if (CookieStore.delete(this)) {
+                updateCookieStatus()
+                Toast.makeText(this, "Cookies locaux supprimés.", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Suppression impossible.", Toast.LENGTH_LONG).show()
+            }
+        }
 
         modeSpinner.adapter = ArrayAdapter(
             this, R.layout.spinner_item,
@@ -63,6 +88,31 @@ class MainActivity : Activity() {
             startService(Intent(this, DownloadService::class.java).setAction(DownloadService.ACTION_CANCEL))
         }
         processSharedUrl(intent)
+    }
+
+    @Deprecated("Utilisé pour le sélecteur de documents Android (API 24+).")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != PICK_COOKIES || resultCode != RESULT_OK) return
+        val uri = data?.data ?: return
+        try {
+            val input = contentResolver.openInputStream(uri)
+                ?: throw java.io.IOException("Impossible de lire le fichier sélectionné.")
+            CookieStore.importFromStream(this, input)
+            updateCookieStatus()
+            Toast.makeText(this, "Cookies conservés uniquement dans l'application.", Toast.LENGTH_LONG).show()
+        } catch (error: Exception) {
+            Toast.makeText(this, error.localizedMessage ?: "Import des cookies impossible.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun updateCookieStatus() {
+        cookieStatus.text = if (CookieStore.existing(this) != null) {
+            "Session importée (stockage privé local, jamais envoyée à All-Download)"
+        } else {
+            "Sans cookies (accès public uniquement)"
+        }
+        removeCookiesButton.isEnabled = CookieStore.existing(this) != null
     }
 
     override fun onNewIntent(intent: Intent) {
