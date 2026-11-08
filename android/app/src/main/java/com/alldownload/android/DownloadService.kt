@@ -157,17 +157,21 @@ class DownloadService : Service() {
         if (!DownloadRules.isSocialVideoHost(url)) return
         val prefs = getSharedPreferences("yt_dlp_updates", MODE_PRIVATE)
         val now = System.currentTimeMillis()
-        val previous = prefs.getLong("last_attempt_ms", 0L)
+        val lastSuccess = prefs.getLong("last_success_ms", 0L)
+        val lastAttempt = prefs.getLong("last_attempt_ms", 0L)
         val oneWeekMs = 7L * 24 * 60 * 60 * 1000
-        if (previous > 0 && now - previous in 0 until oneWeekMs) return
+        val retryMs = 12L * 60 * 60 * 1000
+        if (lastSuccess > 0 && now - lastSuccess in 0 until oneWeekMs) return
+        if (lastAttempt > 0 && now - lastAttempt in 0 until retryMs) return
         prefs.edit().putLong("last_attempt_ms", now).apply()
         state = UiState(true, 0, "Actualisation du moteur yt-dlp…")
         try {
             val result = YoutubeDL.getInstance().updateYoutubeDL(applicationContext)
+            prefs.edit().putLong("last_success_ms", System.currentTimeMillis()).apply()
             Log.i("AllDownloadVideo", "yt-dlp : $result")
         } catch (e: Exception) {
             Log.w("AllDownloadVideo",
-                "Mise à jour yt-dlp indisponible, conservation du moteur embarqué.", e)
+                "Mise à jour indisponible. Nouvel essai possible dans 12 h.", e)
         }
     }
 
@@ -186,6 +190,9 @@ class DownloadService : Service() {
         request.addOption("--no-mtime")
         request.addOption("--newline")
         request.addOption("--no-overwrites")
+        // Identifiants facultatifs : fichier Netscape dans le stockage privé local.
+        // yt-dlp filtre lui-même les cookies par domaine. Aucun cookie dans les logs.
+        CookieStore.existing(this)?.let { request.addOption("--cookies", it.absolutePath) }
         request.addOption("--output", File(work, "%(title).150B [%(id)s].%(ext)s").absolutePath)
 
         if (mode != 5 && mode != 6) request.addOption("--no-playlist")
