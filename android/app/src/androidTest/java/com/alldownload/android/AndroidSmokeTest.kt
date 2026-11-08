@@ -166,6 +166,60 @@ class AndroidSmokeTest {
         }
     }
 
+
+    @Test fun windowsInspiredResponsiveShellKeepsWorkingControls() {
+        val activity = instrumentation.startActivitySync(
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        ) as MainActivity
+        instrumentation.waitForIdleSync()
+        try {
+            val options = activity.findViewById<LinearLayout>(R.id.downloadOptions)
+            val footer = activity.findViewById<LinearLayout>(R.id.statusFooterCard)
+            val home = activity.findViewById<LinearLayout>(R.id.homePage)
+            val nav = activity.findViewById<LinearLayout>(R.id.navigation)
+            val mode = activity.findViewById<Spinner>(R.id.modeSpinner)
+            assertNotNull("Barre d'options de Windows absente", options)
+            assertNotNull("Barre d'état/progression absente", footer)
+            assertNotNull(activity.findViewById<Button>(R.id.queueButton))
+            assertNotNull(activity.findViewById<Button>(R.id.startButton))
+            assertNotNull(activity.findViewById<Button>(R.id.cancelButton))
+            val wide = activity.resources.configuration.screenWidthDp >= 720
+            if (wide) {
+                assertSame("La barre d'état doit rester dans la page sur tablette",
+                    home, footer.parent)
+                assertEquals(LinearLayout.HORIZONTAL, options.orientation)
+                assertEquals(LinearLayout.VERTICAL, nav.orientation)
+            } else {
+                val navBar = nav.parent as View
+                assertSame("Navigation et statut doivent être épinglés au même écran",
+                    footer.parent, navBar.parent)
+                assertNotSame("La barre d'état ne doit pas scroller sur téléphone",
+                    home, footer.parent)
+                assertEquals(LinearLayout.HORIZONTAL, nav.orientation)
+                assertTrue("Le contenu doit rester affiché au-dessus de la navigation",
+                    activity.findViewById<View>(R.id.scroll).parent === footer.parent)
+            }
+            instrumentation.runOnMainSync {
+                activity.findViewById<Button>(R.id.quickAudioButton).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            assertEquals(1, mode.selectedItemPosition)
+            instrumentation.runOnMainSync {
+                activity.findViewById<Button>(R.id.quickPlaylistButton).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            assertEquals(5, mode.selectedItemPosition)
+            instrumentation.runOnMainSync {
+                activity.findViewById<Button>(R.id.navQueue).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            assertEquals(View.VISIBLE, activity.findViewById<View>(R.id.queuePage).visibility)
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
+
     @Test fun originalBrandAndFourNativeTabsAreFunctional() {
         val activity = instrumentation.startActivitySync(
             Intent(context, MainActivity::class.java)
