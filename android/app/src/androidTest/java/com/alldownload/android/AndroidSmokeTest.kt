@@ -139,6 +139,11 @@ class AndroidSmokeTest {
             assertNotNull("Cookies absents de l'espace privé.", cookies)
             assertTrue(cookies!!.canonicalPath.startsWith(context.noBackupFilesDir.canonicalPath + "/"))
             assertEquals(source, cookies.readText())
+            val replaced = source.replace("CI-dummy-cookie", "CI-replaced-cookie")
+            CookieStore.importFromStream(context,
+                ByteArrayInputStream(replaced.toByteArray(Charsets.UTF_8)))
+            assertEquals("L'import d'une nouvelle session doit remplacer l'ancienne.",
+                replaced, CookieStore.file(context).readText())
             try {
                 CookieStore.importFromStream(context,
                     ByteArrayInputStream("garbage cookie value".toByteArray()))
@@ -147,7 +152,7 @@ class AndroidSmokeTest {
                 assertTrue(expected.message.orEmpty().contains("Netscape"))
             }
             assertEquals("L'ancien cookie ne doit pas être écrasé en cas d'erreur.",
-                source, CookieStore.file(context).readText())
+                replaced, CookieStore.file(context).readText())
             assertTrue(CookieStore.delete(context))
             assertNull("Cookies présents après suppression.", CookieStore.existing(context))
         } finally {
