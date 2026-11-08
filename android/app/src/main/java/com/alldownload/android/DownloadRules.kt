@@ -42,11 +42,11 @@ internal object DownloadRules {
             else -> "bestvideo[height=1080]+bestaudio/best[height=1080]/bestvideo[height=720]+bestaudio/best[height=720]"
         }
         return when (quality) {
-            1 -> "bestvideo[height<=720]+bestaudio/best[height<=720]/best[height=?]"
-            2 -> "bestvideo[height<=480]+bestaudio/best[height<=480]/best[height=?]"
+            1 -> "bestvideo[height<=720]+bestaudio/best[height<=?720]"
+            2 -> "bestvideo[height<=480]+bestaudio/best[height<=?480]"
             3 -> "bestvideo+bestaudio/best"
-            4 -> "bestvideo[height<=2160]+bestaudio/best[height<=2160]/best[height=?]"
-            else -> "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best[height=?]"
+            4 -> "bestvideo[height<=2160]+bestaudio/best[height<=?2160]"
+            else -> "bestvideo[height<=1080]+bestaudio/best[height<=?1080]"
         }
     }
 }
