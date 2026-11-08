@@ -138,11 +138,12 @@ jobs:
       - name: Write beta release notes
         run: |
           cat > android-release-notes.md <<'EOF'
-          ## All-Download Android 0.4.0 BÊTA
+          ## All-Download Android 0.5.0 BÊTA
 
           Téléchargement autonome Android (APK). **Ne remplace pas les versions Windows.**
 
           - Android 7+ ; architecture ARM 32/64 bits et x86 32/64 bits.
+          - Mise à jour depuis l’application : téléchargement APK privé avec progression, contrôle SHA-256 et vérification du paquet, puis ouverture de l’installateur Android sans navigateur.
           - Véritable identité All-Download : icône tirée du logo original, nom Android, splash screen et palette violette de Windows.
           - Optimisation RAM : logo original redimensionné à la compilation (PNG 192 × 192), sans toucher au fichier Windows.
           - Fluidité : mises à jour de l'interface uniquement quand l'activité est visible, moins de re-dessins, pagination des tâches (24 à la fois) et explorateur de dossiers asynchrone (50 fichiers à la fois).

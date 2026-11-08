@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <external-path name="all_download" path="Download/All-Download/"/>
+    <!-- Private, checksummed APK download exposed only to the system installer. -->
+    <cache-path name="trusted_android_updates" path="updates/"/>
 </paths>

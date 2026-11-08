@@ -1,4 +1,4 @@
-# All-Download Android — bêta 0.4.0
+# All-Download Android — bêta 0.5.0
 
 Nouvelle application Android **indépendante de Windows**, dans le dossier `android/`. Les éditions Portable/Classique Windows, `yt_app.py`, `twitch_hls.py` et `build-windows.yml` ne sont pas modifiés.
 
@@ -11,7 +11,7 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 - **Android pliable/tablette** : interface centrée et limitée en largeur sur les grands écrans, recalcul au changement d'orientation ; contrôles tactiles natifs sur petit écran.
 - **Fichiers accessibles** depuis les sept dossiers de l'app : MediaStore Android 10+ et FileProvider Android 7–9, sans permission « gérer tous les fichiers ».
 
-## Optimisation de l'autonomie, de la mémoire et de la fluidité (bêta 0.4.0)
+## Optimisation de l'autonomie, de la mémoire et de la fluidité (bêta 0.5.0)
 
 - **Écran réellement inactif :** aucune boucle d'actualisation quand l'activité est en arrière-plan. Quand elle est visible, le rafraîchissement s'adapte (1,8 s pendant le téléchargement, 3 s dans la file, 8 s au repos) et ne redessine pas les contrôles si leur état n'a pas changé.
 - **File d'attente optimisée :** les tâches restent enregistrées de façon atomique et persistante, avec un cache en mémoire et une révision. Les écritures identiques sont ignorées, la progression sur disque est regroupée et seulement 24 cartes sont affichées au départ (« Afficher plus » pour la suite). Aucun téléchargement n'est perdu si une carte n'est pas affichée.
@@ -25,9 +25,9 @@ Ces mesures évitent les opérations superflues et limitent les allocations pend
 
 ## Mises à jour Android dans l'application
 
-À partir de la **bêta 0.4.0**, All-Download interroge directement l'API des **GitHub Releases** à l'ouverture (vérification limitée à une fois toutes les 30 minutes). Seules les versions publiées avec un tag `android-vX.Y.Z-beta` et un vrai fichier `All-Download-Android-X.Y.Z-beta.apk` sont retenues : **les Releases Windows ne déclenchent jamais de proposition d'APK**.
+À partir de la **bêta 0.5.0**, All-Download interroge directement l'API des **GitHub Releases** à l'ouverture (vérification limitée à une fois toutes les 30 minutes). Seules les versions publiées avec un tag `android-vX.Y.Z-beta` et un vrai fichier `All-Download-Android-X.Y.Z-beta.apk` sont retenues : **les Releases Windows ne déclenchent jamais de proposition d'APK**.
 
-Quand une version Android plus récente existe, l'application affiche une **fenêtre native animée** avec le logo, le numéro de version, les nouveautés, « Télécharger la mise à jour » et « Plus tard ». Elle ne réaffiche pas la même fenêtre à chaque retour dans l'application ; une nouvelle version entraîne une nouvelle notification. Un interrupteur et un bouton « Rechercher une mise à jour » se trouvent dans Paramètres. Le bouton ouvre le fichier officiel GitHub dans le navigateur ; **Android conserve seul l'autorisation d'installer l'APK**. Il n'y a aucune installation silencieuse, service d'auto-mise-à-jour tiers ou compte All-Download.
+Quand une version Android plus récente existe, l'application affiche une **fenêtre native animée** avec le logo, le numéro de version, les nouveautés, « Télécharger la mise à jour » et « Plus tard ». Elle ne réaffiche pas la même fenêtre à chaque retour dans l'application ; une nouvelle version entraîne une nouvelle notification. Un interrupteur et un bouton « Rechercher une mise à jour » se trouvent dans Paramètres. Le bouton télécharge désormais directement l'APK officiel dans le cache privé de l'application, avec barre de progression et contrôle de l'empreinte SHA-256 fournie par la Release GitHub. Aucun navigateur ne s'ouvre. L'application vérifie le nom de paquet, la version et la signature avant de lancer le **programme d'installation sécurisé Android** via FileProvider. Android peut demander une autorisation « Installer des applications inconnues » pour All-Download puis une confirmation. Il n'y a ni installation forcée, ni contournement des protections Android, ni service tiers.
 
 **Signature APK :** les builds de test des anciennes bêta 0.1.2 et 0.2.0 ont été signés avec des clés de débogage éphémères. Ils ne peuvent **pas** garantir une installation de mise à jour par-dessus l'ancienne version. Pour des mises à jour Android vraiment installables sans désinstallation, configurez une **clé de signature persistante et privée** via les secrets GitHub Actions `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` ; le workflow Android les utilise lorsqu'ils sont présents. **Ne commitez jamais votre keystore ou vos mots de passe.** La première transition vers la clé persistante pourra demander une désinstallation, ce qui effacera les données privées de l'appli ; les médias déjà exportés dans Téléchargements ne sont pas supprimés.
 
@@ -62,7 +62,7 @@ Les flux protégés/DRM, les contenus privés sans autorisation et les vidéos s
 
 ## Compilation
 
-Via GitHub Actions : workflow `Build Android (beta)`, puis récupérer l'artefact `All-Download-Android-beta` après succès. La préversion `android-v0.4.0-beta` est distribuée séparément des Releases stables Windows.
+Via GitHub Actions : workflow `Build Android (beta)`, puis récupérer l'artefact `All-Download-Android-beta` après succès. La préversion `android-v0.5.0-beta` est distribuée séparément des Releases stables Windows.
 
 En local : Android SDK plateforme 35, JDK 17 et Gradle 8.9, puis `gradle -p android :app:assembleDebug`.
 

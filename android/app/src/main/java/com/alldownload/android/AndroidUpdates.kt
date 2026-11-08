@@ -266,8 +266,14 @@ internal object AndroidUpdates {
         card.addView(notes, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, px(155)))
         val dialog = Dialog(activity)
+        val status = text(
+            "L'APK sera téléchargé et vérifié dans All-Download, sans navigateur.", 12f, secondary)
+        card.addView(status, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = px(10)
+            })
         val install = Button(activity).apply {
-            text = "Télécharger la mise à jour"
+            text = "Installer la mise à jour"
             isAllCaps = false
             setTextColor(Color.WHITE)
             this.background = GradientDrawable().apply {
@@ -275,19 +281,21 @@ internal object AndroidUpdates {
                 cornerRadius = px(13).toFloat()
             }
             setOnClickListener {
-                dialog.dismiss()
-                val open = Intent(Intent.ACTION_VIEW, Uri.parse(release.apkUrl))
-                    .addCategory(Intent.CATEGORY_BROWSABLE)
-                try { activity.startActivity(open) }
-                catch (_: Exception) {
-                    activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(release.page)))
+                isEnabled = false
+                text = "Préparation de l'APK…"
+                AndroidApkInstaller.downloadAndInstall(activity, release) { message, failed ->
+                    if (activity.isFinishing || activity.isDestroyed) return@downloadAndInstall
+                    status.text = message
+                    this.text = if (failed) "Réessayer" else "Téléchargement en cours…"
+                    if (failed) isEnabled = true
+                    if (message == "Installateur Android ouvert") dialog.dismiss()
                 }
             }
         }
         card.addView(install, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, px(53)).apply { topMargin = px(14) })
         card.addView(text(
-            "L'installation est confirmée par Android. Cette bêta utilise encore une signature de test : si Android refuse la mise à jour, une réinstallation peut être nécessaire.",
+            "Android peut demander une autorisation et une confirmation. Pour conserver vos données entre les versions, toutes les APK doivent être signées avec la même clé privée.",
             11f, secondary).apply {
             setPadding(px(2), px(10), px(2), px(2))
         })

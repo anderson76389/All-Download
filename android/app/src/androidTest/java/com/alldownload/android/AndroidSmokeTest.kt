@@ -308,6 +308,28 @@ class AndroidSmokeTest {
             AndroidUpdates.findNewer(releases.toString(), "0.3.1-beta"))
     }
 
+    @Test fun privateUpdateApkProviderAndChecksumRulesWorkWithoutBrowser() {
+        val name = "All-Download-Android-0.5.0-beta.apk"
+        val digest = "f".repeat(64)
+        assertEquals(digest, AndroidApkInstaller.readChecksum("$digest  $name\\n", name))
+        assertNull(AndroidApkInstaller.readChecksum("$digest  other.apk", name))
+        assertNull(AndroidApkInstaller.readChecksum("bad  $name", name))
+        assertTrue(AndroidApkInstaller.isTrustedDownloadHost("github.com"))
+        assertTrue(AndroidApkInstaller.isTrustedDownloadHost("release-assets.githubusercontent.com"))
+        assertFalse(AndroidApkInstaller.isTrustedDownloadHost("github.com.example.org"))
+        assertFalse(AndroidApkInstaller.isTrustedDownloadHost("attacker.com"))
+        val dir = File(context.cacheDir, "updates").apply { mkdirs() }
+        val file = File(dir, "provider-test.apk")
+        try {
+            file.writeText("test")
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                context, context.packageName + ".files", file)
+            assertEquals("content", uri.scheme)
+            assertFalse("Le fichier reste privé et ne doit jamais être ouvert comme une URL web.",
+                uri.toString().startsWith("https://"))
+        } finally { file.delete() }
+    }
+
     @Test fun updateCacheRemembersNewAndroidReleasesWithoutStoringWindowsHistory() {
         val release = AndroidUpdates.Release(
             "0.5.0-beta", "android-v0.5.0-beta", "All-Download Android",
