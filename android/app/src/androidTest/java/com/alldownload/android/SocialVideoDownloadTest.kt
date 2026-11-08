@@ -74,6 +74,10 @@ class SocialVideoDownloadTest {
         "Facebook", "https://www.facebook.com/radiokicksfm/videos/3676516585958356/"
     )
 
+    @Test fun facebookPublicReel() = checkPlatform(
+        "Facebook Reel", "https://www.facebook.com/reel/1195289147628387"
+    )
+
     @Test fun vimeoPublicVideo() = checkPlatform(
         "Vimeo", "https://vimeo.com/76979871"
     )
