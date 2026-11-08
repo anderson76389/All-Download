@@ -1,4 +1,4 @@
-# All-Download Android — bêta 0.5.0
+# All-Download Android — bêta 0.6.0
 
 Nouvelle application Android **indépendante de Windows**, dans le dossier `android/`. Les éditions Portable/Classique Windows, `yt_app.py`, `twitch_hls.py` et `build-windows.yml` ne sont pas modifiés.
 
@@ -12,7 +12,7 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 - **Android pliable/tablette** : interface centrée et limitée en largeur sur les grands écrans, recalcul au changement d'orientation ; contrôles tactiles natifs sur petit écran.
 - **Fichiers accessibles** depuis les sept dossiers de l'app : MediaStore Android 10+ et FileProvider Android 7–9, sans permission « gérer tous les fichiers ».
 
-## Optimisation de l'autonomie, de la mémoire et de la fluidité (bêta 0.5.0)
+## Refonte de l'interface Windows sur téléphone et tablette (bêta 0.6.0)
 
 - **Écran réellement inactif :** aucune boucle d'actualisation quand l'activité est en arrière-plan. Quand elle est visible, le rafraîchissement s'adapte (1,8 s pendant le téléchargement, 3 s dans la file, 8 s au repos) et ne redessine pas les contrôles si leur état n'a pas changé.
 - **File d'attente optimisée :** les tâches restent enregistrées de façon atomique et persistante, avec un cache en mémoire et une révision. Les écritures identiques sont ignorées, la progression sur disque est regroupée et seulement 24 cartes sont affichées au départ (« Afficher plus » pour la suite). Aucun téléchargement n'est perdu si une carte n'est pas affichée.
@@ -64,7 +64,7 @@ Les flux protégés/DRM, les contenus privés sans autorisation et les vidéos s
 
 ## Compilation
 
-Via GitHub Actions : workflow `Build Android (beta)`, puis récupérer l'artefact `All-Download-Android-beta` après succès. La préversion `android-v0.5.0-beta` est distribuée séparément des Releases stables Windows.
+Via GitHub Actions : workflow `Build Android (beta)`, puis récupérer l'artefact `All-Download-Android-beta` après succès. La préversion `android-v0.6.0-beta` est distribuée séparément des Releases stables Windows.
 
 En local : Android SDK plateforme 35, JDK 17 et Gradle 8.9, puis `gradle -p android :app:assembleDebug`.
 
