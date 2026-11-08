@@ -3,125 +3,509 @@
     android:id="@+id/scroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0E1220"
-    android:fillViewport="true"
-    android:padding="22dp">
+    android:background="#141414"
+    android:clipToPadding="false"
+    android:fillViewport="true">
     <LinearLayout
+        android:id="@+id/mainContent"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
-        <TextView
+        android:layout_gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingLeft="18dp"
+        android:paddingTop="18dp"
+        android:paddingRight="18dp"
+        android:paddingBottom="32dp">
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="ALL-DOWNLOAD"
-            android:textColor="#E6EDFF"
-            android:textSize="29sp"
-            android:textStyle="bold" />
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="Android • Téléchargements locaux"
-            android:textColor="#A9B6CE"
-            android:textSize="15sp" />
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
-            android:text="Lien du média"
-            android:textColor="#E6EDFF"
-            android:textSize="15sp" />
-        <EditText
-            android:id="@+id/urlInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:hint="https://..."
-            android:inputType="textUri"
-            android:singleLine="true"
-            android:textColor="#FFFFFF"
-            android:textColorHint="#7A8BA9" />
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="Type de téléchargement"
-            android:textColor="#E6EDFF" />
-        <Spinner
-            android:id="@+id/modeSpinner"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:contentDescription="Type de téléchargement" />
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:text="Qualité vidéo"
-            android:textColor="#E6EDFF" />
-        <Spinner
-            android:id="@+id/qualitySpinner"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:contentDescription="Qualité vidéo" />
-        <TextView
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+            <ImageView
+                android:id="@+id/brandLogo"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:contentDescription="Logo All-Download"
+                android:scaleType="centerCrop"
+                android:src="@drawable/all_download_logo" />
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="13dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+                <TextView
+                    android:id="@+id/brandTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="ALL-DOWNLOAD"
+                    android:textColor="#F3F4F6"
+                    android:textSize="23sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/brandSubtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Téléchargez. Convertissez. Organisez."
+                    android:textColor="#A1A1AA"
+                    android:textSize="12sp" />
+            </LinearLayout>
+            <TextView
+                android:id="@+id/betaLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="7dp"
+                android:text="BÊTA"
+                android:textColor="#C4B5FD"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="22dp"
-            android:text="Connexion facultative aux réseaux sociaux"
-            android:textColor="#E6EDFF"
-            android:textSize="15sp" />
-        <TextView
-            android:id="@+id/cookieStatus"
+            android:fillViewport="true"
+            android:scrollbars="none">
+            <LinearLayout
+                android:id="@+id/navigation"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+                <Button
+                    android:id="@+id/navHome"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:minWidth="78dp"
+                    android:text="Accueil"
+                    android:textAllCaps="false"/>
+                <Button
+                    android:id="@+id/navQueue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:minWidth="92dp"
+                    android:text="File"
+                    android:textAllCaps="false"/>
+                <Button
+                    android:id="@+id/navFiles"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:minWidth="90dp"
+                    android:text="Dossiers"
+                    android:textAllCaps="false"/>
+                <Button
+                    android:id="@+id/navSettings"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:minWidth="101dp"
+                    android:text="Réglages"
+                    android:textAllCaps="false"/>
+            </LinearLayout>
+        </HorizontalScrollView>
+
+        <LinearLayout
+            android:id="@+id/homePage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="5dp"
-            android:text="Aucun cookie enregistré (contenus publics uniquement)"
-            android:textColor="#A9B6CE"
-            android:textSize="13sp" />
-        <Button
-            android:id="@+id/importCookiesButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="5dp"
-            android:text="Importer mes cookies.txt (facultatif)" />
-        <Button
-            android:id="@+id/removeCookiesButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Supprimer les cookies importés" />
-        <Button
-            android:id="@+id/startButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="TÉLÉCHARGER" />
-        <Button
-            android:id="@+id/cancelButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="ANNULER" />
-        <ProgressBar
-            android:id="@+id/progressBar"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
-            android:layout_height="14dp"
             android:layout_marginTop="22dp"
-            android:max="100"
-            android:progress="0" />
-        <TextView
-            android:id="@+id/statusText"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/panel_background"
+                android:orientation="vertical"
+                android:padding="19dp"
+                android:tag="card">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Nouveau téléchargement"
+                    android:textColor="#F3F4F6"
+                    android:textSize="21sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:tag="muted"
+                    android:text="Collez ou partagez un lien depuis votre application préférée."
+                    android:textColor="#A1A1AA"
+                    android:textSize="13sp" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="23dp"
+                    android:text="Lien du média"
+                    android:textColor="#F3F4F6"
+                    android:textStyle="bold"/>
+                <EditText
+                    android:id="@+id/urlInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="54dp"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/input_background"
+                    android:hint="https://youtube.com/…"
+                    android:inputType="textUri"
+                    android:paddingLeft="14dp"
+                    android:paddingRight="14dp"
+                    android:singleLine="true"
+                    android:tag="input"
+                    android:textColor="#F3F4F6"
+                    android:textColorHint="#9999AA"/>
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:text="Type de téléchargement"
+                    android:textColor="#F3F4F6"
+                    android:textStyle="bold"/>
+                <Spinner
+                    android:id="@+id/modeSpinner"
+                    android:layout_width="match_parent"
+                    android:layout_height="54dp"
+                    android:layout_marginTop="6dp"
+                    android:contentDescription="Type de téléchargement"
+                    android:tag="input"/>
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="Qualité vidéo"
+                    android:textColor="#F3F4F6"
+                    android:textStyle="bold"/>
+                <Spinner
+                    android:id="@+id/qualitySpinner"
+                    android:layout_width="match_parent"
+                    android:layout_height="54dp"
+                    android:layout_marginTop="6dp"
+                    android:contentDescription="Qualité vidéo"
+                    android:tag="input"/>
+                <Button
+                    android:id="@+id/startButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="53dp"
+                    android:layout_marginTop="22dp"
+                    android:background="@drawable/brand_button"
+                    android:text="↓  Télécharger maintenant"
+                    android:textAllCaps="false"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:tag="primary"/>
+                <Button
+                    android:id="@+id/queueButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="51dp"
+                    android:layout_marginTop="5dp"
+                    android:text="＋  Ajouter à la file d’attente"
+                    android:textAllCaps="false"/>
+                <Button
+                    android:id="@+id/cancelButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="49dp"
+                    android:text="Arrêter le téléchargement actif"
+                    android:textAllCaps="false"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="17dp"
+                android:background="@drawable/panel_background"
+                android:orientation="vertical"
+                android:padding="18dp"
+                android:tag="card">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Téléchargement en cours"
+                    android:textColor="#F3F4F6"
+                    android:textStyle="bold"/>
+                <TextView
+                    android:id="@+id/statusText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="11dp"
+                    android:text="Prêt."
+                    android:textColor="#C4B5FD"
+                    android:textSize="14sp"
+                    android:tag="accent"/>
+                <ProgressBar
+                    android:id="@+id/progressBar"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="9dp"
+                    android:layout_marginTop="14dp"
+                    android:max="100"/>
+            </LinearLayout>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:text="Raccourcis"
+                android:textColor="#F3F4F6"
+                android:textSize="19sp"
+                android:textStyle="bold"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal">
+                <Button
+                    android:id="@+id/quickVideoButton"
+                    android:layout_width="0dp"
+                    android:layout_height="53dp"
+                    android:layout_marginRight="5dp"
+                    android:layout_weight="1"
+                    android:text="▶  Vidéos"
+                    android:textAllCaps="false" />
+                <Button
+                    android:id="@+id/quickAudioButton"
+                    android:layout_width="0dp"
+                    android:layout_height="53dp"
+                    android:layout_marginLeft="5dp"
+                    android:layout_weight="1"
+                    android:text="♫  Audios"
+                    android:textAllCaps="false" />
+            </LinearLayout>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="11dp"
+                android:tag="muted"
+                android:text="Qualité Twitch : 1080p native, sinon 720p native. Aucune résolution artificielle."
+                android:textColor="#A1A1AA"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/queuePage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Prêt."
-            android:textColor="#C9D6F0"
-            android:textSize="14sp" />
-        <TextView
+            android:layout_marginTop="22dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="File d’attente"
+                android:textColor="#F3F4F6"
+                android:textSize="23sp"
+                android:textStyle="bold"/>
+            <TextView
+                android:id="@+id/queueStatusText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:tag="muted"
+                android:text="Vos téléchargements, même après la fermeture de l’application."
+                android:textColor="#A1A1AA"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="15dp"
+                android:orientation="horizontal">
+                <Button
+                    android:id="@+id/resumeQueueButton"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_marginRight="5dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/brand_button"
+                    android:tag="primary"
+                    android:text="▶  Lancer / Reprendre"
+                    android:textAllCaps="false"
+                    android:textColor="#FFFFFF"/>
+                <Button
+                    android:id="@+id/pauseQueueButton"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_marginLeft="5dp"
+                    android:layout_weight="1"
+                    android:text="Ⅱ  Pause"
+                    android:textAllCaps="false"/>
+            </LinearLayout>
+            <Button
+                android:id="@+id/clearFinishedButton"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Effacer les tâches terminées de la liste"
+                android:textAllCaps="false"/>
+            <LinearLayout
+                android:id="@+id/queueList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="vertical"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/filesPage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="30dp"
-            android:text="Stockage : Téléchargements/All-Download/\nQualités Twitch : 1080p natif puis 720p natif, sans agrandissement.\nBêta : certaines fonctions Windows ne sont pas encore disponibles."
-            android:textColor="#9EACC6"
-            android:textSize="13sp" />
+            android:layout_marginTop="22dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Mes téléchargements"
+                android:textColor="#F3F4F6"
+                android:textSize="23sp"
+                android:textStyle="bold"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:tag="muted"
+                android:text="Tout est rangé dans Téléchargements/All-Download/"
+                android:textColor="#A1A1AA"/>
+            <LinearLayout
+                android:id="@+id/filesList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="vertical"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/settingsPage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Paramètres"
+                android:textColor="#F3F4F6"
+                android:textSize="23sp"
+                android:textStyle="bold"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/panel_background"
+                android:orientation="vertical"
+                android:padding="19dp"
+                android:tag="card">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Apparence"
+                    android:textColor="#F3F4F6"
+                    android:textSize="18sp"
+                    android:textStyle="bold"/>
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="9dp"
+                    android:tag="muted"
+                    android:text="Même identité que la version Windows : violet, clair, sombre ou OLED."
+                    android:textColor="#A1A1AA"/>
+                <Spinner
+                    android:id="@+id/themeSpinner"
+                    android:layout_width="match_parent"
+                    android:layout_height="55dp"
+                    android:layout_marginTop="9dp"
+                    android:tag="input"/>
+            </LinearLayout>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:background="@drawable/panel_background"
+                android:orientation="vertical"
+                android:padding="19dp"
+                android:tag="card">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Moteur de téléchargement"
+                    android:textColor="#F3F4F6"
+                    android:textSize="18sp"
+                    android:textStyle="bold"/>
+                <TextView
+                    android:id="@+id/engineVersionText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:tag="muted"
+                    android:text="yt-dlp et FFmpeg intégrés, sans dépendance Windows"
+                    android:textColor="#A1A1AA"/>
+                <CheckBox
+                    android:id="@+id/autoUpdateCheck"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:buttonTint="#7C3AED"
+                    android:checked="true"
+                    android:text="Actualiser yt-dlp pour les réseaux sociaux"/>
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:tag="muted"
+                    android:text="Une fois par semaine après une mise à jour réussie. Le téléchargement reste utilisable hors ligne."
+                    android:textColor="#A1A1AA"
+                    android:textSize="12sp"/>
+            </LinearLayout>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:background="@drawable/panel_background"
+                android:orientation="vertical"
+                android:padding="19dp"
+                android:tag="card">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Connexion facultative"
+                    android:textColor="#F3F4F6"
+                    android:textSize="18sp"
+                    android:textStyle="bold"/>
+                <TextView
+                    android:id="@+id/cookieStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="9dp"
+                    android:tag="muted"
+                    android:text="Sans cookies, téléchargements publics seulement"
+                    android:textColor="#A1A1AA"/>
+                <Button
+                    android:id="@+id/importCookiesButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="49dp"
+                    android:layout_marginTop="12dp"
+                    android:text="Importer mes cookies.txt"
+                    android:textAllCaps="false"/>
+                <Button
+                    android:id="@+id/removeCookiesButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="49dp"
+                    android:text="Supprimer les cookies"
+                    android:textAllCaps="false"/>
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:tag="muted"
+                    android:text="Les cookies de votre compte autorisé restent dans le stockage privé de l’application."
+                    android:textColor="#A1A1AA"
+                    android:textSize="12sp"/>
+            </LinearLayout>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:tag="muted"
+                android:text="All-Download pour Android · Bêta 0.2.0 · Aucune modification des versions Windows."
+                android:textColor="#A1A1AA"
+                android:textSize="12sp"/>
+        </LinearLayout>
     </LinearLayout>
 </ScrollView>
