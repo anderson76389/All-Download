@@ -23,11 +23,7 @@ internal object DownloadOptions {
 
         val video = mode == 0 || mode == 5 || mode == 6
         val audio = mode in 1..3
-        if (video) {
-            if (prefs.getString("video_format", "MP4") == "MKV")
-                request.addOption("--merge-output-format", "mkv")
-            // Else: service retains its tested default MP4 merge-output format.
-        }
+        // MP4/MKV container choice is applied once by DownloadService.
         if (audio || video) {
             if (prefs.getBoolean("embed_metadata", false)) {
                 request.addOption("--add-metadata")
