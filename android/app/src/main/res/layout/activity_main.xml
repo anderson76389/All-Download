@@ -387,6 +387,7 @@
                 android:textSize="23sp"
                 android:textStyle="bold"/>
             <LinearLayout
+                android:id="@+id/settingsAppearanceCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
@@ -416,6 +417,7 @@
                     android:tag="input"/>
             </LinearLayout>
             <LinearLayout
+                android:id="@+id/settingsEngineCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
@@ -455,6 +457,7 @@
                     android:textSize="12sp"/>
             </LinearLayout>
             <LinearLayout
+                android:id="@+id/settingsCookiesCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
@@ -503,7 +506,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="22dp"
                 android:tag="muted"
-                android:text="All-Download pour Android · Bêta 0.2.0 · Aucune modification des versions Windows."
+                android:text="All-Download pour Android · Version bêta · Windows inchangé."
                 android:textColor="#A1A1AA"
                 android:textSize="12sp"/>
         </LinearLayout>
