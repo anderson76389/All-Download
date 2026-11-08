@@ -10,11 +10,17 @@ android {
         applicationId = "com.alldownload.android"
         minSdk = 24
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.1.2-beta"
+        versionCode = 3
+        versionName = "0.2.0-beta"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+        }
+    }
+    sourceSets {
+        getByName("main") {
+            // Reuse the original Windows logo without altering Windows files.
+            res.srcDir(layout.buildDirectory.dir("generated/all-download-brand"))
         }
     }
     buildTypes {
@@ -44,3 +50,13 @@ dependencies {
     implementation("io.github.junkfood02.youtubedl-android:library:$ytDlpVersion")
     implementation("io.github.junkfood02.youtubedl-android:ffmpeg:$ytDlpVersion")
 }
+
+
+// Copies the original root logo into generated Android resources.
+// No binary is duplicated or modified in the Windows edition.
+val prepareAndroidBranding by tasks.registering(Copy::class) {
+    from(rootProject.projectDir.resolve("../logo.jpg"))
+    into(layout.buildDirectory.dir("generated/all-download-brand/drawable-nodpi"))
+    rename { "all_download_logo.jpg" }
+}
+tasks.named("preBuild") { dependsOn(prepareAndroidBranding) }
