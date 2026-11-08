@@ -361,10 +361,12 @@ class MainActivity : Activity() {
         tabs.forEachIndexed { index, button ->
             val selected = index == tab
             button.background = rounded(
-                if (selected) purple else colors.panel,
+                if (selected) purple else colors.input,
                 if (selected) purple else colors.border, 12)
             button.setTextColor(if (selected) Color.WHITE else colors.foreground)
             button.isAllCaps = false
+            button.stateListAnimator = null
+            button.elevation = 0f
         }
         if (tab == 0) renderHomeQueue()
         if (tab == 1) {
@@ -713,9 +715,16 @@ class MainActivity : Activity() {
                         view.id == R.id.resumeQueueButton || view.tag == "primary") {
                         view.background = rounded(purple, purple, 13)
                         view.setTextColor(Color.WHITE)
+                        view.elevation = 0f
+                        view.stateListAnimator = null
                     } else {
+                        view.background = rounded(colors.input, colors.border, 13)
                         view.setTextColor(colors.foreground)
+                        view.elevation = 0f
+                        view.stateListAnimator = null
                     }
+                    view.isAllCaps = false
+                    view.setPadding(dp(12), view.paddingTop, dp(12), view.paddingBottom)
                 }
                 is EditText -> {
                     view.background = rounded(colors.input, colors.border, 13)
@@ -730,7 +739,10 @@ class MainActivity : Activity() {
                     })
                 }
             }
-            if (view.tag == "card") view.background = rounded(colors.panel, colors.border, 20)
+            if (view.tag == "card") {
+                view.background = rounded(colors.panel, colors.border, 18)
+                view.elevation = 0f
+            }
             if (view.tag == "input" && view !is EditText) {
                 view.background = rounded(colors.input, colors.border, 13)
             }
@@ -738,6 +750,7 @@ class MainActivity : Activity() {
                 visit(view.getChildAt(index))
         }
         visit(content)
+        findViewById<View>(R.id.navigation).background = rounded(colors.panel, colors.border, 16)
         progressBar.progressTintList = ColorStateList.valueOf(purple)
         progressBar.progressBackgroundTintList = ColorStateList.valueOf(colors.border)
         selectTab(selectedTab)
