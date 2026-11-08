@@ -88,7 +88,7 @@ class MainActivity : Activity() {
         }
         if (Build.VERSION.SDK_INT <= 28 &&
             checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 102)
+            requestPermissions(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE), 102)
             Toast.makeText(this, "Autorise le stockage puis relance le téléchargement.", Toast.LENGTH_LONG).show()
             return
         }
