@@ -303,7 +303,10 @@ internal object AndroidUpdates {
             text = "Plus tard"
             isAllCaps = false
             setTextColor(foreground)
-            setOnClickListener { dialog.dismiss() }
+            setOnClickListener {
+                AndroidApkInstaller.cancelDownload(activity.applicationContext)
+                dialog.dismiss()
+            }
         }
         card.addView(later, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, px(47)))

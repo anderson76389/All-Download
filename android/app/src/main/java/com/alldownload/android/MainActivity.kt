@@ -34,6 +34,8 @@ import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.FileProvider
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import java.io.File
 
 /**
@@ -146,6 +148,16 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         scroll = findViewById(R.id.scroll)
+        // Android 15+ enforces edge-to-edge for target SDK 35.
+        if (Build.VERSION.SDK_INT >= 35) {
+            ViewCompat.setOnApplyWindowInsetsListener(scroll) { view, insets ->
+                val safe = insets.getInsets(WindowInsetsCompat.Type.systemBars() or
+                    WindowInsetsCompat.Type.displayCutout())
+                view.setPadding(safe.left, safe.top, safe.right, safe.bottom)
+                insets
+            }
+            ViewCompat.requestApplyInsets(scroll)
+        }
         content = findViewById(R.id.mainContent)
         urlInput = findViewById(R.id.urlInput)
         modeSpinner = findViewById(R.id.modeSpinner)

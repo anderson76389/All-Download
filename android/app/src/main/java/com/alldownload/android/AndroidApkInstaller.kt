@@ -29,7 +29,14 @@ internal object AndroidApkInstaller {
     private const val PREFERENCES = "private_verified_update_v1"
     private const val MAX_APK_BYTES = 600L * 1024L * 1024L
     private val busy = AtomicBoolean(false)
+    private val cancelled = AtomicBoolean(false)
     private val main = Handler(Looper.getMainLooper())
+
+    fun cancelDownload(context: Context) {
+        cancelled.set(true)
+        context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+            .edit().clear().apply()
+    }
 
     internal fun isTrustedDownloadHost(host: String): Boolean {
         val h = host.lowercase()
@@ -139,6 +146,7 @@ internal object AndroidApkInstaller {
             report("Un téléchargement de mise à jour est déjà en cours.", true)
             return
         }
+        cancelled.set(false)
         val context = activity.applicationContext
         Thread({
             val destination = File(File(context.cacheDir, "updates"), assetName(release))
@@ -159,6 +167,7 @@ internal object AndroidApkInstaller {
                 } finally { checksumConnection.disconnect() }
                 val expected = readChecksum(checksumLine.orEmpty(), assetName(release))
                     ?: throw IOException("Empreinte officielle SHA-256 introuvable.")
+                if (cancelled.get()) throw IOException("Mise à jour annulée.")
                 if (destination.isFile && destination.length() == release.size &&
                     sha256(destination) == expected) {
                     // No additional download for a valid cached APK.
@@ -174,6 +183,8 @@ internal object AndroidApkInstaller {
                         connection.inputStream.use { input ->
                             FileOutputStream(partial).buffered().use { output ->
                                 while (true) {
+                                    if (cancelled.get())
+                                        throw IOException("Mise à jour annulée.")
                                     val bytes = input.read(buffer)
                                     if (bytes < 0) break
                                     total += bytes
@@ -199,10 +210,17 @@ internal object AndroidApkInstaller {
                     if (!partial.renameTo(destination))
                         throw IOException("Impossible de finaliser l'APK vérifié.")
                 }
+                if (cancelled.get()) throw IOException("Mise à jour annulée.")
                 validateInstalledSignature(context, destination, release.version)
-                // Pending private path is used only if Android requires unknown-app permission.
+                if (cancelled.get()) throw IOException("Mise à jour annulée.")
+                // Preserve the verified private APK across rotation before invoking the installer.
+                context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit()
+                    .putString("pending", destination.name)
+                    .putString("version", release.version)
+                    .putString("sha", expected)
+                    .apply()
                 main.post {
-                    if (!activity.isFinishing && !activity.isDestroyed) {
+                    if (!cancelled.get() && !activity.isFinishing && !activity.isDestroyed) {
                         report("APK vérifié : ouverture de l'installateur Android…", false)
                         requestInstall(activity, destination, release.version, expected, report)
                     }
@@ -231,6 +249,7 @@ internal object AndroidApkInstaller {
                 .putString("pending", file.name)
                 .putString("version", version)
                 .putString("sha", expectedDigest)
+                .putBoolean("permission_prompt_shown", true)
                 .apply()
             AlertDialog.Builder(activity)
                 .setTitle("Autoriser les mises à jour All-Download")
@@ -264,8 +283,7 @@ internal object AndroidApkInstaller {
 
     /** Resume after user grants Android's installation permission, without a browser. */
     fun onResume(activity: Activity) {
-        if (busy.get() || Build.VERSION.SDK_INT < 26 ||
-            !activity.packageManager.canRequestPackageInstalls()) return
+        if (busy.get()) return
         val preferences = activity.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
         val name = preferences.getString("pending", "").orEmpty()
         val version = preferences.getString("version", "").orEmpty()
@@ -273,8 +291,27 @@ internal object AndroidApkInstaller {
         if (!Regex("^All-Download-Android-\\d+\\.\\d+\\.\\d+-beta\\.apk$")
                 .matches(name)) return
         val file = File(File(activity.cacheDir, "updates"), name)
+        if (!file.isFile || hash.length != 64) {
+            preferences.edit().clear().apply()
+            return
+        }
+        if (Build.VERSION.SDK_INT >= 26 &&
+            !activity.packageManager.canRequestPackageInstalls()) {
+            if (!preferences.getBoolean("permission_prompt_shown", false)) {
+                preferences.edit().putBoolean("permission_prompt_shown", true).apply()
+                AlertDialog.Builder(activity)
+                    .setTitle("Mise à jour Android prête")
+                    .setMessage("L'APK est vérifié et conservé dans All-Download. " +
+                        "Autorisez l'installation d'applications pour continuer sans navigateur.")
+                    .setPositiveButton("Autoriser") { _, _ ->
+                        activity.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                            Uri.parse("package:${activity.packageName}")))
+                    }
+                    .setNegativeButton("Plus tard", null).show()
+            }
+            return
+        }
         preferences.edit().clear().apply()
-        if (!file.isFile || hash.length != 64) return
         Thread({
             try {
                 if (sha256(file) != hash) throw IOException("Empreinte modifiée.")

@@ -155,6 +155,7 @@ jobs:
           - Classement : vidéos et clips Twitch dans TWITCH, VOD en qualité native 1080p puis 720p.
           - Interface native : Accueil, File d'attente, Dossiers et Paramètres ; navigation latérale automatique sur tablette et pliable ouvert.
           - Accueil enrichi : aperçu compact de la file comme Windows, collage URL, raccourcis GIF/playlist/Twitch, effacement ciblé de la file.
+          - Android 15 : marges système et découpes d'écran adaptées (tests API 35), APK annulable et installation reprenable après rotation.
           - Popup de mise à jour animé : recherche uniquement les nouvelles Releases Android GitHub, version et nouveautés, bouton de téléchargement, recherche manuelle et option de désactivation.
           - Paramètres Windows adaptés : MP4/MKV et remux, qualité MP3, miniatures, métadonnées, sous-titres, SponsorBlock, proxy, User-Agent, réseau et notifications.
           - Thèmes Sombre, Clair et OLED, persistants ; paramètres yt-dlp et cookies locaux.
