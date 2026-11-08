@@ -170,7 +170,7 @@ internal object AndroidUpdates {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(px(24), px(25), px(24), px(20))
-            background = GradientDrawable().apply {
+            this.background = GradientDrawable().apply {
                 setColor(background)
                 cornerRadius = px(26).toFloat()
             }
@@ -202,7 +202,7 @@ internal object AndroidUpdates {
             text = "Télécharger la mise à jour"
             isAllCaps = false
             setTextColor(Color.WHITE)
-            background = GradientDrawable().apply {
+            this.background = GradientDrawable().apply {
                 setColor(purple)
                 cornerRadius = px(13).toFloat()
             }
