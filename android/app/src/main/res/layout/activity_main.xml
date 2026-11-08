@@ -63,6 +63,32 @@
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:contentDescription="Qualité vidéo" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:text="Connexion facultative aux réseaux sociaux"
+            android:textColor="#E6EDFF"
+            android:textSize="15sp" />
+        <TextView
+            android:id="@+id/cookieStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:text="Aucun cookie enregistré (contenus publics uniquement)"
+            android:textColor="#A9B6CE"
+            android:textSize="13sp" />
+        <Button
+            android:id="@+id/importCookiesButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:text="Importer mes cookies.txt (facultatif)" />
+        <Button
+            android:id="@+id/removeCookiesButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Supprimer les cookies importés" />
         <Button
             android:id="@+id/startButton"
             android:layout_width="match_parent"
