@@ -327,6 +327,36 @@ class AndroidSmokeTest {
         }
     }
 
+    @Test fun animatedAndroidUpdateDialogShowsAndCanBeDismissed() {
+        val activity = instrumentation.startActivitySync(
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        ) as MainActivity
+        val update = AndroidUpdates.Release(
+            "0.4.0-beta", "android-v0.4.0-beta",
+            "All-Download Android 0.4.0 bêta",
+            "Nouvelle interface et options de téléchargement",
+            "https://github.com/anderson76389/All-Download/releases/tag/android-v0.4.0-beta",
+            "https://github.com/anderson76389/All-Download/releases/download/" +
+                "android-v0.4.0-beta/All-Download-Android-0.4.0-beta.apk",
+            202000000L
+        )
+        var dialog: android.app.Dialog? = null
+        try {
+            instrumentation.runOnMainSync {
+                dialog = AndroidUpdates.showDialog(activity, update)
+            }
+            instrumentation.waitForIdleSync()
+            assertNotNull("Fenêtre de mise à jour non construite.", dialog)
+            assertTrue("Popup de mise à jour Android non visible.", dialog!!.isShowing)
+        } finally {
+            instrumentation.runOnMainSync {
+                dialog?.dismiss()
+                activity.finish()
+            }
+        }
+    }
+
     private fun assertLegacyFolderWritable() {
         if (Build.VERSION.SDK_INT > 28) return
         @Suppress("DEPRECATION")
