@@ -6,7 +6,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
@@ -104,7 +103,7 @@ class DownloadService : Service() {
             }
 
             check(!cancelled) { "Téléchargement annulé." }
-            val category = categoryFor(url, mode)
+            val category = DownloadRules.categoryFor(url, mode)
             val files = work.walkTopDown().filter { it.isFile && !it.name.endsWith(".part") &&
                 !it.name.endsWith(".ytdl") }.toList()
             check(files.isNotEmpty()) { "Aucun fichier final créé par le moteur." }
@@ -123,11 +122,18 @@ class DownloadService : Service() {
                 "Échec : ${(e.localizedMessage ?: e.javaClass.simpleName).take(180)}"
             }
             state = UiState(false, 0, msg)
-            if (cancelled) work.deleteRecursively()
+            if (cancelled) {
+                work.deleteRecursively()
+                getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
+            } else {
+                getSystemService(NotificationManager::class.java)
+                    .notify(NOTIFICATION_ID, notification("Téléchargement échoué", 0, false))
+            }
             // En cas d'échec d'export, conserver les fichiers privés non exportés pour éviter leur perte.
         } finally {
             active = false
-            stopForeground(STOP_FOREGROUND_REMOVE)
+            // Garde le message de fin dans les notifications, sans service permanent.
+            stopForeground(if (cancelled) STOP_FOREGROUND_REMOVE else STOP_FOREGROUND_DETACH)
             stopSelfResult(startId)
         }
     }
@@ -142,7 +148,6 @@ class DownloadService : Service() {
         if (mode != 5 && mode != 6) request.addOption("--no-playlist")
         else request.addOption("--yes-playlist")
 
-        val isTwitch = twitchVod(url) && mode == 0
         when (mode) {
             1, 2, 3 -> {
                 request.addOption("--extract-audio")
@@ -153,40 +158,12 @@ class DownloadService : Service() {
                 request.addOption("--recode-video", "gif")
             }
             else -> {
-                val format = if (isTwitch) when (quality) {
-                    1 -> "bestvideo[height=720]+bestaudio/best[height=720]"
-                    2 -> "bestvideo[height=480]+bestaudio/best[height=480]"
-                    else -> "bestvideo[height=1080]+bestaudio/best[height=1080]/bestvideo[height=720]+bestaudio/best[height=720]"
-                } else when (quality) {
-                    1 -> "bestvideo[height<=720]+bestaudio/best[height<=720]"
-                    2 -> "bestvideo[height<=480]+bestaudio/best[height<=480]"
-                    3 -> "bestvideo+bestaudio/best"
-                    4 -> "bestvideo[height<=2160]+bestaudio/best[height<=2160]"
-                    else -> "bestvideo[height<=1080]+bestaudio/best[height<=1080]"
-                }
+                val format = DownloadRules.videoFormat(url, quality)
                 request.addOption("--format", format)
                 request.addOption("--merge-output-format", "mp4")
             }
         }
         return request
-    }
-
-    private fun twitchVod(url: String): Boolean {
-        val uri = Uri.parse(url)
-        val host = uri.host?.lowercase().orEmpty()
-        return host in setOf("twitch.tv", "www.twitch.tv", "m.twitch.tv") &&
-            Regex("^/videos/[0-9]{5,20}/?$").matches(uri.path.orEmpty())
-    }
-
-    private fun categoryFor(url: String, mode: Int): String {
-        if (mode == 5) return "PLAYLIST"
-        if (mode == 6) return "CHAÎNES"
-        if (mode in 1..3) return "AUDIOS"
-        if (mode == 4) return "GIFS"
-        if (twitchVod(url)) return "TWITCH"
-        val host = Uri.parse(url).host?.lowercase().orEmpty()
-        return if (host == "youtu.be" || host == "youtube.com" ||
-            host.endsWith(".youtube.com")) "VIDÉOS" else "AUTRES"
     }
 
     private fun notification(message: String, progress: Int, ongoing: Boolean = true): Notification {
