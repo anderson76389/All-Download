@@ -137,7 +137,7 @@ class AndroidSmokeTest {
                 ByteArrayInputStream(source.toByteArray(Charsets.UTF_8)))
             val cookies = CookieStore.existing(context)
             assertNotNull("Cookies absents de l'espace privé.", cookies)
-            assertTrue(cookies!!.canonicalPath.startsWith(context.filesDir.canonicalPath + "/"))
+            assertTrue(cookies!!.canonicalPath.startsWith(context.noBackupFilesDir.canonicalPath + "/"))
             assertEquals(source, cookies.readText())
             try {
                 CookieStore.importFromStream(context,
