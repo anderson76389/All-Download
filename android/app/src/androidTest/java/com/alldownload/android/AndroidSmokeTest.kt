@@ -6,7 +6,11 @@ import android.graphics.Color
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.view.View
 import android.widget.Spinner
 import android.widget.TextView
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -158,6 +162,95 @@ class AndroidSmokeTest {
         } finally {
             CookieStore.delete(context)
         }
+    }
+
+    @Test fun originalBrandAndFourNativeTabsAreFunctional() {
+        val activity = instrumentation.startActivitySync(
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        ) as MainActivity
+        instrumentation.waitForIdleSync()
+        try {
+            assertEquals("All-Download",
+                context.packageManager.getApplicationLabel(context.applicationInfo).toString())
+            assertNotNull("Icône Android absente.",
+                context.packageManager.getApplicationIcon(context.packageName))
+            assertNotNull("Logo Windows absent de l'interface Android.",
+                activity.findViewById<ImageView>(R.id.brandLogo).drawable)
+            assertEquals("ALL-DOWNLOAD",
+                activity.findViewById<TextView>(R.id.brandTitle).text.toString())
+            instrumentation.runOnMainSync {
+                activity.findViewById<Button>(R.id.navQueue).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            assertEquals(View.VISIBLE, activity.findViewById<View>(R.id.queuePage).visibility)
+            assertEquals(View.GONE, activity.findViewById<View>(R.id.homePage).visibility)
+            instrumentation.runOnMainSync {
+                activity.findViewById<Button>(R.id.navFiles).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            assertEquals(View.VISIBLE, activity.findViewById<View>(R.id.filesPage).visibility)
+            assertTrue("Les sept catégories de fichiers doivent être visibles.",
+                activity.findViewById<LinearLayout>(R.id.filesList).childCount >= 7)
+            instrumentation.runOnMainSync {
+                activity.findViewById<Button>(R.id.navSettings).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            assertEquals(View.VISIBLE,
+                activity.findViewById<View>(R.id.settingsPage).visibility)
+            assertEquals(3, activity.findViewById<Spinner>(R.id.themeSpinner).count)
+            instrumentation.runOnMainSync {
+                activity.findViewById<Button>(R.id.navHome).performClick()
+                activity.findViewById<Button>(R.id.quickAudioButton).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            assertEquals(1, activity.findViewById<Spinner>(R.id.modeSpinner)
+                .selectedItemPosition)
+            instrumentation.runOnMainSync {
+                activity.findViewById<Button>(R.id.quickVideoButton).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            assertEquals(0, activity.findViewById<Spinner>(R.id.modeSpinner)
+                .selectedItemPosition)
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
+
+    @Test fun queueSurvivesStorageReloadAndPauseResumeStates() {
+        val uniqueUrl = "https://example.com/all-download-test-" +
+            UUID.randomUUID().toString() + ".mp4"
+        val task = DownloadQueue.enqueue(context, uniqueUrl, 0, 0)
+        try {
+            val existing = DownloadQueue.snapshot(context).find { it.id == task.id }
+            assertNotNull("Tâche absente de la file persistante.", existing)
+            assertEquals(DownloadQueue.WAITING, existing!!.status)
+            assertTrue("La file n'a pas été sauvée sur stockage privé.",
+                context.getSharedPreferences("all_download_queue_v1",
+                    android.content.Context.MODE_PRIVATE)
+                    .getString("tasks", "").orEmpty().contains(task.id))
+            DownloadQueue.update(context, task.id, DownloadQueue.PAUSED, 37,
+                "Pause utilisateur")
+            val paused = DownloadQueue.snapshot(context).find { it.id == task.id }
+            assertEquals(DownloadQueue.PAUSED, paused?.status)
+            assertEquals(37, paused?.progress)
+            DownloadQueue.resumePaused(context)
+            assertEquals(DownloadQueue.WAITING,
+                DownloadQueue.snapshot(context).find { it.id == task.id }?.status)
+            DownloadQueue.update(context, task.id, DownloadQueue.RUNNING)
+            DownloadQueue.recoverInterrupted(context)
+            assertEquals("Une tâche interrompue doit être relançable.",
+                DownloadQueue.WAITING,
+                DownloadQueue.snapshot(context).find { it.id == task.id }?.status)
+            DownloadQueue.update(context, task.id, DownloadQueue.ERROR)
+            DownloadQueue.retry(context, task.id)
+            assertEquals(DownloadQueue.WAITING,
+                DownloadQueue.snapshot(context).find { it.id == task.id }?.status)
+        } finally {
+            DownloadQueue.update(context, task.id, DownloadQueue.ERROR)
+            DownloadQueue.remove(context, task.id)
+        }
+        assertTrue(DownloadQueue.snapshot(context).none { it.id == task.id })
     }
 
     private fun assertLegacyFolderWritable() {
