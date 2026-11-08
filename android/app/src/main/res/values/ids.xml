@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item type="id" name="settingsTabs"/>
+    <item type="id" name="settingsTabDownload"/>
+    <item type="id" name="settingsTabApplication"/>
+    <item type="id" name="settingsTabNetwork"/>
+    <item type="id" name="settingsDownloadPanel"/>
+    <item type="id" name="settingsApplicationPanel"/>
+    <item type="id" name="settingsNetworkPanel"/>
+</resources>
