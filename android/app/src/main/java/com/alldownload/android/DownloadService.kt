@@ -71,14 +71,14 @@ class DownloadService : Service() {
                     cancelled = true
                     state = state.copy(message = "Annulation en cours…")
                     YoutubeDL.getInstance().destroyProcessById(PROCESS_ID)
-                }
+                } else stopSelfResult(startId)
             }
             ACTION_PAUSE -> {
                 if (active) {
                     paused = true
                     state = state.copy(message = "Pause demandée…")
                     YoutubeDL.getInstance().destroyProcessById(PROCESS_ID)
-                }
+                } else stopSelfResult(startId)
             }
             ACTION_ADD_QUEUE, ACTION_START -> {
                 val url = intent.getStringExtra(EXTRA_URL).orEmpty()
@@ -132,10 +132,10 @@ class DownloadService : Service() {
         lastSavedPercent = -1
         state = UiState(true, 0, "Initialisation du moteur Android…")
         startForeground(NOTIFICATION_ID, notification("File d’attente en préparation", 0))
-        Thread({ processQueue(startId) }, "all-download-worker").start()
+        Thread({ processQueue() }, "all-download-worker").start()
     }
 
-    private fun processQueue(startId: Int) {
+    private fun processQueue() {
         var lastResult = "File d’attente terminée."
         try {
             while (!paused && !cancelled) {
@@ -151,21 +151,30 @@ class DownloadService : Service() {
                     cancelled -> "Téléchargement annulé. File conservée."
                     else -> lastResult
                 })
-            getSystemService(NotificationManager::class.java).notify(
-                NOTIFICATION_ID, notification(state.message, state.progress, false))
         } catch (error: Exception) {
             Log.e("AllDownloadVideo", "Erreur inattendue de la file Android", error)
             state = UiState(false, 0, "Erreur de la file : " + errorSummary(error))
         } finally {
             active = false
-            // Android always shows the foreground notification while a task is running.
-            // The user may choose to hide only the final completion notification.
-            val showFinished = DownloadOptions.get(this).getBoolean("notify_finished", true)
-            stopForeground(if (cancelled || !showFinished)
-                STOP_FOREGROUND_REMOVE else STOP_FOREGROUND_DETACH)
-            if (cancelled || !showFinished)
-                getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
-            stopSelfResult(startId)
+            // All service commands are received on Android's main thread. Finalize there
+            // as well: a new download may have started while this callback was queued.
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                if (active) return@post
+                val showFinished = DownloadOptions.get(this)
+                    .getBoolean("notify_finished", true)
+                val manager = getSystemService(NotificationManager::class.java)
+                if (!cancelled && showFinished) {
+                    // Also publish the final error if the worker failed unexpectedly.
+                    manager.notify(NOTIFICATION_ID,
+                        notification(state.message, state.progress, false))
+                }
+                stopForeground(if (cancelled || !showFinished)
+                    STOP_FOREGROUND_REMOVE else STOP_FOREGROUND_DETACH)
+                if (cancelled || !showFinished) manager.cancel(NOTIFICATION_ID)
+                // stopSelfResult(oldStartId) leaves this service resident after a later
+                // pause/cancel/add command increments startId. All work is finished now.
+                stopSelf()
+            }
         }
     }
 

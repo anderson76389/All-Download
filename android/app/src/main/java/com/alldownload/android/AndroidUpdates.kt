@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Dialog
 import android.content.Context
 import android.content.Intent
+import org.json.JSONObject
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -86,6 +87,39 @@ internal object AndroidUpdates {
         return newest
     }
 
+ 
+    /** Keep only the Android candidate, not hundreds of Windows release JSON objects. */
+    internal fun encodeCandidate(release: Release?): String =
+        if (release == null) "" else JSONObject().apply {
+            put("version", release.version)
+            put("tag", release.tag)
+            put("title", release.title)
+            put("summary", release.summary)
+            put("page", release.page)
+            put("apkUrl", release.apkUrl)
+            put("size", release.size)
+        }.toString()
+
+    /** Revalidate persisted links before reusing a 304 Not Modified response. */
+    internal fun decodeCandidate(raw: String, localVersion: String): Release? {
+        val saved = try { JSONObject(raw) } catch (_: Exception) { return null }
+        val version = saved.optString("version")
+        val tag = "android-v$version"
+        val expectedApk = "https://github.com/anderson76389/All-Download/" +
+            "releases/download/$tag/All-Download-Android-$version.apk"
+        val expectedPage =
+            "https://github.com/anderson76389/All-Download/releases/tag/$tag"
+        if (!Regex("^\\d+\\.\\d+\\.\\d+-beta$").matches(version) ||
+            compareVersions(version, localVersion) <= 0 ||
+            saved.optString("tag") != tag ||
+            saved.optString("page") != expectedPage ||
+            saved.optString("apkUrl") != expectedApk ||
+            saved.optLong("size") < 1_000_000L) return null
+        return Release(version, tag, saved.optString("title"),
+            saved.optString("summary"), expectedPage, expectedApk,
+            saved.optLong("size"))
+    }
+
     fun check(activity: Activity, force: Boolean = false,
               onStatus: ((String) -> Unit)? = null) {
         val prefs = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -116,22 +150,36 @@ internal object AndroidUpdates {
                         if (!force && cached.isNotBlank())
                             setRequestProperty("If-None-Match", cached)
                     }
+                    var responseEtag: String? = null
                     val body = try {
                         when (conn.responseCode) {
-                            304 -> null // Same releases: don't download JSON again.
+                            304 -> null // Reuse our compact verified Android release entry.
                             200 -> {
                                 val response = conn.inputStream.bufferedReader().use { it.readText() }
-                                val etag = conn.getHeaderField("ETag")
-                                if (!etag.isNullOrBlank())
-                                    prefs.edit().putString("etag_releases_$page", etag).apply()
+                                responseEtag = conn.getHeaderField("ETag")
                                 response
                             }
                             else -> throw IllegalStateException("GitHub : HTTP " + conn.responseCode)
                         }
                     } finally { conn.disconnect() }
-                    if (body == null || JSONArray(body).length() == 0) break
-                    match = findNewer(body, BuildConfig.VERSION_NAME)
-                    if (match != null) break
+                    if (body != null) {
+                        val releaseCount = JSONArray(body).length()
+                        match = findNewer(body, BuildConfig.VERSION_NAME)
+                        // Store the ETag and its matching candidate together. If an activity
+                        // was destroyed before displaying the popup, a later 304 still works.
+                        val edit = prefs.edit()
+                            .putString("candidate_releases_$page", encodeCandidate(match))
+                            .putBoolean("last_releases_page_$page", releaseCount < 100)
+                        if (!responseEtag.isNullOrBlank())
+                            edit.putString("etag_releases_$page", responseEtag)
+                        edit.apply()
+                    } else {
+                        match = decodeCandidate(
+                            prefs.getString("candidate_releases_$page", "").orEmpty(),
+                            BuildConfig.VERSION_NAME)
+                    }
+                    if (match != null ||
+                        prefs.getBoolean("last_releases_page_$page", false)) break
                 }
                 match
             } catch (error: Exception) {

@@ -308,6 +308,23 @@ class AndroidSmokeTest {
             AndroidUpdates.findNewer(releases.toString(), "0.3.1-beta"))
     }
 
+    @Test fun updateCacheRemembersNewAndroidReleasesWithoutStoringWindowsHistory() {
+        val release = AndroidUpdates.Release(
+            "0.5.0-beta", "android-v0.5.0-beta", "All-Download Android",
+            "Corrections de stabilité",
+            "https://github.com/anderson76389/All-Download/releases/tag/android-v0.5.0-beta",
+            "https://github.com/anderson76389/All-Download/releases/download/" +
+                "android-v0.5.0-beta/All-Download-Android-0.5.0-beta.apk",
+            5_000_000L)
+        val encoded = AndroidUpdates.encodeCandidate(release)
+        assertEquals("0.5.0-beta",
+            AndroidUpdates.decodeCandidate(encoded, "0.4.0-beta")?.version)
+        assertNull(AndroidUpdates.decodeCandidate(encoded, "0.5.0-beta"))
+        val forged = org.json.JSONObject(encoded).put("apkUrl", "https://example.com/fake.apk")
+        assertNull(AndroidUpdates.decodeCandidate(forged.toString(), "0.4.0-beta"))
+        assertEquals("", AndroidUpdates.encodeCandidate(null))
+    }
+
     @Test fun windowsSettingsAreActuallyAvailableOnAndroid() {
         val activity = instrumentation.startActivitySync(
             Intent(context, MainActivity::class.java)
