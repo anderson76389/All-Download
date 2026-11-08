@@ -956,7 +956,9 @@ class MainActivity : Activity() {
             bottomMargin = dp(6)
         })
 
-        menu.layoutParams = LinearLayout.LayoutParams(
+        // HorizontalScrollView extends FrameLayout: its direct child must keep
+        // FrameLayout.LayoutParams (LinearLayout.LayoutParams crashes onMeasure).
+        menu.layoutParams = android.widget.FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         tabs.forEachIndexed { index, button ->
             button.minWidth = 0
