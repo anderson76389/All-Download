@@ -40,6 +40,23 @@ class DownloadRulesTest {
         }
     }
 
+    @Test fun updatesOnlyGenuineSocialDomainsAndNeverForTwitch() {
+        for (host in listOf(
+            "reddit.com", "v.redd.it", "www.pinterest.com", "co.pinterest.fr",
+            "x.com", "mobile.twitter.com", "instagram.com", "vm.tiktok.com",
+            "facebook.com", "fb.watch", "vimeo.com", "bsky.app", "dailymotion.com"
+        )) {
+            assertTrue(host, DownloadRules.isSocialVideoHost("https://$host/video/123"))
+        }
+        for (host in listOf("twitch.tv", "youtube.com", "example.com",
+            "x.com.evil.example", "notinstagram.com", "reddit.com.fake.test")) {
+            assertFalse(host, DownloadRules.isSocialVideoHost("https://$host/video/123"))
+        }
+        assertFalse(DownloadRules.isSocialVideoHost("javascript:alert(1)"))
+        assertFalse(DownloadRules.isSocialVideoHost(
+            "https://stealer@www.instagram.com/reel/abc"))
+    }
+
     @Test fun foldersDoNotEscapeAllDownloadAndStayClassified() {
         assertEquals("TWITCH", DownloadRules.categoryFor("https://www.twitch.tv/videos/2919531847", 0))
         assertEquals("VIDÉOS", DownloadRules.categoryFor("https://youtu.be/id", 0))
