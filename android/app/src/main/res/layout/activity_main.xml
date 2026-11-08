@@ -149,7 +149,7 @@
                     <EditText
                         android:id="@+id/urlInput"
                         android:layout_width="0dp"
-                        android:layout_height="52dp"
+                        android:layout_height="48dp"
                         android:layout_weight="1"
                         android:background="@drawable/input_background"
                         android:hint="Coller une URL…"
@@ -164,7 +164,7 @@
                     <Button
                         android:id="@+id/pasteUrlButton"
                         android:layout_width="72dp"
-                        android:layout_height="52dp"
+                        android:layout_height="48dp"
                         android:layout_marginLeft="7dp"
                         android:contentDescription="Coller depuis le presse-papiers"
                         android:text="Coller"
@@ -371,8 +371,9 @@
                     android:textSize="11sp"/>
             </LinearLayout>
 
-            <!-- Live Windows-style footer status + progress -->
+            <!-- Persistent footer on phones, in-page footer on large screens. -->
             <LinearLayout
+                android:id="@+id/statusFooterCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
@@ -410,7 +411,7 @@
             android:id="@+id/queuePage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
+            android:layout_marginTop="12dp"
             android:orientation="vertical"
             android:visibility="gone">
             <TextView
@@ -418,7 +419,7 @@
                 android:layout_height="wrap_content"
                 android:text="File d’attente"
                 android:textColor="#F3F4F6"
-                android:textSize="23sp"
+                android:textSize="21sp"
                 android:textStyle="bold"/>
             <TextView
                 android:id="@+id/queueStatusText"
@@ -436,7 +437,7 @@
                 <Button
                     android:id="@+id/resumeQueueButton"
                     android:layout_width="0dp"
-                    android:layout_height="52dp"
+                    android:layout_height="48dp"
                     android:layout_marginRight="5dp"
                     android:layout_weight="1"
                     android:background="@drawable/brand_button"
@@ -447,7 +448,7 @@
                 <Button
                     android:id="@+id/pauseQueueButton"
                     android:layout_width="0dp"
-                    android:layout_height="52dp"
+                    android:layout_height="48dp"
                     android:layout_marginLeft="5dp"
                     android:layout_weight="1"
                     android:text="Ⅱ  Pause"
@@ -490,7 +491,7 @@
             android:id="@+id/filesPage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
+            android:layout_marginTop="12dp"
             android:orientation="vertical"
             android:visibility="gone">
             <TextView
@@ -498,7 +499,7 @@
                 android:layout_height="wrap_content"
                 android:text="Mes téléchargements"
                 android:textColor="#F3F4F6"
-                android:textSize="23sp"
+                android:textSize="21sp"
                 android:textStyle="bold"/>
             <TextView
                 android:layout_width="match_parent"
@@ -519,7 +520,7 @@
             android:id="@+id/settingsPage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
+            android:layout_marginTop="12dp"
             android:orientation="vertical"
             android:visibility="gone">
             <TextView
@@ -527,7 +528,7 @@
                 android:layout_height="wrap_content"
                 android:text="Paramètres"
                 android:textColor="#F3F4F6"
-                android:textSize="23sp"
+                android:textSize="21sp"
                 android:textStyle="bold"/>
             <LinearLayout
                 android:id="@+id/settingsAppearanceCard"
@@ -536,14 +537,14 @@
                 android:layout_marginTop="16dp"
                 android:background="@drawable/panel_background"
                 android:orientation="vertical"
-                android:padding="19dp"
+                android:padding="15dp"
                 android:tag="card">
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Apparence"
                     android:textColor="#F3F4F6"
-                    android:textSize="18sp"
+                    android:textSize="16sp"
                     android:textStyle="bold"/>
                 <TextView
                     android:layout_width="match_parent"
@@ -555,7 +556,7 @@
                 <Spinner
                     android:id="@+id/themeSpinner"
                     android:layout_width="match_parent"
-                    android:layout_height="55dp"
+                    android:layout_height="48dp"
                     android:layout_marginTop="9dp"
                     android:tag="input"/>
             </LinearLayout>
@@ -563,17 +564,17 @@
                 android:id="@+id/settingsEngineCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
+                android:layout_marginTop="11dp"
                 android:background="@drawable/panel_background"
                 android:orientation="vertical"
-                android:padding="19dp"
+                android:padding="15dp"
                 android:tag="card">
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Moteur de téléchargement"
                     android:textColor="#F3F4F6"
-                    android:textSize="18sp"
+                    android:textSize="16sp"
                     android:textStyle="bold"/>
                 <TextView
                     android:id="@+id/engineVersionText"
@@ -603,17 +604,17 @@
                 android:id="@+id/settingsCookiesCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
+                android:layout_marginTop="11dp"
                 android:background="@drawable/panel_background"
                 android:orientation="vertical"
-                android:padding="19dp"
+                android:padding="15dp"
                 android:tag="card">
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Connexion facultative"
                     android:textColor="#F3F4F6"
-                    android:textSize="18sp"
+                    android:textSize="16sp"
                     android:textStyle="bold"/>
                 <TextView
                     android:id="@+id/cookieStatus"
