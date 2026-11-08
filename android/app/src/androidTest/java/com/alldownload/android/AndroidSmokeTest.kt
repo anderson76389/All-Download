@@ -472,6 +472,22 @@ class AndroidSmokeTest {
         }
     }
 
+    @Test fun deletingQueuedTaskAlsoDeletesPrivatePartialFiles() {
+        val task = DownloadQueue.enqueue(context,
+            "https://example.org/private-partial-" + UUID.randomUUID() + ".mp4", 0, 0)
+        val privateRoot = context.getExternalFilesDir(null) ?: context.filesDir
+        val work = File(privateRoot,
+            "All-Download/Donnees/temporaires/" + task.id)
+        assertTrue(work.mkdirs())
+        val leftover = File(work, "partial-video.mp4.part")
+        leftover.writeText("simulation d'un téléchargement interrompu")
+        assertTrue(leftover.exists())
+        assertTrue("Supprimer la tâche doit réussir.", DownloadQueue.remove(context, task.id))
+        assertFalse("Le fichier partiel doit disparaître pour libérer le stockage.",
+            leftover.exists())
+        assertFalse(work.exists())
+    }
+
     private fun assertLegacyFolderWritable() {
         if (Build.VERSION.SDK_INT > 28) return
         @Suppress("DEPRECATION")
