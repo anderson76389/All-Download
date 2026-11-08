@@ -184,7 +184,7 @@ class AndroidSmokeTest {
             assertNotNull(activity.findViewById<Button>(R.id.queueButton))
             assertNotNull(activity.findViewById<Button>(R.id.startButton))
             assertNotNull(activity.findViewById<Button>(R.id.cancelButton))
-            val wide = activity.resources.configuration.screenWidthDp >= 720
+            val wide = activity.resources.configuration.screenWidthDp >= 600
             if (wide) {
                 assertSame("La barre d'état doit rester dans la page sur tablette",
                     home, footer.parent)
@@ -219,6 +219,55 @@ class AndroidSmokeTest {
             }
             instrumentation.waitForIdleSync()
             assertEquals(View.VISIBLE, activity.findViewById<View>(R.id.queuePage).visibility)
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
+
+    @Test fun glassNavigationKeepsVectorIconsVisibleOnPhoneAndTablet() {
+        val activity = instrumentation.startActivitySync(
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        ) as MainActivity
+        instrumentation.waitForIdleSync()
+        try {
+            val nav = activity.findViewById<LinearLayout>(R.id.navigation)
+            val wide = activity.resources.configuration.screenWidthDp >= 600
+            val bar = nav.parent as View
+            val screenWidth = activity.resources.displayMetrics.widthPixels
+            val actions = intArrayOf(R.id.navHome, R.id.navQueue,
+                R.id.navFiles, R.id.navSettings)
+            for (id in actions) {
+                val button = activity.findViewById<Button>(id)
+                assertTrue("Bouton de navigation non cliquable.", button.isClickable)
+                val icons = button.compoundDrawablesRelative
+                assertNotNull("Icône vectorielle de navigation manquante.",
+                    if (wide) icons[0] else icons[1])
+                assertTrue("Libellé de navigation invisible.", button.text.isNotBlank())
+            }
+            if (!wide) {
+                assertTrue("Capsule de navigation sans largeur.", bar.width > 0)
+                assertTrue("La capsule déborde du téléphone.", bar.width <= screenWidth)
+                assertTrue("La dernière action est hors écran.",
+                    nav.getChildAt(nav.childCount - 1).right <= nav.width)
+                assertNotNull("Aspect verre non installé.", bar.background)
+            } else {
+                assertEquals(LinearLayout.VERTICAL, nav.orientation)
+                assertNotNull("Barre latérale transparente absente.", nav.parent?.parent)
+            }
+            // The exact original listeners must remain wired after view reparenting.
+            instrumentation.runOnMainSync {
+                activity.findViewById<Button>(R.id.navQueue).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            assertEquals(View.VISIBLE,
+                activity.findViewById<View>(R.id.queuePage).visibility)
+            instrumentation.runOnMainSync {
+                activity.findViewById<Button>(R.id.navSettings).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            assertEquals(View.VISIBLE,
+                activity.findViewById<View>(R.id.settingsPage).visibility)
         } finally {
             instrumentation.runOnMainSync { activity.finish() }
         }
@@ -271,7 +320,7 @@ class AndroidSmokeTest {
             assertEquals(View.VISIBLE,
                 activity.findViewById<View>(R.id.settingsPage).visibility)
             assertEquals(3, activity.findViewById<Spinner>(R.id.themeSpinner).count)
-            val wide = activity.resources.configuration.screenWidthDp >= 720
+            val wide = activity.resources.configuration.screenWidthDp >= 600
             val navOrientation = activity.findViewById<LinearLayout>(R.id.navigation).orientation
             assertEquals("La navigation doit devenir une barre latérale sur tablette.",
                 if (wide) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL,
