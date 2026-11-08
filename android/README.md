@@ -1,6 +1,15 @@
-# All-Download Android — bêta isolée
+# All-Download Android — bêta 0.2.0
 
 Nouvelle application Android **indépendante de Windows**, dans le dossier `android/`. Les éditions Portable/Classique Windows, `yt_app.py`, `twitch_hls.py` et `build-windows.yml` ne sont pas modifiés.
+
+## Interface mobile fidèle à All-Download
+
+- **Nom, icône et logo d'origine** : la compilation Android copie la ressource `logo.jpg` à la racine du dépôt, en lecture seule, vers les ressources Android générées. Les éditions Windows ne changent pas.
+- **Splash screen natif**, identité visuelle de Windows : violet `#7C3AED`, thème sombre `#141414`, cartes `#212121`, ainsi que les modes clair et OLED enregistrés.
+- **Quatre écrans Android natifs** : Accueil (URL, vidéo/audio/GIF, qualité), File d'attente (progression et reprise), Dossiers (navigation et ouverture des médias) et Paramètres (thèmes, actualisation yt-dlp, cookies privés).
+- **File de téléchargement persistante** dans les préférences privées, avec exécution séquentielle, progression, relance d'une tâche échouée et suppression des tâches terminées. Pause/reprise best-effort via `yt-dlp --continue` et espace de travail privé par tâche : certains serveurs interdisent la reprise ; dans ce cas, la tâche peut repartir du début.
+- **Android pliable/tablette** : interface centrée et limitée en largeur sur les grands écrans, recalcul au changement d'orientation ; contrôles tactiles natifs sur petit écran.
+- **Fichiers accessibles** depuis les sept dossiers de l'app : MediaStore Android 10+ et FileProvider Android 7–9, sans permission « gérer tous les fichiers ».
 
 ## Contenu de la bêta
 
@@ -11,7 +20,7 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 - Répertoires catégorisés : `VIDÉOS`, `AUDIOS`, `TWITCH`, `GIFS`, `CHAÎNES`, `PLAYLIST`, `AUTRES`.
 - Pour une **VOD Twitch en mode vidéo**, le format yt-dlp est limité aux flux dont la résolution source est **exactement 1080**, sinon **exactement 720** ; pas d'upscaling, de 480p automatique ni de réencodage vidéo. 720p et 480p restent sélectionnables manuellement.
 
-## Liens sociaux et comptes (bêta 0.1.2)
+## Liens sociaux et comptes (bêta 0.2.0)
 
 - Reddit, Instagram, X/Twitter, Pinterest, TikTok, Facebook (notamment Reels), Vimeo, Bluesky et Dailymotion sont traités par les extracteurs **yt-dlp** ; leur disponibilité varie selon la vidéo, les protections du site et l'adresse IP.
 - Le moteur yt-dlp tente une **actualisation officielle** en début de téléchargement social (puis une fois par semaine si elle aboutit). Si le réseau échoue, un nouvel essai est possible 12 heures plus tard et l'ancienne version continue de fonctionner. **Aucun service distant All-Download** n'est nécessaire.
@@ -21,13 +30,13 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 
 ## Limites réelles
 
-Il s'agit d'une **première bêta**, pas de la parité fonctionnelle avec l'édition Windows. Le secours HLS Twitch indépendant de `TwitchDownloaderCLI.exe`, l'authentification Twitch et les sous-titres/cookies, les paramètres avancés, les historiques, la file d'attente persistante, les thèmes et tous les outils Windows restent à porter et à valider. TwitchDownloaderCLI Windows ne peut pas être exécuté tel quel sur Android. Une VOD Twitch inaccessible à yt-dlp peut donc échouer sur cette bêta.
+Il s'agit d'une **bêta mobile**, pas encore de la parité fonctionnelle avec Windows. Le secours HLS Twitch indépendant de `TwitchDownloaderCLI.exe`, l'authentification Twitch avancée, les sous-titres, les outils Windows spécialisés, les journaux et historiques détaillés et certains réglages sont encore à porter. Les boutons de pause/reprise de la file Android utilisent les mécanismes disponibles de yt-dlp ; la reprise n'est pas garantie pour les serveurs non compatibles. TwitchDownloaderCLI Windows ne peut pas être exécuté tel quel sur Android. Certaines VOD Twitch peuvent encore échouer.
 
 Les flux protégés/DRM, les contenus privés sans autorisation et les vidéos supprimées ne sont pas garantis. La résolution choisie correspond aux formats source, pas à une promesse de compatibilité de chaque plateforme. Le stockage Android impose un espace de travail temporaire privé avant l'export public ; aucun accès au système de fichiers racine ou permission « tous les fichiers » n'est demandé.
 
 ## Compilation
 
-Via GitHub Actions : workflow `Build Android (beta)`, puis récupérer l'artefact `All-Download-Android-beta` après succès de la compilation.
+Via GitHub Actions : workflow `Build Android (beta)`, puis récupérer l'artefact `All-Download-Android-beta` après succès. La préversion `android-v0.2.0-beta` est distribuée séparément des Releases stables Windows.
 
 En local : Android SDK plateforme 35, JDK 17 et Gradle 8.9, puis `gradle -p android :app:assembleDebug`.
 
