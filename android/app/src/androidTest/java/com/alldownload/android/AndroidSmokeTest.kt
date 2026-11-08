@@ -205,11 +205,15 @@ class AndroidSmokeTest {
             }
             instrumentation.waitForIdleSync()
             assertEquals(1, mode.selectedItemPosition)
+            assertEquals("Le sélecteur 1080p ne doit pas apparaître en MP3.",
+                View.GONE, activity.findViewById<View>(R.id.downloadQualityGroup).visibility)
             instrumentation.runOnMainSync {
                 activity.findViewById<Button>(R.id.quickPlaylistButton).performClick()
             }
             instrumentation.waitForIdleSync()
             assertEquals(5, mode.selectedItemPosition)
+            assertEquals(View.VISIBLE,
+                activity.findViewById<View>(R.id.downloadQualityGroup).visibility)
             instrumentation.runOnMainSync {
                 activity.findViewById<Button>(R.id.navQueue).performClick()
             }
