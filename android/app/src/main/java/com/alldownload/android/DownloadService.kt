@@ -9,6 +9,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
+import android.util.Log
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
@@ -118,8 +119,9 @@ class DownloadService : Service() {
             getSystemService(NotificationManager::class.java)
                 .notify(NOTIFICATION_ID, notification("Téléchargement terminé ($exported fichier(s))", 100, false))
         } catch (e: Exception) {
+            if (!cancelled) Log.e("AllDownloadVideo", "Échec du téléchargement $url", e)
             val msg = if (cancelled) "Téléchargement annulé." else {
-                "Échec : ${(e.localizedMessage ?: e.javaClass.simpleName).take(180)}"
+                "Échec : ${errorSummary(e)}"
             }
             state = UiState(false, 0, msg)
             if (cancelled) {
@@ -136,6 +138,20 @@ class DownloadService : Service() {
             stopForeground(if (cancelled) STOP_FOREGROUND_REMOVE else STOP_FOREGROUND_DETACH)
             stopSelfResult(startId)
         }
+    }
+
+    /**
+     * Les avertissements d'une version yt-dlp ancienne précèdent parfois l'erreur
+     * réelle, qui doit être visible à l'écran au lieu d'être tronquée.
+     */
+    private fun errorSummary(error: Throwable): String {
+        val lines = (error.localizedMessage ?: error.javaClass.simpleName)
+            .lines().map { it.trim() }.filter { it.isNotBlank() }
+        val meaningful = lines.lastOrNull { it.startsWith("ERROR:", ignoreCase = true) }
+            ?: lines.lastOrNull { !it.startsWith("WARNING:", ignoreCase = true) }
+            ?: lines.lastOrNull()
+            ?: error.javaClass.simpleName
+        return meaningful.take(280)
     }
 
     private fun buildRequest(url: String, mode: Int, quality: Int, work: File): YoutubeDLRequest {
