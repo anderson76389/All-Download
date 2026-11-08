@@ -28,8 +28,9 @@ class DownloadRulesTest {
     @Test fun directFileWithUnknownResolutionIsSupportedWithoutForcing4k() {
         val format = DownloadRules.videoFormat("https://example.com/video.mp4", 0)
         assertTrue(format.contains("height<=1080"))
-        assertTrue(format.endsWith("/best[height=?]"))
+        assertTrue(format.endsWith("/best[height<=?1080]"))
         assertFalse(format.endsWith("/best"))
+        assertFalse(format.contains("height=?"))
     }
 
     @Test fun qualityManualLimits() {
