@@ -319,8 +319,29 @@ class AndroidSmokeTest {
             instrumentation.waitForIdleSync()
             val settings = activity.findViewById<LinearLayout>(R.id.settingsPage)
             assertEquals(View.VISIBLE, settings.visibility)
-            assertTrue("Sections Téléchargement/Métadonnées/SponsorBlock/Réseau/Mises à jour absentes.",
-                settings.childCount >= 10)
+            assertTrue("Navigation Windows des paramètres absente.",
+                settings.childCount >= 4)
+            val sectionTabs = activity.findViewById<LinearLayout>(R.id.settingsTabs)
+            assertEquals(3, sectionTabs.childCount)
+            val downloads = activity.findViewById<View>(R.id.settingsDownloadPanel)
+            val application = activity.findViewById<View>(R.id.settingsApplicationPanel)
+            val network = activity.findViewById<View>(R.id.settingsNetworkPanel)
+            assertEquals(View.VISIBLE, downloads.visibility)
+            assertEquals(View.GONE, application.visibility)
+            instrumentation.runOnMainSync {
+                activity.findViewById<Button>(R.id.settingsTabNetwork).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            assertEquals("Le panneau Réseau doit répondre aux clics.",
+                View.VISIBLE, network.visibility)
+            assertEquals(View.GONE, downloads.visibility)
+            instrumentation.runOnMainSync {
+                activity.findViewById<Button>(R.id.settingsTabApplication).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            assertEquals("Le panneau Application doit répondre aux clics.",
+                View.VISIBLE, application.visibility)
+            assertEquals(View.GONE, network.visibility)
             assertTrue("Format vidéo non configurable.", DownloadOptions.validProxy(
                 "socks5://127.0.0.1:1080"))
             assertFalse("URL proxy dangereuse acceptée.", DownloadOptions.validProxy(
