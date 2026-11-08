@@ -273,7 +273,11 @@ class DownloadService : Service() {
             1, 2, 3 -> {
                 request.addOption("--extract-audio")
                 request.addOption("--audio-format", when (mode) { 1 -> "mp3"; 2 -> "m4a"; else -> "flac" })
-                request.addOption("--audio-quality", "0")
+                val target = DownloadOptions.get(this).getString("audio_quality", "0")
+                val qualitySetting = if (mode == 1 && target in
+                    setOf("0", "128K", "192K", "256K", "320K")) target ?: "0"
+                    else "0"
+                request.addOption("--audio-quality", qualitySetting)
             }
             4 -> request.addOption("--recode-video", "gif")
             else -> {
@@ -281,6 +285,8 @@ class DownloadService : Service() {
                 val container = if (DownloadOptions.get(this)
                         .getString("video_format", "MP4") == "MKV") "mkv" else "mp4"
                 request.addOption("--merge-output-format", container)
+                if (DownloadOptions.get(this).getBoolean("remux_video", false))
+                    request.addOption("--remux-video", container)
             }
         }
         DownloadOptions.apply(this, request, url, mode)
