@@ -1002,11 +1002,11 @@ class MainActivity : Activity() {
      */
     private fun configureWideScreen() {
         val widthDp = resources.configuration.screenWidthDp
-        if (widthDp < 720) return
+        if (widthDp < 600) return
         content.layoutParams = content.layoutParams.apply {
-            width = dp(widthDp.coerceAtMost(1200))
+            width = ViewGroup.LayoutParams.MATCH_PARENT
         }
-        content.setPadding(dp(20), dp(24), dp(20), dp(40))
+        content.setPadding(dp(16), dp(20), dp(16), dp(32))
         val menu = findViewById<LinearLayout>(R.id.navigation)
         val bar = menu.parent as? android.widget.HorizontalScrollView ?: return
         bar.removeView(menu)
@@ -1020,7 +1020,7 @@ class MainActivity : Activity() {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                    topMargin = dp(22)
+                    topMargin = dp(16)
                 }
         }
         val sidebar = LinearLayout(this).apply {
@@ -1034,16 +1034,16 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.WRAP_CONTENT)
         tabs.forEach { button ->
             button.layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(52)).apply {
-                    bottomMargin = dp(9)
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(48)).apply {
+                    bottomMargin = dp(6)
                 }
         }
         sidebar.addView(menu)
-        split.addView(sidebar, LinearLayout.LayoutParams(dp(210),
+        split.addView(sidebar, LinearLayout.LayoutParams(dp(if (widthDp < 840) 172 else 210),
             ViewGroup.LayoutParams.WRAP_CONTENT))
         val mainColumn = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(17), 0, 0, 0)
+            setPadding(dp(if (widthDp < 840) 10 else 17), 0, 0, 0)
         }
         pages.forEach { page ->
             val original = page.layoutParams
