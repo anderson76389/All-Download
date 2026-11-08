@@ -188,7 +188,8 @@ class AndroidSmokeTest {
             if (wide) {
                 assertSame("La barre d'état doit rester dans la page sur tablette",
                     home, footer.parent)
-                assertEquals(LinearLayout.HORIZONTAL, options.orientation)
+                assertEquals(if (activity.resources.configuration.screenWidthDp >= 900)
+                    LinearLayout.HORIZONTAL else LinearLayout.VERTICAL, options.orientation)
                 assertEquals(LinearLayout.VERTICAL, nav.orientation)
             } else {
                 val navBar = nav.parent as View
