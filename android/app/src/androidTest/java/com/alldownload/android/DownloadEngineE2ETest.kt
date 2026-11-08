@@ -39,6 +39,11 @@ class DownloadEngineE2ETest {
                 context.packageName, android.Manifest.permission.WRITE_EXTERNAL_STORAGE
             )
         }
+        val activity = InstrumentationRegistry.getInstrumentation().startActivitySync(
+            Intent(context, MainActivity::class.java).addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            )
+        ) as MainActivity
         val name = "all-download-ci-${UUID.randomUUID()}"
         val bytes = wavSamples()
         val listening = AtomicBoolean(true)
@@ -58,7 +63,6 @@ class DownloadEngineE2ETest {
         worker.isDaemon = true
         worker.start()
 
-        val audioName = "$name.mp3"
         try {
             val service = Intent(context, DownloadService::class.java).apply {
                 action = DownloadService.ACTION_START
@@ -101,6 +105,7 @@ class DownloadEngineE2ETest {
                 mp3.delete()
             }
         } finally {
+            InstrumentationRegistry.getInstrumentation().runOnMainSync { activity.finish() }
             listening.set(false)
             server.close()
             worker.join(2500)
