@@ -328,7 +328,7 @@ class MainActivity : Activity() {
         selectTab(selectedTab)
         // Keep a Windows-like sidebar on large tablets; phones dock the same tabs
         // below the content instead of spending vertical space above the URL field.
-        if (resources.configuration.screenWidthDp >= 720) configureWideScreen()
+        if (resources.configuration.screenWidthDp >= 600) configureWideScreen()
         else configurePhoneNavigation()
         arrangeOptionPills()
         styleQuickModes()
@@ -373,23 +373,7 @@ class MainActivity : Activity() {
         filesPage.visibility = if (tab == 2) View.VISIBLE else View.GONE
         settingsPage.visibility = if (tab == 3) View.VISIBLE else View.GONE
         if (tab == 3) ensureSettingsPanels()
-        val colors = palette()
-        tabs.forEachIndexed { index, button ->
-            val selected = index == tab
-            button.background = rounded(
-                if (selected) purple else colors.input,
-                if (selected) purple else colors.border, 12)
-            button.setTextColor(if (selected) Color.WHITE else colors.foreground)
-            button.isAllCaps = false
-            button.stateListAnimator = null
-            button.elevation = 0f
-            button.contentDescription = when (index) {
-                0 -> "Accueil"
-                1 -> "File d'attente"
-                2 -> "Dossiers"
-                else -> "Paramètres"
-            }
-        }
+        styleNavigation()
         if (tab == 0) renderHomeQueue()
         if (tab == 1) {
             lastQueueRevision = -1L
@@ -819,6 +803,78 @@ class MainActivity : Activity() {
             setStroke(dp(1), border)
         }
 
+
+    /** Translucent native glass: gradient and rim, no GPU-intensive backdrop capture. */
+    private fun glassSurface(sidebar: Boolean = false): GradientDrawable {
+        val light = themeChoice() == 1
+        val shades = if (light) intArrayOf(
+            Color.argb(248, 255, 255, 255), Color.argb(231, 244, 240, 253),
+            Color.argb(240, 232, 225, 249)
+        ) else if (themeChoice() == 2) intArrayOf(
+            Color.argb(242, 49, 36, 75), Color.argb(236, 20, 17, 31),
+            Color.argb(245, 8, 8, 17)
+        ) else intArrayOf(
+            Color.argb(242, 65, 50, 96), Color.argb(236, 32, 28, 52),
+            Color.argb(247, 23, 22, 39)
+        )
+        return GradientDrawable(GradientDrawable.Orientation.TL_BR, shades).apply {
+            cornerRadius = dp(if (sidebar) 22 else 26).toFloat()
+            setStroke(dp(1), if (light) Color.argb(235, 255, 255, 255)
+                else Color.argb(135, 204, 187, 255))
+        }
+    }
+
+    private fun navigationPill(selected: Boolean): GradientDrawable =
+        GradientDrawable(GradientDrawable.Orientation.TL_BR,
+            if (selected) intArrayOf(Color.rgb(155, 107, 245), Color.rgb(110, 47, 212))
+            else intArrayOf(Color.TRANSPARENT, Color.TRANSPARENT)).apply {
+            cornerRadius = dp(19).toFloat()
+            if (selected) setStroke(dp(1), Color.argb(160, 232, 212, 255))
+        }
+
+    /** One navigation implementation, four unchanged actions, two responsive layouts. */
+    private fun styleNavigation() {
+        val wide = resources.configuration.screenWidthDp >= 600
+        val colors = palette()
+        val icons = intArrayOf(R.drawable.nav_home, R.drawable.nav_queue,
+            R.drawable.nav_folders, R.drawable.nav_settings)
+        val shortNames = arrayOf("Accueil", "File", "Dossiers", "Réglages")
+        val fullNames = arrayOf("Accueil", "File d'attente", "Dossiers", "Paramètres")
+        tabs.forEachIndexed { index, button ->
+            val foreground = if (index == selectedTab) Color.WHITE else colors.foreground
+            val icon = getDrawable(icons[index])?.mutate()?.apply {
+                setTint(foreground)
+                setBounds(0, 0, dp(21), dp(21))
+            }
+            if (wide) {
+                button.setCompoundDrawablesRelative(icon, null, null, null)
+                button.gravity = Gravity.CENTER_VERTICAL or Gravity.START
+                button.text = fullNames[index]
+                button.textSize = 13f
+                button.setPadding(dp(14), 0, dp(8), 0)
+                button.compoundDrawablePadding = dp(11)
+            } else {
+                button.setCompoundDrawablesRelative(null, icon, null, null)
+                button.gravity = Gravity.CENTER
+                button.text = shortNames[index]
+                button.textSize = 10f
+                button.setPadding(dp(1), dp(5), dp(1), dp(4))
+                button.compoundDrawablePadding = dp(3)
+            }
+            button.backgroundTintList = null
+            button.background = navigationPill(index == selectedTab)
+            button.setTextColor(foreground)
+            button.isAllCaps = false
+            button.setSingleLine(true)
+            button.includeFontPadding = false
+            button.stateListAnimator = null
+            button.elevation = 0f
+            button.minWidth = 0
+            button.minHeight = 0
+            button.contentDescription = fullNames[index]
+        }
+    }
+
     private fun applyPalette() {
         val colors = palette()
         scroll.setBackgroundColor(colors.background)
@@ -864,7 +920,7 @@ class MainActivity : Activity() {
                 visit(view.getChildAt(index))
         }
         visit(content)
-        findViewById<View>(R.id.navigation).background = rounded(colors.panel, colors.border, 16)
+        findViewById<View>(R.id.navigation).setBackgroundColor(Color.TRANSPARENT)
         styleQuickModes()
         progressBar.progressTintList = ColorStateList.valueOf(purple)
         progressBar.progressBackgroundTintList = ColorStateList.valueOf(colors.border)
@@ -931,70 +987,74 @@ class MainActivity : Activity() {
         val menu = findViewById<LinearLayout>(R.id.navigation)
         val bar = menu.parent as? android.widget.HorizontalScrollView ?: return
         val host = scroll.parent as? ViewGroup ?: return
-        // Capture the footer before detaching ScrollView from the Activity root;
-        // Activity.findViewById cannot find children of a detached view hierarchy.
         val footer = homePage.findViewById<LinearLayout>(R.id.statusFooterCard)
+        // Reuse live controls. Never duplicate download actions or queue state.
         content.removeView(bar)
         host.removeView(scroll)
-
         val shell = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+            clipChildren = false
             setBackgroundColor(palette().background)
         }
         shell.addView(scroll, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-
-        // Windows has a persistent status/progress strip. Reparent that exact
-        // already-bound view; downloads and their progress observers stay intact.
         (footer.parent as? ViewGroup)?.removeView(footer)
+        footer.background = glassSurface()
         footer.setPadding(dp(12), dp(7), dp(12), dp(8))
         shell.addView(footer, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            marginStart = dp(8)
-            marginEnd = dp(8)
-            bottomMargin = dp(6)
+            marginStart = dp(12)
+            marginEnd = dp(12)
+            bottomMargin = dp(8)
         })
-
-        // HorizontalScrollView extends FrameLayout: its direct child must keep
-        // FrameLayout.LayoutParams (LinearLayout.LayoutParams crashes onMeasure).
+        // HorizontalScrollView is a FrameLayout: use matching direct-child params.
         menu.layoutParams = android.widget.FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        tabs.forEachIndexed { index, button ->
-            button.minWidth = 0
-            button.minimumWidth = 0
-            button.textSize = 11f
-            button.text = listOf("Accueil", "File", "Dossiers", "Réglages")[index]
-            button.layoutParams = LinearLayout.LayoutParams(0, dp(48), 1f).apply {
+        menu.setBackgroundColor(Color.TRANSPARENT)
+        tabs.forEach { button ->
+            button.layoutParams = LinearLayout.LayoutParams(0, dp(61), 1f).apply {
                 marginStart = dp(2)
                 marginEnd = dp(2)
             }
         }
-        bar.background = rounded(palette().panel, palette().border, 0)
-        bar.setPadding(dp(7), dp(6), dp(7), dp(6))
+        bar.backgroundTintList = null
+        bar.background = glassSurface()
+        bar.elevation = dp(7).toFloat()
+        bar.clipToOutline = true
+        bar.setPadding(dp(5), dp(5), dp(5), dp(5))
+        bar.isHorizontalScrollBarEnabled = false
         bar.isFillViewport = true
         shell.addView(bar, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            marginStart = dp(12)
+            marginEnd = dp(12)
+            bottomMargin = dp(10)
+        })
         host.addView(shell, ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-
-        // Android 15+ edge-to-edge: bottom navigation must sit above the gesture bar.
+        // Reserve the real gesture inset and hide fixed controls while typing.
+        ViewCompat.setOnApplyWindowInsetsListener(shell) { view, insets ->
+            val safe = insets.getInsets(WindowInsetsCompat.Type.systemBars() or
+                WindowInsetsCompat.Type.displayCutout())
+            val typing = insets.isVisible(WindowInsetsCompat.Type.ime())
+            bar.visibility = if (typing) View.GONE else View.VISIBLE
+            footer.visibility = if (typing) View.GONE else View.VISIBLE
+            if (Build.VERSION.SDK_INT >= 35)
+                view.setPadding(safe.left, 0, safe.right, if (typing) 0 else safe.bottom)
+            insets
+        }
         if (Build.VERSION.SDK_INT >= 35) {
             ViewCompat.setOnApplyWindowInsetsListener(scroll) { view, insets ->
                 val safe = insets.getInsets(WindowInsetsCompat.Type.systemBars() or
                     WindowInsetsCompat.Type.displayCutout())
-                view.setPadding(safe.left, safe.top, safe.right, 0)
+                view.setPadding(0, safe.top, 0, 0)
                 insets
             }
-            ViewCompat.setOnApplyWindowInsetsListener(bar) { view, insets ->
-                val safe = insets.getInsets(WindowInsetsCompat.Type.systemBars() or
-                    WindowInsetsCompat.Type.displayCutout())
-                view.setPadding(dp(7) + safe.left, dp(6),
-                    dp(7) + safe.right, dp(6) + safe.bottom)
-                insets
-            }
-            ViewCompat.requestApplyInsets(shell)
         }
+        ViewCompat.requestApplyInsets(shell)
+        styleNavigation()
     }
 
     /** Two-column tablet/large foldable layout: left navigation and right content.
@@ -1026,7 +1086,8 @@ class MainActivity : Activity() {
         val sidebar = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(9), dp(10), dp(9), dp(12))
-            background = rounded(palette().panel, palette().border, 19)
+            background = glassSurface(sidebar = true)
+            elevation = dp(4).toFloat()
         }
         menu.orientation = LinearLayout.VERTICAL
         menu.layoutParams = LinearLayout.LayoutParams(
@@ -1038,6 +1099,7 @@ class MainActivity : Activity() {
                     bottomMargin = dp(6)
                 }
         }
+        menu.setBackgroundColor(Color.TRANSPARENT)
         sidebar.addView(menu)
         split.addView(sidebar, LinearLayout.LayoutParams(dp(if (widthDp < 840) 172 else 210),
             ViewGroup.LayoutParams.WRAP_CONTENT))
