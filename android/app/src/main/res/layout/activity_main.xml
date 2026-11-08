@@ -12,9 +12,9 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
         android:orientation="vertical"
-        android:paddingLeft="18dp"
-        android:paddingTop="18dp"
-        android:paddingRight="18dp"
+        android:paddingLeft="16dp"
+        android:paddingTop="16dp"
+        android:paddingRight="16dp"
         android:paddingBottom="32dp">
 
         <LinearLayout
@@ -66,7 +66,9 @@
         <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/panel_background"
+            android:padding="4dp"
             android:fillViewport="true"
             android:scrollbars="none">
             <LinearLayout
@@ -78,30 +80,30 @@
                 <Button
                     android:id="@+id/navHome"
                     android:layout_width="wrap_content"
-                    android:layout_height="48dp"
+                    android:layout_height="44dp"
                     android:minWidth="78dp"
                     android:text="Accueil"
                     android:textAllCaps="false"/>
                 <Button
                     android:id="@+id/navQueue"
                     android:layout_width="wrap_content"
-                    android:layout_height="48dp"
+                    android:layout_height="44dp"
                     android:minWidth="92dp"
-                    android:text="File"
+                    android:text="File d’attente"
                     android:textAllCaps="false"/>
                 <Button
                     android:id="@+id/navFiles"
                     android:layout_width="wrap_content"
-                    android:layout_height="48dp"
+                    android:layout_height="44dp"
                     android:minWidth="90dp"
                     android:text="Dossiers"
                     android:textAllCaps="false"/>
                 <Button
                     android:id="@+id/navSettings"
                     android:layout_width="wrap_content"
-                    android:layout_height="48dp"
+                    android:layout_height="44dp"
                     android:minWidth="101dp"
-                    android:text="Réglages"
+                    android:text="Paramètres"
                     android:textAllCaps="false"/>
             </LinearLayout>
         </HorizontalScrollView>
@@ -110,7 +112,7 @@
             android:id="@+id/homePage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
+            android:layout_marginTop="16dp"
             android:orientation="vertical">
 
             <LinearLayout
