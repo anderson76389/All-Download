@@ -931,6 +931,9 @@ class MainActivity : Activity() {
         val menu = findViewById<LinearLayout>(R.id.navigation)
         val bar = menu.parent as? android.widget.HorizontalScrollView ?: return
         val host = scroll.parent as? ViewGroup ?: return
+        // Capture the footer before detaching ScrollView from the Activity root;
+        // Activity.findViewById cannot find children of a detached view hierarchy.
+        val footer = homePage.findViewById<LinearLayout>(R.id.statusFooterCard)
         content.removeView(bar)
         host.removeView(scroll)
 
@@ -943,7 +946,6 @@ class MainActivity : Activity() {
 
         // Windows has a persistent status/progress strip. Reparent that exact
         // already-bound view; downloads and their progress observers stay intact.
-        val footer = findViewById<LinearLayout>(R.id.statusFooterCard)
         (footer.parent as? ViewGroup)?.removeView(footer)
         footer.setPadding(dp(12), dp(7), dp(12), dp(8))
         shell.addView(footer, LinearLayout.LayoutParams(
