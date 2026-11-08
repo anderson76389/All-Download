@@ -253,6 +253,75 @@ class AndroidSmokeTest {
         assertTrue(DownloadQueue.snapshot(context).none { it.id == task.id })
     }
 
+    @Test fun androidReleaseChecksDoNotConfuseWindowsAndCompareVersionsProperly() {
+        assertTrue(AndroidUpdates.compareVersions("0.10.0-beta", "0.9.99-beta") > 0)
+        assertTrue(AndroidUpdates.compareVersions("0.3.1-beta", "0.3.0-beta") > 0)
+        assertEquals(0, AndroidUpdates.compareVersions("0.3.0-beta", "0.3.0-beta"))
+        assertTrue(AndroidUpdates.compareVersions("0.2.9-beta", "0.3.0-beta") < 0)
+        val releases = org.json.JSONArray()
+        releases.put(org.json.JSONObject().apply {
+            put("tag_name", "build-999")
+            put("html_url", "https://github.com/anderson76389/All-Download/releases/tag/build-999")
+            put("assets", org.json.JSONArray().put(org.json.JSONObject().apply {
+                put("name", "All-Download-Portable-Windows.zip")
+                put("size", 45000000)
+            }))
+        })
+        fun androidRelease(version: String, draft: Boolean = false) =
+            org.json.JSONObject().apply {
+                val tag = "android-v" + version
+                put("tag_name", tag)
+                put("draft", draft)
+                put("name", "All-Download Android " + version)
+                put("html_url", "https://github.com/anderson76389/All-Download/releases/tag/" + tag)
+                put("body", "Nouveaux réglages Android")
+                put("assets", org.json.JSONArray().put(org.json.JSONObject().apply {
+                    put("name", "All-Download-Android-" + version + ".apk")
+                    put("browser_download_url",
+                        "https://github.com/anderson76389/All-Download/releases/download/" +
+                            tag + "/All-Download-Android-" + version + ".apk")
+                    put("size", 203000000)
+                }))
+            }
+        releases.put(androidRelease("0.2.0-beta"))
+        releases.put(androidRelease("0.3.1-beta"))
+        releases.put(androidRelease("0.8.0-beta", draft = true))
+        val newer = AndroidUpdates.findNewer(releases.toString(), "0.3.0-beta")
+        assertNotNull("Nouvelle Release Android non détectée.", newer)
+        assertEquals("0.3.1-beta", newer!!.version)
+        assertTrue(newer.apkUrl.endsWith("All-Download-Android-0.3.1-beta.apk"))
+        assertNull("Pas de mise à jour à version identique.",
+            AndroidUpdates.findNewer(releases.toString(), "0.3.1-beta"))
+    }
+
+    @Test fun windowsSettingsAreActuallyAvailableOnAndroid() {
+        val activity = instrumentation.startActivitySync(
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        ) as MainActivity
+        instrumentation.waitForIdleSync()
+        try {
+            instrumentation.runOnMainSync {
+                activity.findViewById<Button>(R.id.navSettings).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            val settings = activity.findViewById<LinearLayout>(R.id.settingsPage)
+            assertEquals(View.VISIBLE, settings.visibility)
+            assertTrue("Sections Téléchargement/Métadonnées/SponsorBlock/Réseau/Mises à jour absentes.",
+                settings.childCount >= 10)
+            assertTrue("Format vidéo non configurable.", DownloadOptions.validProxy(
+                "socks5://127.0.0.1:1080"))
+            assertFalse("URL proxy dangereuse acceptée.", DownloadOptions.validProxy(
+                "https://example.com.evil@attacker"))
+            assertFalse(DownloadOptions.validProxy("javascript:alert(1)"))
+            assertFalse(DownloadOptions.validProxy("http://127.0.0.1:0"))
+            assertEquals(4, context.packageManager.getPackageInfo(context.packageName, 0)
+                .versionCode)
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
+
     private fun assertLegacyFolderWritable() {
         if (Build.VERSION.SDK_INT > 28) return
         @Suppress("DEPRECATION")
