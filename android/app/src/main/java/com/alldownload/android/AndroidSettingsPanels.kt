@@ -262,10 +262,10 @@ internal object AndroidSettingsPanels {
             "user_agent", "auto")
         network.addView(label("Le User-Agent modifie l'en-tête HTTP, pas l'empreinte TLS du navigateur.",
             11f, tint = muted))
-        number(network, "Tentatives en cas d’erreur", listOf(1, 3, 5, 8, 12),
-            "network_retries", 5)
+        number(network, "Tentatives en cas d’erreur", listOf(1, 3, 5, 10, 15),
+            "network_retries", 10)
         number(network, "Téléchargements de fragments simultanés", listOf(1, 2, 4, 8),
-            "fragments", 2)
+            "fragments", 1)
         number(network, "Délai réseau (secondes)", listOf(10, 20, 30, 45, 60),
             "network_timeout", 20)
         entry(network, "Arguments d'extracteur avancés", "extractor_args",
