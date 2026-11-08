@@ -148,12 +148,22 @@ internal object DownloadQueue {
         })
     }
 
+    /** A deleted task must not leave partial videos filling private storage. */
+    private fun deletePrivateWorkspace(context: Context, id: String) {
+        if (!Regex("^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$").matches(id))
+            return
+        val root = context.getExternalFilesDir(null) ?: context.filesDir
+        val workspace = java.io.File(root, "All-Download/Donnees/temporaires/$id")
+        if (workspace.isDirectory) workspace.deleteRecursively()
+    }
+
     @Synchronized
     fun remove(context: Context, id: String): Boolean {
         val jobs = snapshot(context)
         val selected = jobs.find { it.id == id } ?: return false
         if (selected.status == RUNNING) return false
         save(context, jobs.filterNot { it.id == id })
+        deletePrivateWorkspace(context, id)
         return true
     }
 
@@ -162,6 +172,9 @@ internal object DownloadQueue {
         val jobs = snapshot(context)
         if (jobs.none { it.status in setOf(DONE, CANCELLED) }) return
         save(context, jobs.filterNot { it.status in setOf(DONE, CANCELLED) })
+        jobs.filter { it.status in setOf(DONE, CANCELLED) }.forEach {
+            deletePrivateWorkspace(context, it.id)
+        }
     }
 
     @Synchronized
