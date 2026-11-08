@@ -194,7 +194,7 @@ class MainActivity : Activity() {
 
         val modes = listOf("Vidéo", "Audio MP3", "Audio M4A", "Audio FLAC",
             "GIF", "Playlist", "Chaîne")
-        val qualities = listOf("1080p (Twitch : 1080p → 720p)",
+        val qualities = listOf("1080p (sinon 720p)",
             "720p", "480p", "Auto (meilleure)", "2160p")
         modeSpinner.adapter = spinnerAdapter(modes)
         qualitySpinner.adapter = spinnerAdapter(qualities)
@@ -958,7 +958,7 @@ class MainActivity : Activity() {
         val options = findViewById<LinearLayout>(R.id.downloadOptions)
         val mode = findViewById<LinearLayout>(R.id.downloadModeGroup)
         val quality = findViewById<LinearLayout>(R.id.downloadQualityGroup)
-        if (resources.configuration.screenWidthDp >= 580) {
+        if (resources.configuration.screenWidthDp >= 900) {
             options.orientation = LinearLayout.HORIZONTAL
             mode.layoutParams = LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
