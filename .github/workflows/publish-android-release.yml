@@ -146,6 +146,8 @@ jobs:
           - Véritable identité All-Download : icône tirée du logo original, nom Android, splash screen et palette violette de Windows.
           - Optimisation RAM : logo original redimensionné à la compilation (PNG 192 × 192), sans toucher au fichier Windows.
           - Fluidité : mises à jour de l'interface uniquement quand l'activité est visible, moins de re-dessins, pagination des tâches (24 à la fois) et explorateur de dossiers asynchrone (50 fichiers à la fois).
+          - Démarrage optimisé : contrôles avancés de l'application construits seulement à l'ouverture des Réglages, avec leur état sauvegardé.
+          - Fiabilité : tests de non-régression sur les contrôles, réduction des allocations et suppression sûre des fichiers temporaires associés aux tâches effacées.
           - Autonomie : notifications et progression yt-dlp limitées en fréquence, écritures persistantes regroupées, moteur yt-dlp/FFmpeg initialisé une seule fois.
           - Données et batterie : GitHub utilise le cache HTTP ETag et évite les vérifications en économie d'énergie, yt-dlp ne s'actualise pas automatiquement sur réseau facturé au volume.
           - Fonctionnel : trois onglets de réglages Téléchargement / Application / Réseau comme Windows, lien copiable depuis la file, suppression des fichiers privés partiels à la suppression d'une tâche.
