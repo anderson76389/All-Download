@@ -17,7 +17,7 @@ internal object CookieStore {
     private const val MAX_BYTES = 4 * 1024 * 1024
 
     fun file(context: Context): File =
-        File(context.filesDir, "All-Download/Donnees/cookies.txt")
+        File(context.noBackupFilesDir, "All-Download/Donnees/cookies.txt")
 
     fun existing(context: Context): File? =
         file(context).takeIf { it.isFile && it.length() in 1..MAX_BYTES.toLong() }
