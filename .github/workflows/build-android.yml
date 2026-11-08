@@ -79,3 +79,36 @@ jobs:
           name: Android-emulator-results-API-${{ matrix.api }}
           path: android/app/build/outputs/androidTest-results/
           if-no-files-found: ignore
+
+  test-tablet-emulator:
+    name: Android tablet API 34
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Activer KVM
+        run: |
+          if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+      - name: Tester la navigation tablette et le moteur
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_c
+          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
+          script: gradle --no-daemon -p android :app:assembleDebug :app:assembleDebugAndroidTest && gradle --no-daemon -p android :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.alldownload.android.AndroidSmokeTest,com.alldownload.android.DownloadEngineE2ETest
+      - name: Rapport tests tablette
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-tablet-emulator-results-API-34
+          path: android/app/build/outputs/androidTest-results/
+          if-no-files-found: ignore
