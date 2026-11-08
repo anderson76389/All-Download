@@ -28,21 +28,23 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 
 <br><br>
 
-<a href="https://github.com/anderson76389/All-Download/releases/download/android-v0.1.2-beta/All-Download-Android-0.1.2-beta.apk"><img src="https://img.shields.io/badge/T%C3%89L%C3%89CHARGER-ANDROID%20APK%20B%C3%8ATA-16A34A?style=for-the-badge&logo=android&logoColor=white" alt="Télécharger Android APK bêta"></a>
+<a href="https://github.com/anderson76389/All-Download/releases/download/android-v0.2.0-beta/All-Download-Android-0.2.0-beta.apk"><img src="https://img.shields.io/badge/T%C3%89L%C3%89CHARGER-ANDROID%20APK%20B%C3%8ATA-16A34A?style=for-the-badge&logo=android&logoColor=white" alt="Télécharger Android APK bêta"></a>
 
-**Windows :** deux archives ZIP à jour. **Android :** un APK bêta distinct (0.1.2).
+**Windows :** deux archives ZIP à jour. **Android :** un APK bêta distinct (0.2.0).
 
-<sub>Les boutons Windows pointent vers la <a href="https://github.com/anderson76389/All-Download/releases/latest">dernière version stable Windows</a>. L'APK Android est publié séparément dans sa <a href="https://github.com/anderson76389/All-Download/releases/tag/android-v0.1.2-beta">Release bêta</a>.</sub>
+<sub>Les boutons Windows pointent vers la <a href="https://github.com/anderson76389/All-Download/releases/latest">dernière version stable Windows</a>. L'APK Android est publié séparément dans sa <a href="https://github.com/anderson76389/All-Download/releases/tag/android-v0.2.0-beta">Release bêta</a>.</sub>
 
 </div>
 
 ---
 
-## 📱 All-Download Android — bêta 0.1.2
+## 📱 All-Download Android — bêta 0.2.0
 
-**[⬇️ Télécharger directement l'APK Android](https://github.com/anderson76389/All-Download/releases/download/android-v0.1.2-beta/All-Download-Android-0.1.2-beta.apk)** · **[Page de la Release et empreinte SHA-256](https://github.com/anderson76389/All-Download/releases/tag/android-v0.1.2-beta)**
+**[⬇️ Télécharger directement l'APK Android](https://github.com/anderson76389/All-Download/releases/download/android-v0.2.0-beta/All-Download-Android-0.2.0-beta.apk)** · **[Page de la Release et empreinte SHA-256](https://github.com/anderson76389/All-Download/releases/tag/android-v0.2.0-beta)**
 
 L'APK Android est **indépendant des deux versions Windows**, fonctionne à partir d'**Android 7.0** et ne nécessite ni PC, ni Termux, ni serveur personnel. Il comprend yt-dlp et FFmpeg, ainsi que les modes vidéo, audio MP3/M4A/FLAC, GIF, playlist et chaîne. Les médias sont enregistrés dans `Téléchargements/All-Download/`, avec des sous-dossiers par catégorie.
+
+**Nouvelle interface Android 0.2.0 :** le vrai logo et l'icône All-Download, écran de lancement, palette violette de la version Windows et thèmes **Sombre, Clair et OLED**. Quatre rubriques natives **Accueil, File d'attente, Dossiers et Paramètres** ; file persistante avec progression, mise en pause, reprise (selon la prise en charge du serveur), nouvelle tentative et suppression des tâches terminées. Explorateur des sept catégories et disposition adaptée aux écrans plus larges, dont les smartphones pliables.
 
 Les tests Android 14 ont réussi sur des liens vidéo publics **Instagram Reels, X/Twitter, Pinterest, TikTok, Facebook Reels, Reddit HLS direct, Bluesky et Dailymotion**, ainsi que sur les formats MP4, WebM, HLS et les clips Twitch. Les tests de base passent également sur Android 9. **Toutes les vidéos et tous les réseaux sociaux ne sont pas garantis** : une publication Reddit classique peut exiger une connexion, certaines anciennes vidéos Facebook ne sont pas reconnues, et YouTube ou les VOD Twitch protégées peuvent être bloqués.
 
