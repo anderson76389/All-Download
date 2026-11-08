@@ -226,6 +226,15 @@ class MainActivity : Activity() {
             }
         }
 
+        urlInput.setOnEditorActionListener { _, actionId, event ->
+            val done = actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE ||
+                (event?.keyCode == android.view.KeyEvent.KEYCODE_ENTER &&
+                    event.action == android.view.KeyEvent.ACTION_DOWN)
+            if (done) {
+                submitUrl(DownloadService.ACTION_ADD_QUEUE)
+                true
+            } else false
+        }
         startButton.setOnClickListener { submitUrl(DownloadService.ACTION_START) }
         queueButton.setOnClickListener { submitUrl(DownloadService.ACTION_ADD_QUEUE) }
         cancelButton.setOnClickListener {
@@ -388,6 +397,12 @@ class MainActivity : Activity() {
             renderQueue()
         } else if (tab == 2) renderFolders()
         else if (tab == 3) updateCookieStatus()
+        if (changed) {
+            urlInput.clearFocus()
+            (getSystemService(Context.INPUT_METHOD_SERVICE) as?
+                android.view.inputmethod.InputMethodManager)
+                ?.hideSoftInputFromWindow(urlInput.windowToken, 0)
+        }
         if (changed && !settings.getBoolean("reduce_motion", false)) {
             val target = listOf(homePage, queuePage, filesPage, settingsPage)[tab]
             target.animate().cancel()
@@ -850,6 +865,19 @@ class MainActivity : Activity() {
         }
         shell.addView(scroll, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+
+        // Windows has a persistent status/progress strip. Reparent that exact
+        // already-bound view; downloads and their progress observers stay intact.
+        val footer = findViewById<LinearLayout>(R.id.statusFooterCard)
+        (footer.parent as? ViewGroup)?.removeView(footer)
+        footer.setPadding(dp(12), dp(7), dp(12), dp(8))
+        shell.addView(footer, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            marginStart = dp(8)
+            marginEnd = dp(8)
+            bottomMargin = dp(6)
+        })
 
         menu.layoutParams = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
