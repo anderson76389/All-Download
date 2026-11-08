@@ -28,29 +28,29 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 
 <br><br>
 
-<a href="https://github.com/anderson76389/All-Download/releases/download/android-v0.3.0-beta/All-Download-Android-0.3.0-beta.apk"><img src="https://img.shields.io/badge/T%C3%89L%C3%89CHARGER-ANDROID%20APK%20B%C3%8ATA-16A34A?style=for-the-badge&logo=android&logoColor=white" alt="Télécharger Android APK bêta"></a>
+<a href="https://github.com/anderson76389/All-Download/releases/download/android-v0.5.0-beta/All-Download-Android-0.5.0-beta.apk"><img src="https://img.shields.io/badge/T%C3%89L%C3%89CHARGER-ANDROID%20APK%20B%C3%8ATA-16A34A?style=for-the-badge&logo=android&logoColor=white" alt="Télécharger Android APK bêta"></a>
 
-**Windows :** deux archives ZIP à jour. **Android :** un APK bêta distinct (0.3.0).
+**Windows :** deux archives ZIP à jour. **Android :** un APK bêta distinct (0.5.0).
 
-<sub>Les boutons Windows pointent vers la <a href="https://github.com/anderson76389/All-Download/releases/latest">dernière version stable Windows</a>. L'APK Android est publié séparément dans sa <a href="https://github.com/anderson76389/All-Download/releases/tag/android-v0.3.0-beta">Release bêta</a>.</sub>
+<sub>Les boutons Windows pointent vers la <a href="https://github.com/anderson76389/All-Download/releases/latest">dernière version stable Windows</a>. L'APK Android est publié séparément dans sa <a href="https://github.com/anderson76389/All-Download/releases/tag/android-v0.5.0-beta">Release bêta</a>.</sub>
 
 </div>
 
 ---
 
-## 📱 All-Download Android — bêta 0.3.0
+## 📱 All-Download Android — bêta 0.5.0
 
-**[⬇️ Télécharger directement l'APK Android](https://github.com/anderson76389/All-Download/releases/download/android-v0.3.0-beta/All-Download-Android-0.3.0-beta.apk)** · **[Page de la Release et empreinte SHA-256](https://github.com/anderson76389/All-Download/releases/tag/android-v0.3.0-beta)**
+**[⬇️ Télécharger directement l'APK Android](https://github.com/anderson76389/All-Download/releases/download/android-v0.5.0-beta/All-Download-Android-0.5.0-beta.apk)** · **[Page de la Release et empreinte SHA-256](https://github.com/anderson76389/All-Download/releases/tag/android-v0.5.0-beta)**
 
 L'APK Android est **indépendant des deux versions Windows**, fonctionne à partir d'**Android 7.0** et ne nécessite ni PC, ni Termux, ni serveur personnel. Il comprend yt-dlp et FFmpeg, ainsi que les modes vidéo, audio MP3/M4A/FLAC, GIF, playlist et chaîne. Les médias sont enregistrés dans `Téléchargements/All-Download/`, avec des sous-dossiers par catégorie.
 
-**Interface Android 0.3.0 :** le logo et l'icône All-Download, écran de lancement, palette violette Windows et thèmes **Sombre, Clair et OLED**. Quatre rubriques natives **Accueil, File d'attente, Dossiers et Paramètres** ; file persistante avec progression, pause, reprise (selon la prise en charge du serveur), nouvelle tentative et suppression des tâches terminées. Explorateur des sept catégories et **navigation latérale sur tablette et téléphone pliable ouvert**.
+**Interface Android 0.5.0 :** le logo et l'icône All-Download, écran de lancement, palette violette Windows et thèmes **Sombre, Clair et OLED**. Quatre rubriques natives **Accueil, File d'attente, Dossiers et Paramètres** ; aperçu compact de la file sur l'accueil, collage d'URL, raccourcis vidéo/audio/GIF/playlist/Twitch, pause et reprise (selon le serveur), nettoyage ciblé de la file et stockage temporaire maîtrisé. Explorateur des sept catégories et **navigation latérale sur tablette et téléphone pliable ouvert**.
 
-**Mises à jour intégrées :** à partir de cette bêta, l'application recherche les nouvelles **Releases Android sur GitHub** à l'ouverture. Lorsqu'une version Android plus récente est disponible, un **popup animé** affiche le logo, les nouveautés, « Télécharger la mise à jour » et « Plus tard ». La recherche manuelle et l'option de désactivation sont disponibles dans les paramètres ; **les Releases Windows ne déclenchent pas ce popup**. Le téléchargement ouvre le lien officiel de l'APK, puis l'installation reste sous le contrôle d'Android.
+**Mises à jour intégrées :** à partir de cette bêta, l'application recherche les nouvelles **Releases Android sur GitHub** à l'ouverture. Lorsqu'une version Android plus récente est disponible, un **popup animé** affiche le logo, les nouveautés, « Télécharger la mise à jour » et « Plus tard ». La recherche manuelle et l'option de désactivation sont disponibles dans les paramètres ; **les Releases Windows ne déclenchent pas ce popup**. **Depuis la bêta 0.5.0**, le bouton de mise à jour télécharge l'APK officiel **dans All-Download**, sans navigateur. L'empreinte SHA-256, le paquet, la version et la signature sont contrôlés avant l'ouverture de l'installateur sécurisé Android. Android peut demander une autorisation et une confirmation ; aucune installation forcée ou silencieuse n'est promise.
 
 **Réglages adaptés depuis Windows :** format MP4/MKV et remux optionnel, qualité MP3, métadonnées, miniatures, sous-titres, SponsorBlock, proxy, User-Agent, tentatives/délais réseau, notifications et réduction des animations. Les options propres à Windows, impossibles à utiliser telles quelles sur Android, ne sont pas présentées comme des fonctions disponibles.
 
-Les tests Android 14 ont réussi sur des liens vidéo publics **Instagram Reels, X/Twitter, Pinterest, TikTok, Facebook Reels, Reddit HLS direct, Bluesky et Dailymotion**, ainsi que sur les formats MP4, WebM, HLS et les clips Twitch. Les tests de base passent également sur Android 9. **Toutes les vidéos et tous les réseaux sociaux ne sont pas garantis** : une publication Reddit classique peut exiger une connexion, certaines anciennes vidéos Facebook ne sont pas reconnues, et YouTube ou les VOD Twitch protégées peuvent être bloqués.
+Les tests Android 14 ont réussi sur des liens vidéo publics **Instagram Reels, X/Twitter, Pinterest, TikTok, Facebook Reels, Reddit HLS direct, Bluesky et Dailymotion**, ainsi que sur les formats MP4, WebM, HLS et les clips Twitch. Les tests de base et d'interface passent également sur Android 9 et Android 15, ainsi que sur une tablette Android 14. **Toutes les vidéos et tous les réseaux sociaux ne sont pas garantis** : une publication Reddit classique peut exiger une connexion, certaines anciennes vidéos Facebook ne sont pas reconnues, et YouTube ou les VOD Twitch protégées peuvent être bloqués.
 
 L'application peut actualiser yt-dlp et permet d'importer **facultativement** un fichier `cookies.txt` provenant de votre propre session autorisée, stocké dans l'espace privé de l'application et supprimable dans l'interface. **Attention : la bêta peut encore être signée avec une clé de débogage éphémère si aucune clé de signature privée persistante n'a été configurée sur GitHub.** Le popup signale les nouvelles versions, mais Android peut refuser une installation par-dessus une ancienne bêta dont la signature diffère. Une désinstallation sera alors nécessaire et supprimera les données privées de l'application ; évitez d'y importer des sessions sensibles. Les médias exportés dans le dossier Téléchargements ne sont pas inclus dans ces données privées.
 
