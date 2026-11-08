@@ -9,6 +9,7 @@ import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.View
 import android.view.ViewGroup
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
@@ -51,7 +52,78 @@ internal object AndroidSettingsPanels {
             if (bold) setTypeface(typeface, Typeface.BOLD)
         }
 
-        fun card(title: String, subtitle: String): LinearLayout {
+        // Same three settings sections as Windows, but touch-optimized on Android.
+        val downloadPanel = LinearLayout(activity).apply {
+            id = R.id.settingsDownloadPanel
+            orientation = LinearLayout.VERTICAL
+        }
+        val applicationPanel = LinearLayout(activity).apply {
+            id = R.id.settingsApplicationPanel
+            orientation = LinearLayout.VERTICAL
+        }
+        val networkPanel = LinearLayout(activity).apply {
+            id = R.id.settingsNetworkPanel
+            orientation = LinearLayout.VERTICAL
+        }
+        // Preserve the original functional controls and listeners while reparenting.
+        for (id in listOf(R.id.settingsAppearanceCard, R.id.settingsEngineCard,
+                R.id.settingsCookiesCard)) {
+            val child = activity.findViewById<View>(id)
+            (child.parent as? ViewGroup)?.removeView(child)
+            applicationPanel.addView(child)
+        }
+        val tabs = LinearLayout(activity).apply {
+            id = R.id.settingsTabs
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, px(8), 0, px(4))
+        }
+        val sections = listOf(downloadPanel, applicationPanel, networkPanel)
+        val labels = listOf("Téléchargement", "Application", "Réseau")
+        val buttonIds = listOf(R.id.settingsTabDownload,
+            R.id.settingsTabApplication, R.id.settingsTabNetwork)
+        val buttons = labels.mapIndexed { index, caption ->
+            Button(activity).apply {
+                id = buttonIds[index]
+                text = caption
+                textSize = 12f
+                isAllCaps = false
+                minHeight = px(48)
+                tabs.addView(this, LinearLayout.LayoutParams(
+                    0, px(49), 1f).apply {
+                    marginStart = if (index == 0) 0 else px(3)
+                    marginEnd = if (index == 2) 0 else px(3)
+                })
+            }
+        }
+        val host = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(downloadPanel)
+            addView(applicationPanel)
+            addView(networkPanel)
+        }
+        settingsPage.addView(tabs, 1)
+        settingsPage.addView(host, 2)
+        fun selectTab(index: Int) {
+            for (section in sections.indices) {
+                sections[section].visibility = if (index == section)
+                    View.VISIBLE else View.GONE
+                val active = section == index
+                buttons[section].background = GradientDrawable().apply {
+                    setColor(if (active) purple else panelColor)
+                    cornerRadius = px(11).toFloat()
+                    setStroke(px(1), if (active) purple else borderColor)
+                }
+                buttons[section].setTextColor(if (active) Color.WHITE else color)
+            }
+            prefs.edit().putInt("settings_tab", index).apply()
+        }
+        buttons.forEachIndexed { index, button ->
+            button.setOnClickListener { selectTab(index) }
+        }
+        selectTab(prefs.getInt("settings_tab", 0).coerceIn(0, 2))
+
+        fun card(title: String, subtitle: String,
+                 group: LinearLayout = downloadPanel): LinearLayout {
             val panel = LinearLayout(activity).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(px(19), px(18), px(19), px(19))
@@ -71,7 +143,7 @@ internal object AndroidSettingsPanels {
                 setPadding(0, px(7), 0, px(13))
             })
             // Insert before the footer text explaining the beta version.
-            settingsPage.addView(panel, settingsPage.childCount - 1)
+            group.addView(panel)
             return panel
         }
 
@@ -250,7 +322,8 @@ internal object AndroidSettingsPanels {
             "sponsor_exact")
 
         val network = card("Réseau et connexions",
-            "Options équivalentes à Windows et utilisables avec yt-dlp sur Android.")
+            "Options équivalentes à Windows et utilisables avec yt-dlp sur Android.",
+            networkPanel)
         toggle(network, "Utiliser un proxy",
             "HTTP, HTTPS ou SOCKS. Vérifiez sa disponibilité avant un téléchargement.",
             "proxy_enabled")
@@ -274,7 +347,8 @@ internal object AndroidSettingsPanels {
             11f, tint = muted))
 
         val app = card("Application et notifications",
-            "Même esprit que Windows, avec les obligations système Android.")
+            "Même esprit que Windows, avec les obligations système Android.",
+            applicationPanel)
         toggle(app, "Notification de fin de téléchargement",
             "La notification en cours de téléchargement reste obligatoire pour le service Android.",
             "notify_finished", true)
@@ -283,7 +357,8 @@ internal object AndroidSettingsPanels {
             "reduce_motion")
 
         val updates = card("Mises à jour Android",
-            "Mises à jour détectées depuis les Releases Android de GitHub, sans toucher à Windows.")
+            "Mises à jour détectées depuis les Releases Android de GitHub, sans toucher à Windows.",
+            applicationPanel)
         toggle(updates, "Me prévenir des nouvelles versions",
             "Vérification à l'ouverture au plus une fois toutes les 30 minutes.",
             "update_alerts", true)
