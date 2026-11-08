@@ -3,12 +3,16 @@ package com.alldownload.android
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.IOException
 import java.util.UUID
 
 /**
- * Queue Android autonome. L'état est sauvegardé dans les préférences privées :
- * fermeture de l'interface et redémarrage ne suppriment pas les tâches.
- * Le moteur yt-dlp et ses fichiers temporaires restent dans All-Download.
+ * Queue persistante, synchronisée entre l'interface et le service de téléchargement.
+ *
+ * Un seul décodage JSON par démarrage de processus : l'état en mémoire sert les
+ * rafraîchissements de l'interface. Les transitions sont d'abord écrites dans
+ * SharedPreferences (commit atomique), puis visibles en mémoire. Ainsi un arrêt
+ * brutal n'efface jamais silencieusement les tâches.
  */
 internal object DownloadQueue {
     const val WAITING = "attente"
@@ -40,60 +44,76 @@ internal object DownloadQueue {
         }
     }
 
+    @Volatile private var cache: List<Task>? = null
+    @Volatile private var changeCounter = 0L
+
     private fun store(context: Context) =
         context.getSharedPreferences("all_download_queue_v1", Context.MODE_PRIVATE)
 
+    /** Monotonic revision. UI skips rebuilding cards unless this changes. */
+    fun revision(): Long = changeCounter
+
     @Synchronized
     fun snapshot(context: Context): List<Task> {
+        val loaded = cache
+        if (loaded != null) return loaded
         val json = try { JSONArray(store(context).getString("tasks", "[]") ?: "[]") }
-        catch (_: Exception) { return emptyList() }
-        val list = mutableListOf<Task>()
+        catch (_: Exception) { JSONArray() }
+        val jobs = ArrayList<Task>(json.length())
         for (index in 0 until json.length()) {
             val o = json.optJSONObject(index) ?: continue
             val url = o.optString("url")
             val id = o.optString("id")
             if (url.isBlank() || id.isBlank()) continue
-            list.add(Task(id, url, o.optInt("mode", 0), o.optInt("quality", 0),
-                o.optString("status", WAITING), o.optInt("progress", 0).coerceIn(0, 100),
-                o.optString("message", ""), o.optLong("time", 0)))
+            jobs.add(Task(id, url, o.optInt("mode", 0).coerceIn(0, 6),
+                o.optInt("quality", 0).coerceIn(0, 4),
+                o.optString("status", WAITING),
+                o.optInt("progress", 0).coerceIn(0, 100),
+                o.optString("message", "").take(400), o.optLong("time", 0)))
         }
-        return list
+        cache = jobs
+        return jobs
     }
 
     @Synchronized
     private fun save(context: Context, tasks: List<Task>) {
+        val current = snapshot(context)
+        if (tasks == current) return
         val array = JSONArray()
         tasks.forEach { array.put(it.toJson()) }
-        store(context).edit().putString("tasks", array.toString()).commit()
+        if (!store(context).edit().putString("tasks", array.toString()).commit())
+            throw IOException("Impossible d'enregistrer la file d'attente.")
+        cache = tasks.toList()
+        changeCounter++
     }
 
     @Synchronized
     fun enqueue(context: Context, url: String, mode: Int, quality: Int): Task {
-        require(url.startsWith("https://", true) || url.startsWith("http://", true)) {
-            "Un lien HTTP(S) est requis."
-        }
-        val tasks = snapshot(context).toMutableList()
+        require(DownloadRules.isValidVideoUrl(url)) { "Un lien HTTP(S) valide est requis." }
+        val tasks = snapshot(context)
         if (tasks.size >= 300) throw IllegalStateException(
             "File complète (300 tâches). Effacez les téléchargements terminés."
         )
         val job = Task(UUID.randomUUID().toString(), url, mode.coerceIn(0, 6),
             quality.coerceIn(0, 4))
-        tasks.add(job)
-        save(context, tasks)
+        save(context, tasks + job)
         return job
     }
 
     @Synchronized
     fun update(context: Context, id: String, status: String? = null,
                progress: Int? = null, message: String? = null) {
-        val tasks = snapshot(context).toMutableList()
+        val tasks = snapshot(context)
         val index = tasks.indexOfFirst { it.id == id }
         if (index == -1) return
         val old = tasks[index]
-        tasks[index] = old.copy(status = status ?: old.status,
+        val changed = old.copy(status = status ?: old.status,
             progress = progress?.coerceIn(0, 100) ?: old.progress,
-            message = message ?: old.message)
-        save(context, tasks)
+            message = message?.take(400) ?: old.message)
+        if (changed == old) return
+        val result = tasks.toMutableList()
+        result[index] = changed
+        save(context, result)
     }
 
     @Synchronized
@@ -109,6 +129,7 @@ internal object DownloadQueue {
     @Synchronized
     fun resumePaused(context: Context) {
         val jobs = snapshot(context)
+        if (jobs.none { it.status == PAUSED }) return
         save(context, jobs.map {
             if (it.status == PAUSED) it.copy(status = WAITING,
                 message = "Reprise demandée.") else it
@@ -118,8 +139,10 @@ internal object DownloadQueue {
     @Synchronized
     fun retry(context: Context, id: String) {
         val jobs = snapshot(context)
+        if (jobs.none { it.id == id &&
+                it.status in setOf(ERROR, PAUSED, CANCELLED) }) return
         save(context, jobs.map {
-            if (it.id == id && it.status in listOf(ERROR, PAUSED, CANCELLED)) {
+            if (it.id == id && it.status in setOf(ERROR, PAUSED, CANCELLED)) {
                 it.copy(status = WAITING, message = "Nouvelle tentative.")
             } else it
         })
@@ -136,9 +159,9 @@ internal object DownloadQueue {
 
     @Synchronized
     fun clearFinished(context: Context) {
-        save(context, snapshot(context).filterNot {
-            it.status in listOf(DONE, CANCELLED)
-        })
+        val jobs = snapshot(context)
+        if (jobs.none { it.status in setOf(DONE, CANCELLED) }) return
+        save(context, jobs.filterNot { it.status in setOf(DONE, CANCELLED) })
     }
 
     @Synchronized
