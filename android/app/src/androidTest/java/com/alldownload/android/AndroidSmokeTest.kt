@@ -422,6 +422,56 @@ class AndroidSmokeTest {
         assertEquals(size, DownloadQueue.snapshot(context).size)
     }
 
+    @Test fun originalWindowsLogoIsSmallEnoughForLowMemoryAndroidLauncher() {
+        val options = android.graphics.BitmapFactory.Options()
+        options.inJustDecodeBounds = true
+        android.graphics.BitmapFactory.decodeResource(
+            context.resources, R.drawable.all_download_logo, options)
+        assertTrue("Logo Android non trouvé.", options.outWidth > 0 && options.outHeight > 0)
+        assertTrue("L'image originale est trop grande pour l'icône mobile.",
+            options.outWidth <= 256 && options.outHeight <= 256)
+        assertEquals("Conserver le logo Windows au format carré.", options.outWidth,
+            options.outHeight)
+    }
+
+    @Test fun largeQueueDoesNotRenderHundredsOfCardsAtOnce() {
+        val tasks = mutableListOf<DownloadQueue.Task>()
+        var activity: MainActivity? = null
+        try {
+            for (index in 1..27) {
+                tasks.add(DownloadQueue.enqueue(context,
+                    "https://example.org/battery-test-${UUID.randomUUID()}-$index.mp4", 0, 0))
+            }
+            val instance = instrumentation.startActivitySync(
+                Intent(context, MainActivity::class.java).addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            ) as MainActivity
+            activity = instance
+            instrumentation.waitForIdleSync()
+            instrumentation.runOnMainSync {
+                instance.findViewById<Button>(R.id.navQueue).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            val cards = instance.findViewById<LinearLayout>(R.id.queueList)
+            val initial = cards.childCount
+            assertTrue("Les 24 premières tâches et un bouton doivent suffire.",
+                initial in 2..25)
+            val more = cards.getChildAt(initial - 1) as? Button
+            assertNotNull("Le bouton Afficher plus doit permettre l'accès aux autres tâches.", more)
+            instrumentation.runOnMainSync { more!!.performClick() }
+            instrumentation.waitForIdleSync()
+            assertTrue("Afficher plus ne doit pas masquer les tâches déjà visibles.",
+                cards.childCount >= initial)
+            assertTrue("La file doit rester bornée à 48 cartes avant un nouveau clic.",
+                cards.childCount <= 49)
+        } finally {
+            activity?.let { instance ->
+                instrumentation.runOnMainSync { instance.finish() }
+            }
+            tasks.forEach { DownloadQueue.remove(context, it.id) }
+        }
+    }
+
     private fun assertLegacyFolderWritable() {
         if (Build.VERSION.SDK_INT > 28) return
         @Suppress("DEPRECATION")
