@@ -896,12 +896,12 @@ class MainActivity : Activity() {
                 is Button -> {
                     if (view.id == R.id.startButton ||
                         view.id == R.id.resumeQueueButton || view.tag == "primary") {
-                        view.background = rounded(purple, purple, 10)
+                        view.background = rounded(purple, purple, 14)
                         view.setTextColor(Color.WHITE)
                         view.elevation = 0f
                         view.stateListAnimator = null
                     } else {
-                        view.background = rounded(colors.input, colors.border, 10)
+                        view.background = rounded(colors.input, colors.border, 14)
                         view.setTextColor(colors.foreground)
                         view.elevation = 0f
                         view.stateListAnimator = null
@@ -910,7 +910,7 @@ class MainActivity : Activity() {
                     view.setPadding(dp(12), view.paddingTop, dp(12), view.paddingBottom)
                 }
                 is EditText -> {
-                    view.background = rounded(colors.input, colors.border, 10)
+                    view.background = rounded(colors.input, colors.border, 14)
                     view.setTextColor(colors.foreground)
                     view.setHintTextColor(colors.muted)
                 }
@@ -927,7 +927,7 @@ class MainActivity : Activity() {
                 view.elevation = 0f
             }
             if (view.tag == "input" && view !is EditText) {
-                view.background = rounded(colors.input, colors.border, 10)
+                view.background = rounded(colors.input, colors.border, 14)
             }
             if (view is ViewGroup) for (index in 0 until view.childCount)
                 visit(view.getChildAt(index))
@@ -959,7 +959,7 @@ class MainActivity : Activity() {
                 (id == R.id.quickAudioButton && selected in 1..3)
             button.background = rounded(
                 if (active) purple else colors.input,
-                if (active) purple else colors.border, 10)
+                if (active) purple else colors.border, 18)
             button.setTextColor(if (active) Color.WHITE else colors.foreground)
             button.elevation = 0f
             button.stateListAnimator = null
@@ -1053,7 +1053,7 @@ class MainActivity : Activity() {
                 WindowInsetsCompat.Type.displayCutout())
             val typing = insets.isVisible(WindowInsetsCompat.Type.ime())
             bar.visibility = if (typing) View.GONE else View.VISIBLE
-            footer.visibility = if (typing) View.GONE else View.VISIBLE
+            footer.visibility = if (typing || selectedTab >= 2) View.GONE else View.VISIBLE
             if (Build.VERSION.SDK_INT >= 35)
                 view.setPadding(safe.left, 0, safe.right, if (typing) 0 else safe.bottom)
             insets
