@@ -86,6 +86,7 @@ class DownloadService : Service() {
             check(work.mkdirs() && work.isDirectory) { "Impossible de créer l'espace temporaire." }
             YoutubeDL.getInstance().init(applicationContext)
             FFmpeg.getInstance().init(applicationContext)
+            maybeRefreshSocialEngine(url)
             check(!cancelled) { "Téléchargement annulé." }
 
             val request = buildRequest(url, mode, quality, work)
@@ -144,6 +145,32 @@ class DownloadService : Service() {
      * Les avertissements d'une version yt-dlp ancienne précèdent parfois l'erreur
      * réelle, qui doit être visible à l'écran au lieu d'être tronquée.
      */
+    /**
+     * Les extracteurs sociaux évoluent fréquemment. Vérifie la dernière version
+     * officielle de yt-dlp au premier téléchargement social, puis au plus une
+     * fois par semaine. Si GitHub est inaccessible, le moteur embarqué reste
+     * utilisable : aucune dépendance obligatoire ni serveur intermédiaire.
+     *
+     * Le moteur Twitch historique n'est pas modifié.
+     */
+    private fun maybeRefreshSocialEngine(url: String) {
+        if (!DownloadRules.isSocialVideoHost(url)) return
+        val prefs = getSharedPreferences("yt_dlp_updates", MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        val previous = prefs.getLong("last_attempt_ms", 0L)
+        val oneWeekMs = 7L * 24 * 60 * 60 * 1000
+        if (previous > 0 && now - previous in 0 until oneWeekMs) return
+        prefs.edit().putLong("last_attempt_ms", now).apply()
+        state = UiState(true, 0, "Actualisation du moteur yt-dlp…")
+        try {
+            val result = YoutubeDL.getInstance().updateYoutubeDL(applicationContext)
+            Log.i("AllDownloadVideo", "yt-dlp : $result")
+        } catch (e: Exception) {
+            Log.w("AllDownloadVideo",
+                "Mise à jour yt-dlp indisponible, conservation du moteur embarqué.", e)
+        }
+    }
+
     private fun errorSummary(error: Throwable): String {
         val lines = (error.localizedMessage ?: error.javaClass.simpleName)
             .lines().map { it.trim() }.filter { it.isNotBlank() }
