@@ -434,6 +434,10 @@ class MainActivity : Activity() {
                 PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 103)
         }
+        urlInput.clearFocus()
+        (getSystemService(Context.INPUT_METHOD_SERVICE) as?
+            android.view.inputmethod.InputMethodManager)
+            ?.hideSoftInputFromWindow(urlInput.windowToken, 0)
         val service = Intent(this, DownloadService::class.java).apply {
             this.action = action
             putExtra(DownloadService.EXTRA_URL, url)
