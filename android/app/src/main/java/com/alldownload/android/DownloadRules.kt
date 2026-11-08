@@ -25,7 +25,7 @@ internal object DownloadRules {
             "bsky.app", "dailymotion.com", "dai.ly"
         )
         return domains.any { host == it || host.endsWith(".$it") } ||
-            Regex("""(^|\\.)pinterest\\.[a-z]{2,4}$""").containsMatchIn(host)
+            Regex("""(^|\.)pinterest\.[a-z]{2,4}$""").containsMatchIn(host)
     }
 
     fun isTwitchVod(url: String): Boolean {
