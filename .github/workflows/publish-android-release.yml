@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: all-download-android-beta-release
@@ -22,6 +23,43 @@ jobs:
     steps:
       - name: Checkout Android beta branch
         uses: actions/checkout@v4
+      - name: Exiger les tests Android, tablette et réseaux sociaux du code à publier
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # This workflow is triggered by an Android-release workflow change.
+          # The parent commit contains the exact Android code tested by the CI.
+          TESTED_SHA="$(git rev-parse HEAD^)"
+          echo "Code Android vérifié : $TESTED_SHA"
+          expected=("Build and test Android (beta)" "Android public video download checks" "Android social media video checks")
+          for attempt in $(seq 1 90); do
+            HEAD_SHA="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/feature/android-app" --jq '.object.sha')"
+            if [ "$HEAD_SHA" != "$GITHUB_SHA" ]; then
+              echo "La branche Android a changé pendant les tests, publication annulée."
+              exit 1
+            fi
+            runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?per_page=100")"
+            count=0
+            for name in "${expected[@]}"; do
+              state="$(printf '%s' "$runs" | jq -r --arg name "$name" --arg sha "$TESTED_SHA"                 '[.workflow_runs[] | select(.name==$name and .head_sha==$sha)] | .[0].conclusion // "pending"')"
+              echo "$name : $state"
+              if [ "$state" = "failure" ] || [ "$state" = "cancelled" ]; then
+                echo "Tests Android non réussis : $name"
+                exit 1
+              fi
+              if [ "$state" = "success" ]; then count=$((count + 1)); fi
+            done
+            if [ "$count" = "3" ]; then
+              echo "Les 3 suites Android sont validées pour $TESTED_SHA"
+              break
+            fi
+            if [ "$attempt" = "90" ]; then
+              echo "Tests Android incomplets, APK non publié."
+              exit 1
+            fi
+            sleep 15
+          done
       - name: Java 17
         uses: actions/setup-java@v4
         with:
@@ -37,17 +75,49 @@ jobs:
         with:
           gradle-version: "8.9"
       - name: Unit tests and APK build
-        run: gradle --no-daemon -p android :app:testDebugUnitTest :app:assembleDebug
+        run: gradle --no-daemon -p android :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease
+      - name: Sign with a private persistent Android key when configured
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::warning::Clé de signature Android persistante non configurée. APK debug ; une réinstallation peut être nécessaire pour la prochaine version."
+            echo "APK_SIGNING=debug" >> "$GITHUB_ENV"
+          else
+            if [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ] || [ -z "$ANDROID_KEY_PASSWORD" ]; then
+              echo "Clé Android incomplète : renseigner les 4 secrets GitHub Actions."
+              exit 1
+            fi
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/all-download-release.jks"
+            chmod 600 "$RUNNER_TEMP/all-download-release.jks"
+            SRC="android/app/build/outputs/apk/release/app-release-unsigned.apk"
+            test -s "$SRC"
+            "$ANDROID_HOME/build-tools/35.0.0/zipalign" -f -p 4 "$SRC" "$RUNNER_TEMP/all-download-aligned.apk"
+            "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign \
+              --ks "$RUNNER_TEMP/all-download-release.jks" \
+              --ks-key-alias "$ANDROID_KEY_ALIAS" \
+              --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
+              --key-pass env:ANDROID_KEY_PASSWORD \
+              --out android/app/build/outputs/apk/debug/app-debug.apk \
+              "$RUNNER_TEMP/all-download-aligned.apk"
+            rm -f "$RUNNER_TEMP/all-download-release.jks" "$RUNNER_TEMP/all-download-aligned.apk"
+            echo "APK_SIGNING=stable" >> "$GITHUB_ENV"
+            echo "Signature Android persistante configurée depuis les secrets GitHub."
+          fi
       - name: Validate APK and prepare release file
         run: |
           set -euo pipefail
           SRC="android/app/build/outputs/apk/debug/app-debug.apk"
-          DEST="All-Download-Android-0.2.0-beta.apk"
+          DEST="All-Download-Android-0.3.0-beta.apk"
           test -s "$SRC"
           unzip -tq "$SRC" >/dev/null
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$SRC"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SRC" | grep -E "^(package:|sdkVersion:|targetSdkVersion:)"
-          if ! "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SRC" | grep -q "versionName='0.2.0-beta'"; then
+          if ! "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SRC" | grep -q "versionName='0.3.0-beta'"; then
             echo "Wrong Android version in the APK"
             exit 1
           fi
@@ -56,38 +126,47 @@ jobs:
       - name: Write beta release notes
         run: |
           cat > android-release-notes.md <<'EOF'
-          ## All-Download Android 0.2.0 BÊTA
+          ## All-Download Android 0.3.0 BÊTA
 
           Téléchargement autonome Android (APK). **Ne remplace pas les versions Windows.**
 
           - Android 7+ ; architecture ARM 32/64 bits et x86 32/64 bits.
           - Véritable identité All-Download : icône tirée du logo original, nom Android, splash screen et palette violette de Windows.
-          - Interface native : Accueil, File d'attente, Dossiers et Paramètres ; adaptation écran pliable/tablette.
+          - Interface native : Accueil, File d'attente, Dossiers et Paramètres ; navigation latérale automatique sur tablette et pliable ouvert.
+          - Popup de mise à jour animé : recherche uniquement les nouvelles Releases Android GitHub, version et nouveautés, bouton de téléchargement, recherche manuelle et option de désactivation.
+          - Paramètres Windows adaptés : MP4/MKV et remux, qualité MP3, miniatures, métadonnées, sous-titres, SponsorBlock, proxy, User-Agent, réseau et notifications.
           - Thèmes Sombre, Clair et OLED, persistants ; paramètres yt-dlp et cookies locaux.
           - File d'attente persistante : lancement en série, progression, pause/reprise best-effort et relance en cas d'erreur.
           - Explorateur intégré des sept dossiers et ouverture des médias par MediaStore/FileProvider.
           - Téléchargements vidéo MP4/WebM/HLS, clips Twitch, audio MP3/M4A/FLAC, GIF, playlists et chaînes.
           - Moteur yt-dlp et FFmpeg intégrés, mise à jour yt-dlp facultative pour les réseaux sociaux.
-          - Tests d'émulateur validés Android 9 et Android 14 : nom et icône d'origine, navigation, dossiers, file persistante, téléchargement et export, annulation.
+          - Tests d'émulateur validés Android 9, Android 14 et tablette Android 14 : popup animé, filtres des Releases Android, interface, file persistante, téléchargements et export.
           - Tests sociaux Android 14 : Reels Instagram, X, vidéos Pinterest, TikTok, Reels Facebook, Reddit HLS direct, Bluesky et Dailymotion validés sur des liens publics.
           - Reddit (publication classique) et certaines vidéos Facebook exigent un accès ou un extracteur compatible ; Vimeo non confirmé. YouTube anti-bot, VOD Twitch protégées et DRM non garantis.
           - Import facultatif de cookies Netscape de votre propre compte autorisé ; stockage privé local, effacement possible dans l'application.
 
-          **Important : APK BÊTA de test signé avec une clé de débogage éphémère du runner GitHub.** 
-          Pour passer de 0.1.2 à 0.2.0, une désinstallation préalable peut être nécessaire à cause de la signature de débogage différente. Une future mise à jour peut aussi exiger une réinstallation et effacer les données privées de l'application. Les médias déjà exportés dans Téléchargements ne sont pas supprimés par la désinstallation.
+          **Important : signature Android persistante uniquement si les secrets GitHub Actions du propriétaire sont configurés.**
+          Pour passer de 0.2.0 à 0.3.0, une désinstallation préalable peut être nécessaire à cause d'une signature de débogage différente. Une future mise à jour peut aussi exiger une réinstallation et effacer les données privées de l'application. Les médias déjà exportés dans Téléchargements ne sont pas supprimés par la désinstallation.
           N'importez pas de sessions sensibles dans cette version de test.
           Ne désactivez pas les protections Android. Installation à vos risques pour cette préversion.
           Les versions Windows Portable/Classique restent sur les Releases stables.
 
-          **Fichier :** `All-Download-Android-0.2.0-beta.apk` — empreinte SHA-256 dans le fichier `.sha256` joint.
+          **Fichier :** `All-Download-Android-0.3.0-beta.apk` — empreinte SHA-256 dans le fichier `.sha256` joint.
+          if [ "$APK_SIGNING" = "stable" ]; then
+            echo "" >> android-release-notes.md
+            echo "**Signature :** clé privée persistante configurée. Les futures mises à jour signées avec la même clé sont compatibles avec l'installation par-dessus cette version." >> android-release-notes.md
+          else
+            echo "" >> android-release-notes.md
+            echo "**Signature :** débogage éphémère (aucune clé stable configurée). Une désinstallation peut être nécessaire entre deux APK." >> android-release-notes.md
+          fi
           EOF
       - name: Publish separate Android prerelease
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          TAG="android-v0.2.0-beta"
-          APK="All-Download-Android-0.2.0-beta.apk"
+          TAG="android-v0.3.0-beta"
+          APK="All-Download-Android-0.3.0-beta.apk"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Android beta release already exists; refreshing Android-only assets."
             gh release upload "$TAG" "$APK" "${APK}.sha256" --repo "$GITHUB_REPOSITORY" --clobber
@@ -95,7 +174,7 @@ jobs:
             gh release create "$TAG" "$APK" "${APK}.sha256" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
-              --title "All-Download Android 0.2.0 bêta" \
+              --title "All-Download Android 0.3.0 bêta" \
               --notes-file android-release-notes.md \
               --prerelease
           fi
