@@ -127,7 +127,9 @@ class AndroidSmokeTest {
     }
 
     private fun grantLegacyStorage() {
-        if (Build.VERSION.SDK_INT in 23..28) {
+        if (Build.VERSION.SDK_INT in 23..28 &&
+            context.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
+                android.content.pm.PackageManager.PERMISSION_GRANTED) {
             instrumentation.uiAutomation.grantRuntimePermission(context.packageName,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE)
         }
