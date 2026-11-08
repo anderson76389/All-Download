@@ -508,15 +508,31 @@ class MainActivity : Activity() {
         queueStatusText.text = jobs.size.toString() + " tâche(s) • " +
             waiting + " en attente • " + running + " en cours • " + done + " terminée(s)"
         if (jobs.isEmpty()) {
-            queueList.addView(infoCard("La file est vide",
-                "Depuis l'accueil, ajoutez une vidéo ou un audio pour commencer."))
+            queueList.addView(LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                setPadding(dp(12), dp(44), dp(12), dp(36))
+                addView(text("↓", 40, colors.accent, true).apply {
+                    gravity = Gravity.CENTER
+                })
+                addView(text("Votre file d'attente est vide", 17,
+                    colors.foreground, true).apply {
+                    gravity = Gravity.CENTER
+                    setPadding(0, dp(8), 0, 0)
+                })
+                addView(text("Ajoutez un lien depuis l'accueil.", 12,
+                    colors.muted, false).apply {
+                    gravity = Gravity.CENTER
+                    setPadding(0, dp(6), 0, 0)
+                })
+            })
             return
         }
         for (job in jobs.asReversed().take(queueVisible)) {
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(dp(16), dp(15), dp(16), dp(12))
-                background = rounded(colors.panel, colors.border, 18)
+                setPadding(dp(12), dp(12), dp(12), dp(12))
+                background = rounded(colors.panel, colors.border, 16)
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT).apply {
@@ -531,17 +547,44 @@ class MainActivity : Activity() {
                 DownloadQueue.ERROR -> "Erreur"
                 else -> "Annulé"
             }
-            card.addView(text("•  " + label + "  ·  " +
-                listOf("Vidéo", "MP3", "M4A", "FLAC", "GIF", "Playlist", "Chaîne")
-                    .getOrElse(job.mode) { "Vidéo" }, 14,
+            // The Windows media-card silhouette, without expensive network thumbnails.
+            // The badge uses the *actual* job media type and never invents metadata.
+            val media = listOf("Vidéo", "MP3", "M4A", "FLAC", "GIF", "Playlist", "Chaîne")
+                .getOrElse(job.mode) { "Vidéo" }
+            val glyph = when (job.mode) {
+                1, 2, 3 -> "♫"
+                4 -> "GIF"
+                5, 6 -> "☷"
+                else -> "▶"
+            }
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            val thumbnail = TextView(this).apply {
+                text = glyph
+                textSize = if (job.mode == 4) 15f else 26f
+                gravity = Gravity.CENTER
+                setTextColor(colors.accent)
+                background = rounded(colors.input, colors.border, 11)
+                contentDescription = "Type de média : $media"
+            }
+            row.addView(thumbnail, LinearLayout.LayoutParams(dp(56), dp(56)).apply {
+                marginEnd = dp(12)
+            })
+            val details = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            details.addView(text("$label · $media · ${job.progress} %", 13,
                 if (job.status == DownloadQueue.ERROR) Color.rgb(239, 68, 68)
                 else if (job.status == DownloadQueue.DONE) Color.rgb(34, 197, 94)
-                else purple, true))
-            card.addView(text(job.url, 13, colors.foreground, false).apply {
+                else colors.accent, true))
+            details.addView(text(job.url, 12, colors.foreground, false).apply {
                 maxLines = 2
                 ellipsize = android.text.TextUtils.TruncateAt.END
-                setPadding(0, dp(9), 0, dp(7))
+                setPadding(0, dp(6), 0, 0)
             })
+            row.addView(details, LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            card.addView(row)
             if (job.message.isNotBlank()) {
                 card.addView(text(job.message, 12, colors.muted, false).apply {
                     maxLines = 3
@@ -730,6 +773,14 @@ class MainActivity : Activity() {
             minHeight = dp(42)
             minimumHeight = dp(42)
             setTextColor(palette().foreground)
+            background = rounded(palette().input, palette().border, 10)
+            elevation = 0f
+            stateListAnimator = null
+            setPadding(dp(9), 0, dp(9), 0)
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(42)).apply {
+                marginStart = dp(4)
+            }
             setOnClickListener { action() }
         }
 
