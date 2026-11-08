@@ -17,6 +17,24 @@ import java.net.URLConnection
 object MediaExporter {
     private val categories = setOf("VIDÉOS", "AUDIOS", "TWITCH", "GIFS", "CHAÎNES", "PLAYLIST", "AUTRES")
 
+    /** Android doit indexer correctement les médias, notamment WebM et MKV. */
+    internal fun mediaMime(filename: String): String = when (filename.substringAfterLast('.', "").lowercase()) {
+        "mp4", "m4v" -> "video/mp4"
+        "webm" -> "video/webm"
+        "mkv" -> "video/x-matroska"
+        "mov" -> "video/quicktime"
+        "avi" -> "video/x-msvideo"
+        "ts" -> "video/mp2t"
+        "mp3" -> "audio/mpeg"
+        "m4a" -> "audio/mp4"
+        "flac" -> "audio/flac"
+        "opus" -> "audio/opus"
+        "wav" -> "audio/wav"
+        "ogg", "oga" -> "audio/ogg"
+        "gif" -> "image/gif"
+        else -> URLConnection.guessContentTypeFromName(filename) ?: "application/octet-stream"
+    }
+
     fun export(context: Context, source: File, category: String, cancelled: () -> Boolean) {
         require(category in categories) { "Catégorie non autorisée." }
         require(source.isFile && source.length() > 0L) { "Fichier source vide." }
@@ -35,8 +53,7 @@ object MediaExporter {
         val relativePath = "${Environment.DIRECTORY_DOWNLOADS}/All-Download/$category/"
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, source.name)
-            put(MediaStore.MediaColumns.MIME_TYPE,
-                URLConnection.guessContentTypeFromName(source.name) ?: "application/octet-stream")
+            put(MediaStore.MediaColumns.MIME_TYPE, mediaMime(source.name))
             put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
