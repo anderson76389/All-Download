@@ -5,6 +5,8 @@ on:
     branches: [feature/android-app]
     paths:
       - "android/app/src/main/**"
+      - "android/app/src/androidTest/**"
+      - "android/app/src/test/**"
       - "android/app/build.gradle.kts"
       - ".github/workflows/publish-android-release.yml"
   workflow_dispatch:
