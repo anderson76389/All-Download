@@ -24,8 +24,8 @@
             android:orientation="horizontal">
             <ImageView
                 android:id="@+id/brandLogo"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:contentDescription="Logo All-Download"
                 android:scaleType="centerCrop"
                 android:src="@drawable/all_download_logo" />
@@ -41,7 +41,7 @@
                     android:layout_height="wrap_content"
                     android:text="ALL-DOWNLOAD"
                     android:textColor="#F3F4F6"
-                    android:textSize="23sp"
+                    android:textSize="22sp"
                     android:textStyle="bold" />
                 <TextView
                     android:id="@+id/brandSubtitle"
@@ -57,7 +57,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:padding="7dp"
-                android:text="BÊTA"
+                android:text="ANDROID"
                 android:textColor="#C4B5FD"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -120,21 +120,21 @@
                 android:layout_height="wrap_content"
                 android:background="@drawable/panel_background"
                 android:orientation="vertical"
-                android:padding="19dp"
+                android:padding="16dp"
                 android:tag="card">
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Nouveau téléchargement"
                     android:textColor="#F3F4F6"
-                    android:textSize="21sp"
+                    android:textSize="20sp"
                     android:textStyle="bold" />
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:tag="muted"
-                    android:text="Collez ou partagez un lien depuis votre application préférée."
+                    android:text="Collez un lien pour télécharger vos médias."
                     android:textColor="#A1A1AA"
                     android:textSize="13sp" />
                 <TextView
@@ -197,7 +197,7 @@
                     android:id="@+id/startButton"
                     android:layout_width="match_parent"
                     android:layout_height="53dp"
-                    android:layout_marginTop="22dp"
+                    android:layout_marginTop="16dp"
                     android:background="@drawable/brand_button"
                     android:text="↓  Télécharger maintenant"
                     android:textAllCaps="false"
@@ -581,7 +581,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="22dp"
                 android:tag="muted"
-                android:text="All-Download pour Android · Version bêta · Windows inchangé."
+                android:text="ALL-DOWNLOAD · Android"
                 android:textColor="#A1A1AA"
                 android:textSize="12sp"/>
         </LinearLayout>
