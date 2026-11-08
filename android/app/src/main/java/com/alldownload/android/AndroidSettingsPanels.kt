@@ -113,6 +113,7 @@ internal object AndroidSettingsPanels {
                     cornerRadius = px(11).toFloat()
                     setStroke(px(1), if (active) purple else borderColor)
                 }
+                buttons[section].tag = if (active) "primary" else "settings-tab"
                 buttons[section].setTextColor(if (active) Color.WHITE else color)
             }
             prefs.edit().putInt("settings_tab", index).apply()
