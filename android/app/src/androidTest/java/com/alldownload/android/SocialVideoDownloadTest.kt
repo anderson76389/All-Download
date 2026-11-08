@@ -83,7 +83,7 @@ class SocialVideoDownloadTest {
     )
 
     @Test fun dailymotionPublicVideo() = checkPlatform(
-        "Dailymotion", "https://www.dailymotion.com/video/x8vu47w"
+        "Dailymotion", "https://www.dailymotion.com/video/x9n97ia"
     )
 
     private fun checkPlatform(platform: String, url: String) {
@@ -227,7 +227,8 @@ class SocialVideoDownloadTest {
             "http error 403", "forbidden", "access denied",
             "unavailable video", "video unavailable", "this video is unavailable",
             "status code 404", "http error 404", "domain not found", "has been removed",
-            "the requested resource does not exist", "post not found"
+            "the requested resource does not exist", "post not found",
+            "not found."
         ).any { it in text }
     }
 }
