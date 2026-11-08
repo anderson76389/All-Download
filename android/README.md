@@ -1,10 +1,10 @@
-# All-Download Android — bêta 0.6.0
+# All-Download Android — bêta 0.6.2
 
 Nouvelle application Android **indépendante de Windows**, dans le dossier `android/`. Les éditions Portable/Classique Windows, `yt_app.py`, `twitch_hls.py` et `build-windows.yml` ne sont pas modifiés.
 
 ## Interface mobile fidèle à All-Download
 
-- **Nom, icône et logo d'origine** : la compilation Android copie la ressource `logo.jpg` à la racine du dépôt, en lecture seule, vers les ressources Android générées. Les éditions Windows ne changent pas.
+- **Nom et interface Windows conservés, logo d'application Android inédit :** le nouveau visuel violet combinant flèche, vidéo et monogramme AD se trouve dans `android/branding/android-launcher.jpg`. L'icône, le splash et le bandeau Android l'utilisent. Le `logo.jpg` de Windows reste intact et présent dans les ressources Android pour la cohérence visuelle.
 - **Splash screen natif**, identité visuelle de Windows : violet `#7C3AED`, thème sombre `#141414`, cartes `#212121`, ainsi que les modes clair et OLED enregistrés.
 - **Quatre écrans Android natifs** : Accueil (URL, vidéo/audio/GIF, qualité), File d'attente (progression et reprise), Dossiers (navigation et ouverture des médias) et Paramètres (thèmes, actualisation yt-dlp, cookies privés).
 - **File de téléchargement persistante** dans les préférences privées, avec exécution séquentielle, progression, relance d'une tâche échouée et suppression des tâches terminées. Pause/reprise best-effort via `yt-dlp --continue` et espace de travail privé par tâche : certains serveurs interdisent la reprise ; dans ce cas, la tâche peut repartir du début.
@@ -12,13 +12,13 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 - **Android pliable/tablette** : interface centrée et limitée en largeur sur les grands écrans, recalcul au changement d'orientation ; contrôles tactiles natifs sur petit écran.
 - **Fichiers accessibles** depuis les sept dossiers de l'app : MediaStore Android 10+ et FileProvider Android 7–9, sans permission « gérer tous les fichiers ».
 
-## Refonte de l'interface Windows sur téléphone et tablette (bêta 0.6.0)
+## Refonte de l'interface Windows sur téléphone et tablette (bêta 0.6.2)
 
 - **Écran réellement inactif :** aucune boucle d'actualisation quand l'activité est en arrière-plan. Quand elle est visible, le rafraîchissement s'adapte (1,8 s pendant le téléchargement, 3 s dans la file, 8 s au repos) et ne redessine pas les contrôles si leur état n'a pas changé.
 - **File d'attente optimisée :** les tâches restent enregistrées de façon atomique et persistante, avec un cache en mémoire et une révision. Les écritures identiques sont ignorées, la progression sur disque est regroupée et seulement 24 cartes sont affichées au départ (« Afficher plus » pour la suite). Aucun téléchargement n'est perdu si une carte n'est pas affichée.
 - **Explorateur de dossiers non bloquant :** les requêtes MediaStore et les dossiers Android 7–9 sont lus sur un fil dédié, pas pendant les interactions utilisateur. Les fichiers sont affichés par séries de 50, avec un bouton pour charger la suite ; on ne construit plus toutes les cartes en même temps.
 - **Moteur et réseau :** yt-dlp/FFmpeg initialisés une seule fois par service ; progression de yt-dlp et notifications limitées en fréquence. Une actualisation facultative de yt-dlp pour les réseaux sociaux est automatiquement évitée sur une connexion facturée au volume ou en mode économie d'énergie (les téléchargements demandés par l'utilisateur restent possibles).
-- **Logo officiel léger :** l'image `logo.jpg` des versions Windows est convertie *à la compilation* en PNG 192 × 192, pour que l'icône Android et le splash conservent la même identité sans décoder une image inutilement grande à chaque ouverture.
+- **Logo Android compact :** l'image Android dédiée est produite en PNG 192 × 192 pour l'interface et en PNG adaptatif 288 × 288 avec marges de sécurité Android. Les éléments Windows ne sont ni renommés ni supprimés.
 - **Accueil plus proche de Windows :** aperçu léger de la file (trois tâches au maximum), accès direct à la file complète, modes rapides vidéo/audio/GIF/playlist/Twitch, collage d’URL et nettoyage ciblé des tâches échouées ou en attente.
 - **Identité visuelle et commandes :** onglets de réglages **Téléchargement, Application, Réseau** fidèles à la navigation Windows, et réorganisation en barre latérale sur tablette et pliable ouvert. Seuls les réglages réellement implémentés par yt-dlp/Android sont activables.
 - **Twitch :** VODs et clips Twitch enregistrés dans le dossier **TWITCH** ; les exigences de résolution native 1080p/720p des VODs sont inchangées.
@@ -64,7 +64,7 @@ Les flux protégés/DRM, les contenus privés sans autorisation et les vidéos s
 
 ## Compilation
 
-Via GitHub Actions : workflow `Build Android (beta)`, puis récupérer l'artefact `All-Download-Android-beta` après succès. La préversion `android-v0.6.0-beta` est distribuée séparément des Releases stables Windows.
+Via GitHub Actions : workflow `Build Android (beta)`, puis récupérer l'artefact `All-Download-Android-beta` après succès. La préversion `android-v0.6.2-beta` est distribuée séparément des Releases stables Windows.
 
 En local : Android SDK plateforme 35, JDK 17 et Gradle 8.9, puis `gradle -p android :app:assembleDebug`.
 

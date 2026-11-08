@@ -140,7 +140,7 @@ jobs:
       - name: Write beta release notes
         run: |
           cat > android-release-notes.md <<'EOF'
-          ## All-Download Android 0.6.0 BÊTA
+          ## All-Download Android 0.6.2 BÊTA
 
           Téléchargement autonome Android (APK). **Ne remplace pas les versions Windows.**
 
@@ -149,7 +149,9 @@ jobs:
           - Interface Windows adaptée à Android : barre d'URL, file centrale, formats, commandes et progression conservés.
           - Barre de contrôle Liquid Glass : quatre icônes vectorielles, capsule violette translucide sur téléphone et navigation latérale sur tablette ou pliable ouvert.
           - Navigation sécurisée : zones tactiles lisibles, respect des barres système Android, adaptation automatique au clavier, sans capture d'écran ni flou GPU coûteux.
-          - Identité Windows préservée : logo original, icône adaptative recentrée dans la zone sûre, nom Android, splash screen et palette violette.
+          - Logo Android original violet dédié (média, téléchargement et AD) : icône, splash et fenêtre de mise à jour, source conservée dans android/branding/.
+          - UI carrée proche de Windows : onglets à coins discrets, cartes et boutons rectangulaires, pictogrammes vectoriels et emojis de catégories.
+          - Les versions Windows et leur logo restent inchangés.
           - Optimisation RAM : logo original redimensionné à la compilation (PNG 192 × 192), sans toucher au fichier Windows.
           - Fluidité : mises à jour de l'interface uniquement quand l'activité est visible, moins de re-dessins, pagination des tâches (24 à la fois) et explorateur de dossiers asynchrone (50 fichiers à la fois).
           - Démarrage optimisé : contrôles avancés de l'application construits seulement à l'ouverture des Réglages, avec leur état sauvegardé.
