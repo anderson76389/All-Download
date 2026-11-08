@@ -326,6 +326,10 @@ class AndroidSmokeTest {
             val downloads = activity.findViewById<View>(R.id.settingsDownloadPanel)
             val application = activity.findViewById<View>(R.id.settingsApplicationPanel)
             val network = activity.findViewById<View>(R.id.settingsNetworkPanel)
+            instrumentation.runOnMainSync {
+                activity.findViewById<Button>(R.id.settingsTabDownload).performClick()
+            }
+            instrumentation.waitForIdleSync()
             assertEquals(View.VISIBLE, downloads.visibility)
             assertEquals(View.GONE, application.visibility)
             instrumentation.runOnMainSync {
