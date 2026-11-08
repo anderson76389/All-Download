@@ -461,23 +461,37 @@ class MainActivity : Activity() {
         }
     }
 
+    /** Android MediaStore and filesystem queries always run off the UI thread. */
     private fun renderFolders() {
+        val request = ++fileRequestId
         filesList.removeAllViews()
+        filesList.addView(infoCard("Dossiers All-Download", "Chargement des catégories…"))
         val categories = listOf(
             "VIDÉOS" to "▶", "AUDIOS" to "♫", "TWITCH" to "▣",
             "GIFS" to "▤", "CHAÎNES" to "▦", "PLAYLIST" to "☷", "AUTRES" to "◈")
-        categories.forEach { (name, symbol) ->
-            val files = filesForCategory(name)
-            val item = infoCard(symbol + "  " + name,
-                files.size.toString() + " fichier(s) · Téléchargements/All-Download/" + name)
-            item.setOnClickListener { showFolderContents(name) }
-            filesList.addView(item)
+        fileExecutor.execute {
+            val counts = categories.map { (name, symbol) ->
+                Triple(name, symbol, filesForCategory(name, 0).count)
+            }
+            runOnUiThread {
+                if (request != fileRequestId || isFinishing || isDestroyed ||
+                    selectedTab != 2) return@runOnUiThread
+                filesList.removeAllViews()
+                for ((name, symbol, count) in counts) {
+                    val item = infoCard(symbol + "  " + name,
+                        "$count fichier(s) · Téléchargements/All-Download/" + name)
+                    item.setOnClickListener { showFolderContents(name) }
+                    filesList.addView(item)
+                }
+            }
         }
     }
 
     private data class MediaEntry(val name: String, val uri: Uri)
-    private fun filesForCategory(category: String): List<MediaEntry> {
-        val results = mutableListOf<MediaEntry>()
+    private data class FolderResult(val count: Int, val entries: List<MediaEntry>)
+
+    private fun filesForCategory(category: String, limit: Int): FolderResult {
+        val results = ArrayList<MediaEntry>(limit)
         if (Build.VERSION.SDK_INT >= 29) {
             val columns = arrayOf(MediaStore.MediaColumns._ID,
                 MediaStore.MediaColumns.DISPLAY_NAME)
@@ -486,52 +500,72 @@ class MainActivity : Activity() {
                     columns, MediaStore.MediaColumns.RELATIVE_PATH + "=?",
                     arrayOf(Environment.DIRECTORY_DOWNLOADS + "/All-Download/" + category + "/"),
                     MediaStore.MediaColumns.DATE_ADDED + " DESC")?.use { rows ->
-                    while (rows.moveToNext()) {
+                    val total = rows.count
+                    while (results.size < limit && rows.moveToNext()) {
                         results.add(MediaEntry(rows.getString(1),
                             ContentUris.withAppendedId(
                                 MediaStore.Downloads.EXTERNAL_CONTENT_URI, rows.getLong(0))))
                     }
+                    return FolderResult(total, results)
                 }
-            } catch (_: SecurityException) {}
+            } catch (_: Exception) {
+                return FolderResult(0, emptyList())
+            }
         } else {
             @Suppress("DEPRECATION")
             val directory = File(Environment.getExternalStoragePublicDirectory(
                 Environment.DIRECTORY_DOWNLOADS), "All-Download/" + category)
-            directory.listFiles()?.filter { it.isFile }?.forEach {
-                try {
-                    results.add(MediaEntry(it.name, FileProvider.getUriForFile(this,
-                        packageName + ".files", it)))
-                } catch (_: Exception) {}
-            }
-        }
-        return results
-    }
-
-    private fun showFolderContents(category: String) {
-        filesList.removeAllViews()
-        filesList.addView(smallAction("‹  Toutes les catégories") { renderFolders() })
-        val media = filesForCategory(category)
-        filesList.addView(infoCard(category,
-            if (media.isEmpty()) "Aucun fichier dans ce dossier."
-            else media.size.toString() + " fichier(s)"))
-        media.take(150).forEach { entry ->
-            val card = infoCard("◉  " + entry.name, "Toucher pour ouvrir")
-            card.setOnClickListener {
-                try {
-                    startActivity(Intent(Intent.ACTION_VIEW).apply {
-                        setDataAndType(entry.uri, MediaExporter.mediaMime(entry.name))
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    })
-                } catch (_: Exception) {
-                    Toast.makeText(this, "Aucune application disponible pour ce fichier.",
-                        Toast.LENGTH_LONG).show()
+            val all = directory.listFiles()?.filter { it.isFile } ?: emptyList()
+            if (limit > 0) {
+                for (file in all.take(limit)) {
+                    try {
+                        results.add(MediaEntry(file.name,
+                            FileProvider.getUriForFile(this, packageName + ".files", file)))
+                    } catch (_: Exception) {}
                 }
             }
-            filesList.addView(card)
+            return FolderResult(all.size, results)
         }
-        if (media.size > 150)
-            filesList.addView(infoCard("Liste partielle",
-                "150 premiers fichiers affichés. Tous restent dans le dossier All-Download."))
+        return FolderResult(0, emptyList())
+    }
+
+    private fun showFolderContents(category: String, limit: Int = 50) {
+        val request = ++fileRequestId
+        filesList.removeAllViews()
+        filesList.addView(infoCard(category, "Chargement des fichiers…"))
+        fileExecutor.execute {
+            val folder = filesForCategory(category, limit)
+            runOnUiThread {
+                if (request != fileRequestId || isFinishing || isDestroyed ||
+                    selectedTab != 2) return@runOnUiThread
+                filesList.removeAllViews()
+                filesList.addView(smallAction("‹  Toutes les catégories") { renderFolders() })
+                filesList.addView(infoCard(category,
+                    if (folder.count == 0) "Aucun fichier dans ce dossier."
+                    else "${folder.count} fichier(s)"))
+                folder.entries.forEach { entry ->
+                    val card = infoCard("◉  " + entry.name, "Toucher pour ouvrir")
+                    card.setOnClickListener {
+                        try {
+                            startActivity(Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(entry.uri, MediaExporter.mediaMime(entry.name))
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            })
+                        } catch (_: Exception) {
+                            Toast.makeText(this,
+                                "Aucune application disponible pour ce fichier.",
+                                Toast.LENGTH_LONG).show()
+                        }
+                    }
+                    filesList.addView(card)
+                }
+                if (folder.count > limit)
+                    filesList.addView(smallAction(
+                        "Afficher plus (" + (folder.count - limit) + " restants)") {
+                        showFolderContents(category, (limit + 50).coerceAtMost(2000))
+                    })
+            }
+        }
     }
 
     private fun infoCard(title: String, description: String): LinearLayout {
