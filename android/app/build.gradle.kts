@@ -56,11 +56,41 @@ dependencies {
 }
 
 
-// Copies the original root logo into generated Android resources.
-// No binary is duplicated or modified in the Windows edition.
-val prepareAndroidBranding by tasks.registering(Copy::class) {
-    from(rootProject.projectDir.resolve("../logo.jpg"))
-    into(layout.buildDirectory.dir("generated/all-download-brand/drawable-nodpi"))
-    rename { "all_download_logo.jpg" }
+// Reproduce the real Windows brand as a compact 192px lossless PNG at build time.
+// The original Windows logo.jpg is read-only and is never changed in the repository.
+// Avoid decoding a full-size JPEG every time the Android launcher or splash appears.
+val originalLogo = rootProject.projectDir.resolve("../logo.jpg")
+val compactLogo = layout.buildDirectory.file(
+    "generated/all-download-brand/drawable-nodpi/all_download_logo.png"
+)
+val prepareAndroidBranding by tasks.registering {
+    inputs.file(originalLogo)
+    outputs.file(compactLogo)
+    doLast {
+        val image = javax.imageio.ImageIO.read(originalLogo)
+            ?: error("Original All-Download logo.jpg is invalid.")
+        val size = 192
+        val scale = minOf(size.toDouble() / image.width, size.toDouble() / image.height)
+        val width = (image.width * scale).toInt().coerceAtLeast(1)
+        val height = (image.height * scale).toInt().coerceAtLeast(1)
+        val icon = java.awt.image.BufferedImage(size, size,
+            java.awt.image.BufferedImage.TYPE_INT_ARGB)
+        val graphics = icon.createGraphics()
+        try {
+            graphics.color = java.awt.Color(20, 20, 20)
+            graphics.fillRect(0, 0, size, size)
+            graphics.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
+                java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC)
+            graphics.drawImage(image, (size - width) / 2, (size - height) / 2,
+                width, height, null)
+        } finally {
+            graphics.dispose()
+        }
+        val target = compactLogo.get().asFile
+        target.parentFile.mkdirs()
+        check(javax.imageio.ImageIO.write(icon, "png", target)) {
+            "Unable to create the compact original All-Download Android logo."
+        }
+    }
 }
 tasks.named("preBuild") { dependsOn(prepareAndroidBranding) }
