@@ -41,14 +41,14 @@
                     android:layout_height="wrap_content"
                     android:text="ALL-DOWNLOAD"
                     android:textColor="#F3F4F6"
-                    android:textSize="22sp"
+                    android:textSize="20sp"
                     android:textStyle="bold" />
                 <TextView
                     android:id="@+id/brandSubtitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
-                    android:text="Téléchargez. Convertissez. Organisez."
+                    android:text="Tous vos médias, simplement."
                     android:textColor="#A1A1AA"
                     android:textSize="12sp" />
             </LinearLayout>
@@ -128,7 +128,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Nouveau téléchargement"
+                    android:text="Nouveau lien"
                     android:textColor="#F3F4F6"
                     android:textSize="17sp"
                     android:textStyle="bold"/>
@@ -137,7 +137,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:tag="muted"
-                    android:text="Vidéo, audio, GIF, playlist ou chaîne"
+                    android:text="Collez un lien pour commencer."
                     android:textColor="#A1A1AA"
                     android:textSize="12sp"/>
                 <LinearLayout
@@ -171,54 +171,30 @@
                         android:textAllCaps="false"
                         android:textSize="12sp"/>
                 </LinearLayout>
-                <Button
-                    android:id="@+id/queueButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="50dp"
-                    android:layout_marginTop="9dp"
-                    android:tag="primary"
-                    android:text="＋  Ajouter à la file d'attente"
-                    android:textAllCaps="false"
-                    android:textColor="#FFFFFF"
-                    android:textStyle="bold"/>
-            </LinearLayout>
-
-            <!-- Main Windows content area: queue cards and empty state -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:background="@drawable/panel_background"
-                android:orientation="vertical"
-                android:padding="14dp"
-                android:tag="card">
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
+                    android:layout_marginTop="12dp"
                     android:orientation="horizontal">
-                    <TextView
+                    <Button
+                        android:id="@+id/startButton"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
+                        android:layout_height="48dp"
                         android:layout_weight="1"
-                        android:text="File d'attente"
-                        android:textColor="#F3F4F6"
-                        android:textSize="17sp"
+                        android:text="↓ Télécharger"
+                        android:textAllCaps="false"
+                        android:textSize="13sp"
                         android:textStyle="bold"/>
                     <Button
-                        android:id="@+id/openFullQueueButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="44dp"
-                        android:text="Tout voir"
+                        android:id="@+id/queueButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_marginLeft="8dp"
+                        android:layout_weight="1"
+                        android:text="＋ Dans la file"
                         android:textAllCaps="false"
-                        android:textSize="12sp"/>
+                        android:textSize="13sp"/>
                 </LinearLayout>
-                <LinearLayout
-                    android:id="@+id/homeQueuePreview"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="vertical"/>
             </LinearLayout>
 
             <!-- Windows footer toolbar: mode, quality, playback and quick actions -->
@@ -233,7 +209,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Options de téléchargement"
+                    android:text="Options"
                     android:textColor="#F3F4F6"
                     android:textSize="15sp"
                     android:textStyle="bold"/>
@@ -286,14 +262,6 @@
                     </LinearLayout>
                 </LinearLayout>
                 <Button
-                    android:id="@+id/startButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="49dp"
-                    android:layout_marginTop="10dp"
-                    android:text="↓  Télécharger maintenant"
-                    android:textAllCaps="false"
-                    android:textStyle="bold"/>
-                <Button
                     android:id="@+id/cancelButton"
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
@@ -322,14 +290,14 @@
                         android:orientation="horizontal">
                         <Button
                             android:id="@+id/quickVideoButton"
-                            android:layout_width="95dp"
+                            android:layout_width="86dp"
                             android:layout_height="44dp"
                             android:text="▶ Vidéo"
                             android:textAllCaps="false"
                             android:textSize="12sp"/>
                         <Button
                             android:id="@+id/quickAudioButton"
-                            android:layout_width="95dp"
+                            android:layout_width="84dp"
                             android:layout_height="44dp"
                             android:layout_marginLeft="5dp"
                             android:text="♫ Audio"
@@ -337,7 +305,7 @@
                             android:textSize="12sp"/>
                         <Button
                             android:id="@+id/quickGifButton"
-                            android:layout_width="68dp"
+                            android:layout_width="66dp"
                             android:layout_height="44dp"
                             android:layout_marginLeft="5dp"
                             android:text="GIF"
@@ -345,7 +313,7 @@
                             android:textSize="12sp"/>
                         <Button
                             android:id="@+id/quickPlaylistButton"
-                            android:layout_width="95dp"
+                            android:layout_width="90dp"
                             android:layout_height="44dp"
                             android:layout_marginLeft="5dp"
                             android:text="Playlist"
@@ -353,7 +321,7 @@
                             android:textSize="12sp"/>
                         <Button
                             android:id="@+id/quickTwitchButton"
-                            android:layout_width="88dp"
+                            android:layout_width="84dp"
                             android:layout_height="44dp"
                             android:layout_marginLeft="5dp"
                             android:text="Twitch"
@@ -366,9 +334,47 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:tag="muted"
-                    android:text="Twitch : 1080p native, sinon 720p native"
+                    android:text="Twitch : 1080p ou 720p natifs"
                     android:textColor="#A1A1AA"
                     android:textSize="11sp"/>
+            </LinearLayout>
+
+            <!-- Main Windows content area: queue cards and empty state -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/panel_background"
+                android:orientation="vertical"
+                android:padding="14dp"
+                android:tag="card">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="File d'attente"
+                        android:textColor="#F3F4F6"
+                        android:textSize="17sp"
+                        android:textStyle="bold"/>
+                    <Button
+                        android:id="@+id/openFullQueueButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="44dp"
+                        android:text="Tout voir"
+                        android:textAllCaps="false"
+                        android:textSize="12sp"/>
+                </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/homeQueuePreview"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="vertical"/>
             </LinearLayout>
 
             <!-- Persistent footer on phones, in-page footer on large screens. -->
@@ -427,7 +433,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="5dp"
                 android:tag="muted"
-                android:text="Vos téléchargements, même après la fermeture de l’application."
+                android:text="Gérez vos téléchargements à tout moment."
                 android:textColor="#A1A1AA"/>
             <LinearLayout
                 android:layout_width="match_parent"
@@ -458,7 +464,7 @@
                 android:id="@+id/clearFinishedButton"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
-                android:text="Effacer les tâches terminées de la liste"
+                android:text="Effacer les terminés"
                 android:textAllCaps="false"/>
             <LinearLayout
                 android:layout_width="match_parent"
@@ -469,7 +475,7 @@
                     android:layout_width="0dp"
                     android:layout_height="48dp"
                     android:layout_weight="1"
-                    android:text="Effacer les échecs"
+                    android:text="Effacer les erreurs"
                     android:textAllCaps="false"/>
                 <Button
                     android:id="@+id/clearWaitingButton"
@@ -506,7 +512,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
                 android:tag="muted"
-                android:text="Tout est rangé dans Téléchargements/All-Download/"
+                android:text="7 dossiers · Téléchargements/All-Download"
                 android:textColor="#A1A1AA"/>
             <LinearLayout
                 android:id="@+id/filesList"
@@ -551,7 +557,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="9dp"
                     android:tag="muted"
-                    android:text="Même identité que la version Windows : violet, clair, sombre ou OLED."
+                    android:text="Sombre, clair ou OLED."
                     android:textColor="#A1A1AA"/>
                 <Spinner
                     android:id="@+id/themeSpinner"
@@ -596,7 +602,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:tag="muted"
-                    android:text="Une fois par semaine après une mise à jour réussie. Le téléchargement reste utilisable hors ligne."
+                    android:text="Mise à jour hebdomadaire si disponible."
                     android:textColor="#A1A1AA"
                     android:textSize="12sp"/>
             </LinearLayout>
@@ -641,7 +647,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:tag="muted"
-                    android:text="Les cookies de votre compte autorisé restent dans le stockage privé de l’application."
+                    android:text="Session stockée en privé sur cet appareil."
                     android:textColor="#A1A1AA"
                     android:textSize="12sp"/>
             </LinearLayout>
