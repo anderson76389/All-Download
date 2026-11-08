@@ -1,4 +1,4 @@
-# All-Download Android — bêta 0.3.0
+# All-Download Android — bêta 0.4.0
 
 Nouvelle application Android **indépendante de Windows**, dans le dossier `android/`. Les éditions Portable/Classique Windows, `yt_app.py`, `twitch_hls.py` et `build-windows.yml` ne sont pas modifiés.
 
@@ -11,9 +11,21 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 - **Android pliable/tablette** : interface centrée et limitée en largeur sur les grands écrans, recalcul au changement d'orientation ; contrôles tactiles natifs sur petit écran.
 - **Fichiers accessibles** depuis les sept dossiers de l'app : MediaStore Android 10+ et FileProvider Android 7–9, sans permission « gérer tous les fichiers ».
 
+## Optimisation de l'autonomie, de la mémoire et de la fluidité (bêta 0.4.0)
+
+- **Écran réellement inactif :** aucune boucle d'actualisation quand l'activité est en arrière-plan. Quand elle est visible, le rafraîchissement s'adapte (1,8 s pendant le téléchargement, 3 s dans la file, 8 s au repos) et ne redessine pas les contrôles si leur état n'a pas changé.
+- **File d'attente optimisée :** les tâches restent enregistrées de façon atomique et persistante, avec un cache en mémoire et une révision. Les écritures identiques sont ignorées, la progression sur disque est regroupée et seulement 24 cartes sont affichées au départ (« Afficher plus » pour la suite). Aucun téléchargement n'est perdu si une carte n'est pas affichée.
+- **Explorateur de dossiers non bloquant :** les requêtes MediaStore et les dossiers Android 7–9 sont lus sur un fil dédié, pas pendant les interactions utilisateur. Les fichiers sont affichés par séries de 50, avec un bouton pour charger la suite ; on ne construit plus toutes les cartes en même temps.
+- **Moteur et réseau :** yt-dlp/FFmpeg initialisés une seule fois par service ; progression de yt-dlp et notifications limitées en fréquence. Une actualisation facultative de yt-dlp pour les réseaux sociaux est automatiquement évitée sur une connexion facturée au volume ou en mode économie d'énergie (les téléchargements demandés par l'utilisateur restent possibles).
+- **Logo officiel léger :** l'image `logo.jpg` des versions Windows est convertie *à la compilation* en PNG 192 × 192, pour que l'icône Android et le splash conservent la même identité sans décoder une image inutilement grande à chaque ouverture.
+- **Identité visuelle et commandes :** onglets de réglages **Téléchargement, Application, Réseau** fidèles à la navigation Windows, et réorganisation en barre latérale sur tablette et pliable ouvert. Seuls les réglages réellement implémentés par yt-dlp/Android sont activables.
+- **Twitch :** VODs et clips Twitch enregistrés dans le dossier **TWITCH** ; les exigences de résolution native 1080p/720p des VODs sont inchangées.
+
+Ces mesures évitent les opérations superflues et limitent les allocations pendant l'utilisation, mais **une consommation chiffrée, la stabilité sur plusieurs jours et le rendu spécifique HONOR Magic V6 exigent encore des essais sur cet appareil réel**. Des téléchargements très longs ou des conversions vidéo/audio utilisent nécessairement de la batterie et du stockage temporaire.
+
 ## Mises à jour Android dans l'application
 
-À partir de la **bêta 0.3.0**, All-Download interroge directement l'API des **GitHub Releases** à l'ouverture (vérification limitée à une fois toutes les 30 minutes). Seules les versions publiées avec un tag `android-vX.Y.Z-beta` et un vrai fichier `All-Download-Android-X.Y.Z-beta.apk` sont retenues : **les Releases Windows ne déclenchent jamais de proposition d'APK**.
+À partir de la **bêta 0.4.0**, All-Download interroge directement l'API des **GitHub Releases** à l'ouverture (vérification limitée à une fois toutes les 30 minutes). Seules les versions publiées avec un tag `android-vX.Y.Z-beta` et un vrai fichier `All-Download-Android-X.Y.Z-beta.apk` sont retenues : **les Releases Windows ne déclenchent jamais de proposition d'APK**.
 
 Quand une version Android plus récente existe, l'application affiche une **fenêtre native animée** avec le logo, le numéro de version, les nouveautés, « Télécharger la mise à jour » et « Plus tard ». Elle ne réaffiche pas la même fenêtre à chaque retour dans l'application ; une nouvelle version entraîne une nouvelle notification. Un interrupteur et un bouton « Rechercher une mise à jour » se trouvent dans Paramètres. Le bouton ouvre le fichier officiel GitHub dans le navigateur ; **Android conserve seul l'autorisation d'installer l'APK**. Il n'y a aucune installation silencieuse, service d'auto-mise-à-jour tiers ou compte All-Download.
 
@@ -34,7 +46,7 @@ Sur tablette et sur pliable ouvert (largeur Android d'au moins 720 dp), l'interf
 - Répertoires catégorisés : `VIDÉOS`, `AUDIOS`, `TWITCH`, `GIFS`, `CHAÎNES`, `PLAYLIST`, `AUTRES`.
 - Pour une **VOD Twitch en mode vidéo**, le format yt-dlp est limité aux flux dont la résolution source est **exactement 1080**, sinon **exactement 720** ; pas d'upscaling, de 480p automatique ni de réencodage vidéo. 720p et 480p restent sélectionnables manuellement.
 
-## Liens sociaux et comptes (bêta 0.3.0)
+## Liens sociaux et comptes (bêta 0.4.0)
 
 - Reddit, Instagram, X/Twitter, Pinterest, TikTok, Facebook (notamment Reels), Vimeo, Bluesky et Dailymotion sont traités par les extracteurs **yt-dlp** ; leur disponibilité varie selon la vidéo, les protections du site et l'adresse IP.
 - Le moteur yt-dlp tente une **actualisation officielle** en début de téléchargement social (puis une fois par semaine si elle aboutit). Si le réseau échoue, un nouvel essai est possible 12 heures plus tard et l'ancienne version continue de fonctionner. **Aucun service distant All-Download** n'est nécessaire.
@@ -50,7 +62,7 @@ Les flux protégés/DRM, les contenus privés sans autorisation et les vidéos s
 
 ## Compilation
 
-Via GitHub Actions : workflow `Build Android (beta)`, puis récupérer l'artefact `All-Download-Android-beta` après succès. La préversion `android-v0.3.0-beta` est distribuée séparément des Releases stables Windows.
+Via GitHub Actions : workflow `Build Android (beta)`, puis récupérer l'artefact `All-Download-Android-beta` après succès. La préversion `android-v0.4.0-beta` est distribuée séparément des Releases stables Windows.
 
 En local : Android SDK plateforme 35, JDK 17 et Gradle 8.9, puis `gradle -p android :app:assembleDebug`.
 
