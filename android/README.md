@@ -1,4 +1,4 @@
-# All-Download Android — bêta 0.2.0
+# All-Download Android — bêta 0.3.0
 
 Nouvelle application Android **indépendante de Windows**, dans le dossier `android/`. Les éditions Portable/Classique Windows, `yt_app.py`, `twitch_hls.py` et `build-windows.yml` ne sont pas modifiés.
 
@@ -11,6 +11,20 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 - **Android pliable/tablette** : interface centrée et limitée en largeur sur les grands écrans, recalcul au changement d'orientation ; contrôles tactiles natifs sur petit écran.
 - **Fichiers accessibles** depuis les sept dossiers de l'app : MediaStore Android 10+ et FileProvider Android 7–9, sans permission « gérer tous les fichiers ».
 
+## Mises à jour Android dans l'application
+
+À partir de la **bêta 0.3.0**, All-Download interroge directement l'API des **GitHub Releases** à l'ouverture (vérification limitée à une fois toutes les 30 minutes). Seules les versions publiées avec un tag `android-vX.Y.Z-beta` et un vrai fichier `All-Download-Android-X.Y.Z-beta.apk` sont retenues : **les Releases Windows ne déclenchent jamais de proposition d'APK**.
+
+Quand une version Android plus récente existe, l'application affiche une **fenêtre native animée** avec le logo, le numéro de version, les nouveautés, « Télécharger la mise à jour » et « Plus tard ». Elle ne réaffiche pas la même fenêtre à chaque retour dans l'application ; une nouvelle version entraîne une nouvelle notification. Un interrupteur et un bouton « Rechercher une mise à jour » se trouvent dans Paramètres. Le bouton ouvre le fichier officiel GitHub dans le navigateur ; **Android conserve seul l'autorisation d'installer l'APK**. Il n'y a aucune installation silencieuse, service d'auto-mise-à-jour tiers ou compte All-Download.
+
+**Signature APK :** les builds de test des anciennes bêta 0.1.2 et 0.2.0 ont été signés avec des clés de débogage éphémères. Ils ne peuvent **pas** garantir une installation de mise à jour par-dessus l'ancienne version. Pour des mises à jour Android vraiment installables sans désinstallation, configurez une **clé de signature persistante et privée** via les secrets GitHub Actions `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` ; le workflow Android les utilise lorsqu'ils sont présents. **Ne commitez jamais votre keystore ou vos mots de passe.** La première transition vers la clé persistante pourra demander une désinstallation, ce qui effacera les données privées de l'appli ; les médias déjà exportés dans Téléchargements ne sont pas supprimés.
+
+## Réglages adaptés depuis Windows
+
+Les trois thèmes Windows **Clair / Sombre / OLED** sont enregistrés et appliqués au téléphone et à la tablette. Les réglages **utilisables dans le moteur Android** incluent le conteneur MP4/MKV, le remux optionnel, le débit cible MP3, les métadonnées et miniatures, les sous-titres lorsque la source les propose, SponsorBlock YouTube, le proxy HTTP(S)/SOCKS, les en-têtes User-Agent, les arguments yt-dlp avancés, les tentatives/délais/fragments réseau, les notifications, les animations et les cookies personnels privés. Les choix sont conservés dans les préférences de l'application.
+
+Sur tablette et sur pliable ouvert (largeur Android d'au moins 720 dp), l'interface passe à une **barre latérale** et à une colonne de contenu large. Sur téléphone, elle garde des onglets tactiles horizontaux. Les fichiers personnels restent dans les sept dossiers **Téléchargements/All-Download/**, sans déplacement arbitraire vers le stockage racine. Certains réglages Windows propres au PC (WebView2, CLI TwitchDownloader, runtime Deno Windows, sélection de dossiers Windows et normalisation avancée) ne sont pas équivalents sur Android et ne sont pas affichés comme de faux boutons.
+
 ## Contenu de la bêta
 
 - Application native Android (Android 7.0+, API 24), APK multi-architecture ARM 32/64 et x86 32/64.
@@ -20,7 +34,7 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 - Répertoires catégorisés : `VIDÉOS`, `AUDIOS`, `TWITCH`, `GIFS`, `CHAÎNES`, `PLAYLIST`, `AUTRES`.
 - Pour une **VOD Twitch en mode vidéo**, le format yt-dlp est limité aux flux dont la résolution source est **exactement 1080**, sinon **exactement 720** ; pas d'upscaling, de 480p automatique ni de réencodage vidéo. 720p et 480p restent sélectionnables manuellement.
 
-## Liens sociaux et comptes (bêta 0.2.0)
+## Liens sociaux et comptes (bêta 0.3.0)
 
 - Reddit, Instagram, X/Twitter, Pinterest, TikTok, Facebook (notamment Reels), Vimeo, Bluesky et Dailymotion sont traités par les extracteurs **yt-dlp** ; leur disponibilité varie selon la vidéo, les protections du site et l'adresse IP.
 - Le moteur yt-dlp tente une **actualisation officielle** en début de téléchargement social (puis une fois par semaine si elle aboutit). Si le réseau échoue, un nouvel essai est possible 12 heures plus tard et l'ancienne version continue de fonctionner. **Aucun service distant All-Download** n'est nécessaire.
@@ -30,13 +44,13 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 
 ## Limites réelles
 
-Il s'agit d'une **bêta mobile**, pas encore de la parité fonctionnelle avec Windows. Le secours HLS Twitch indépendant de `TwitchDownloaderCLI.exe`, l'authentification Twitch avancée, les sous-titres, les outils Windows spécialisés, les journaux et historiques détaillés et certains réglages sont encore à porter. Les boutons de pause/reprise de la file Android utilisent les mécanismes disponibles de yt-dlp ; la reprise n'est pas garantie pour les serveurs non compatibles. TwitchDownloaderCLI Windows ne peut pas être exécuté tel quel sur Android. Certaines VOD Twitch peuvent encore échouer.
+Il s'agit d'une **bêta mobile**, pas encore de la parité fonctionnelle avec Windows. Le secours HLS Twitch indépendant de `TwitchDownloaderCLI.exe`, l'authentification Twitch avancée, les sous-titres non fournis par les plateformes, les outils Windows spécialisés, les journaux et historiques détaillés et certains réglages sont encore à porter. Les boutons de pause/reprise de la file Android utilisent les mécanismes disponibles de yt-dlp ; la reprise n'est pas garantie pour les serveurs non compatibles. TwitchDownloaderCLI Windows ne peut pas être exécuté tel quel sur Android. Certaines VOD Twitch peuvent encore échouer.
 
 Les flux protégés/DRM, les contenus privés sans autorisation et les vidéos supprimées ne sont pas garantis. La résolution choisie correspond aux formats source, pas à une promesse de compatibilité de chaque plateforme. Le stockage Android impose un espace de travail temporaire privé avant l'export public ; aucun accès au système de fichiers racine ou permission « tous les fichiers » n'est demandé.
 
 ## Compilation
 
-Via GitHub Actions : workflow `Build Android (beta)`, puis récupérer l'artefact `All-Download-Android-beta` après succès. La préversion `android-v0.2.0-beta` est distribuée séparément des Releases stables Windows.
+Via GitHub Actions : workflow `Build Android (beta)`, puis récupérer l'artefact `All-Download-Android-beta` après succès. La préversion `android-v0.3.0-beta` est distribuée séparément des Releases stables Windows.
 
 En local : Android SDK plateforme 35, JDK 17 et Gradle 8.9, puis `gradle -p android :app:assembleDebug`.
 
