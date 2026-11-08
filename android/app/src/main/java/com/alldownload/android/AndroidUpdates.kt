@@ -26,7 +26,7 @@ internal object AndroidUpdates {
     const val RELEASES_API =
         "https://api.github.com/repos/anderson76389/All-Download/releases?per_page=25"
     private const val PREFS = "android_update_preferences"
-    private const val INTERVAL = 12L * 60L * 60L * 1000L
+    private const val INTERVAL = 30L * 60L * 1000L
 
     data class Release(val version: String, val tag: String, val title: String,
         val summary: String, val page: String, val apkUrl: String, val size: Long)
@@ -209,6 +209,11 @@ internal object AndroidUpdates {
         }
         card.addView(install, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, px(53)).apply { topMargin = px(14) })
+        card.addView(text(
+            "L'installation est confirmée par Android. Cette bêta utilise encore une signature de test : si Android refuse la mise à jour, une réinstallation peut être nécessaire.",
+            11f, secondary).apply {
+            setPadding(px(2), px(10), px(2), px(2))
+        })
         val later = Button(activity).apply {
             text = "Plus tard"
             isAllCaps = false
