@@ -13,7 +13,7 @@ permissions:
 
 concurrency:
   group: all-download-android-beta-release
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   release-android:
@@ -23,14 +23,17 @@ jobs:
     steps:
       - name: Checkout Android beta branch
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Exiger les tests Android, tablette et réseaux sociaux du code à publier
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # This workflow is triggered by an Android-release workflow change.
-          # The parent commit contains the exact Android code tested by the CI.
-          TESTED_SHA="$(git rev-parse HEAD^)"
+          # Find the latest commit that actually changed Android application code.
+          # Android release-workflow-only commits do not require repeating the APK tests.
+          TESTED_SHA="$(git log -1 --format=%H -- android/)"
+          test -n "$TESTED_SHA"
           echo "Code Android vérifié : $TESTED_SHA"
           expected=("Build and test Android (beta)" "Android public video download checks" "Android social media video checks")
           for attempt in $(seq 1 90); do
@@ -152,6 +155,7 @@ jobs:
           Les versions Windows Portable/Classique restent sur les Releases stables.
 
           **Fichier :** `All-Download-Android-0.3.0-beta.apk` — empreinte SHA-256 dans le fichier `.sha256` joint.
+          EOF
           if [ "$APK_SIGNING" = "stable" ]; then
             echo "" >> android-release-notes.md
             echo "**Signature :** clé privée persistante configurée. Les futures mises à jour signées avec la même clé sont compatibles avec l'installation par-dessus cette version." >> android-release-notes.md
@@ -159,7 +163,6 @@ jobs:
             echo "" >> android-release-notes.md
             echo "**Signature :** débogage éphémère (aucune clé stable configurée). Une désinstallation peut être nécessaire entre deux APK." >> android-release-notes.md
           fi
-          EOF
       - name: Publish separate Android prerelease
         env:
           GH_TOKEN: ${{ github.token }}
