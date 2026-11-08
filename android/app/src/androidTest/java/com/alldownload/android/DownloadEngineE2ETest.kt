@@ -34,7 +34,9 @@ class DownloadEngineE2ETest {
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
 
     @Test fun downloadsConvertsAndExportsLocalAudio() {
-        if (Build.VERSION.SDK_INT in 23..28) {
+        if (Build.VERSION.SDK_INT in 23..28 &&
+            context.checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
+                android.content.pm.PackageManager.PERMISSION_GRANTED) {
             InstrumentationRegistry.getInstrumentation().uiAutomation.grantRuntimePermission(
                 context.packageName, android.Manifest.permission.WRITE_EXTERNAL_STORAGE
             )
