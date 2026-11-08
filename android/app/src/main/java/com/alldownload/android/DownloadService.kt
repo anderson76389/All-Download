@@ -5,6 +5,8 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.net.ConnectivityManager
+import android.os.PowerManager
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
@@ -45,6 +47,10 @@ class DownloadService : Service() {
     @Volatile private var active = false
     private var lastNotification = 0L
     private var lastQueueSave = 0L
+    private var lastStatusUpdate = 0L
+    private var lastNotifiedPercent = -1
+    private var lastSavedPercent = -1
+    private var engineReady = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -120,6 +126,10 @@ class DownloadService : Service() {
         paused = false
         cancelled = false
         lastNotification = 0L
+        lastQueueSave = 0L
+        lastStatusUpdate = 0L
+        lastNotifiedPercent = -1
+        lastSavedPercent = -1
         state = UiState(true, 0, "Initialisation du moteur Android…")
         startForeground(NOTIFICATION_ID, notification("File d’attente en préparation", 0))
         Thread({ processQueue(startId) }, "all-download-worker").start()
@@ -167,25 +177,44 @@ class DownloadService : Service() {
             check(!paused && !cancelled) { "Interrompu." }
             if (!work.isDirectory && !work.mkdirs())
                 throw IllegalStateException("Impossible de créer le dossier temporaire privé.")
-            YoutubeDL.getInstance().init(applicationContext)
-            FFmpeg.getInstance().init(applicationContext)
+            if (!engineReady) {
+                YoutubeDL.getInstance().init(applicationContext)
+                FFmpeg.getInstance().init(applicationContext)
+                engineReady = true
+            }
             maybeRefreshSocialEngine(task.url)
             check(!paused && !cancelled) { "Interrompu." }
 
             val request = buildRequest(task.url, task.mode, task.quality, work)
+            lastSavedPercent = -1
+            lastNotifiedPercent = -1
+            lastQueueSave = 0L
+            lastNotification = 0L
             state = UiState(true, task.progress, "Téléchargement en cours…")
             YoutubeDL.getInstance().execute(request, PROCESS_ID, false) { progress, eta, _ ->
                 if (!paused && !cancelled) {
                     val percent = progress.toInt().coerceIn(0, 100)
-                    val message = "Téléchargement : $percent % • reste " + eta.coerceAtLeast(0) + " s"
-                    state = UiState(true, percent, message)
                     val now = SystemClock.elapsedRealtime()
-                    if (now - lastQueueSave > 950) {
-                        lastQueueSave = now
-                        DownloadQueue.update(this, task.id, progress = percent, message = message)
+                    val message = "Téléchargement : $percent % • reste " +
+                        eta.coerceAtLeast(0) + " s"
+                    // Limit allocations and activity redraws while keeping progress visible.
+                    if (percent != state.progress || now - lastStatusUpdate >= 2500L) {
+                        state = UiState(true, percent, message)
+                        lastStatusUpdate = now
                     }
-                    if (now - lastNotification > 1400) {
+                    // Atomic queue persistence at most every 3.5s, plus completion.
+                    if (percent > lastSavedPercent && (
+                            now - lastQueueSave >= 3500L || percent >= 100)) {
+                        lastQueueSave = now
+                        lastSavedPercent = percent
+                        DownloadQueue.update(this, task.id, progress = percent,
+                            message = message)
+                    }
+                    // Avoid high-frequency notification IPC and repeated wakeups.
+                    if (percent != lastNotifiedPercent && (
+                            now - lastNotification >= 5000L || percent >= 100)) {
                         lastNotification = now
+                        lastNotifiedPercent = percent
                         getSystemService(NotificationManager::class.java).notify(
                             NOTIFICATION_ID, notification(message, percent))
                     }
@@ -231,6 +260,11 @@ class DownloadService : Service() {
 
     private fun maybeRefreshSocialEngine(url: String) {
         if (!DownloadRules.isSocialVideoHost(url)) return
+        // Don't spend mobile data or battery on optional yt-dlp engine updates.
+        val power = getSystemService(POWER_SERVICE) as PowerManager
+        if (power.isPowerSaveMode) return
+        val network = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+        if (network.isActiveNetworkMetered) return
         if (!getSharedPreferences("app_settings_v1", MODE_PRIVATE)
                 .getBoolean("auto_update", true)) return
         val prefs = getSharedPreferences("yt_dlp_updates", MODE_PRIVATE)
@@ -263,6 +297,7 @@ class DownloadService : Service() {
         val request = YoutubeDLRequest(url)
         request.addOption("--no-mtime")
         request.addOption("--newline")
+        request.addOption("--progress-delta", 1)
         request.addOption("--continue")
         request.addOption("--no-overwrites")
         request.addOption("--output", File(work, "%(title).150B [%(id)s].%(ext)s").absolutePath)
