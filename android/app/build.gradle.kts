@@ -14,8 +14,8 @@ android {
         applicationId = "com.alldownload.android"
         minSdk = 24
         targetSdk = 35
-        versionCode = 7
-        versionName = "0.6.0-beta"
+        versionCode = 8
+        versionName = "0.6.1-beta"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
@@ -67,9 +67,13 @@ val originalLogo = rootProject.projectDir.resolve("../logo.jpg")
 val compactLogo = layout.buildDirectory.file(
     "generated/all-download-brand/drawable-nodpi/all_download_logo.png"
 )
+val launcherLogo = layout.buildDirectory.file(
+    "generated/all-download-brand/drawable-nodpi/all_download_launcher.png"
+)
 val prepareAndroidBranding by tasks.registering {
     inputs.file(originalLogo)
     outputs.file(compactLogo)
+    outputs.file(launcherLogo)
     doLast {
         val image = javax.imageio.ImageIO.read(originalLogo)
             ?: error("Original All-Download logo.jpg is invalid.")
@@ -94,6 +98,27 @@ val prepareAndroidBranding by tasks.registering {
         target.parentFile.mkdirs()
         check(javax.imageio.ImageIO.write(icon, "png", target)) {
             "Unable to create the compact original All-Download Android logo."
+        }
+        // Retain exact Windows artwork within the adaptive launcher's safe area.
+        val launcher = BufferedImage(288, 288, BufferedImage.TYPE_INT_ARGB)
+        val launcherGraphics = launcher.createGraphics()
+        try {
+            launcherGraphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                RenderingHints.VALUE_INTERPOLATION_BICUBIC)
+            val safeSize = 192
+            val safeScale = minOf(safeSize.toDouble() / image.width,
+                safeSize.toDouble() / image.height)
+            val safeWidth = (image.width * safeScale).toInt().coerceAtLeast(1)
+            val safeHeight = (image.height * safeScale).toInt().coerceAtLeast(1)
+            launcherGraphics.drawImage(image, (288 - safeWidth) / 2,
+                (288 - safeHeight) / 2, safeWidth, safeHeight, null)
+        } finally {
+            launcherGraphics.dispose()
+        }
+        val launcherTarget = launcherLogo.get().asFile
+        launcherTarget.parentFile.mkdirs()
+        check(javax.imageio.ImageIO.write(launcher, "png", launcherTarget)) {
+            "Unable to create the original All-Download adaptive launcher icon."
         }
     }
 }
