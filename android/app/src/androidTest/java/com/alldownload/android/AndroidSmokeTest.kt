@@ -274,6 +274,31 @@ class AndroidSmokeTest {
         }
     }
 
+    @Test fun minimalistLiquidGlassAndDownloadActionsKeepWorking() {
+        val activity = instrumentation.startActivitySync(
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        ) as MainActivity
+        instrumentation.waitForIdleSync()
+        try {
+            val download = activity.findViewById<Button>(R.id.startButton)
+            val enqueue = activity.findViewById<Button>(R.id.queueButton)
+            assertSame("Les actions Télécharger et Dans la file doivent partager une ligne.",
+                download.parent, enqueue.parent)
+            assertTrue(download.isClickable && enqueue.isClickable)
+            val navigation = activity.findViewById<LinearLayout>(R.id.navigation)
+            assertTrue("La navigation utilise le verre natif à double couche.",
+                (navigation.parent as View).background is android.graphics.drawable.LayerDrawable)
+            val links = listOf(R.id.navHome, R.id.navQueue, R.id.navFiles, R.id.navSettings)
+            assertTrue(links.all { activity.findViewById<Button>(it).isClickable })
+            val shortcuts = listOf(R.id.quickVideoButton, R.id.quickAudioButton,
+                R.id.quickGifButton, R.id.quickPlaylistButton, R.id.quickTwitchButton)
+            assertTrue(shortcuts.all { activity.findViewById<Button>(it).isClickable })
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
+
     @Test fun originalBrandAndFourNativeTabsAreFunctional() {
         val activity = instrumentation.startActivitySync(
             Intent(context, MainActivity::class.java)
