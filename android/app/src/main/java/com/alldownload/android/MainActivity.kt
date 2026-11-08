@@ -50,13 +50,13 @@ class MainActivity : Activity() {
         statusText = findViewById(R.id.statusText)
 
         modeSpinner.adapter = ArrayAdapter(
-            this, android.R.layout.simple_spinner_dropdown_item,
+            this, R.layout.spinner_item,
             listOf("Vidéo", "Audio MP3", "Audio M4A", "Audio FLAC", "GIF", "Playlist", "Chaîne")
-        )
+        ).apply { setDropDownViewResource(R.layout.spinner_item) }
         qualitySpinner.adapter = ArrayAdapter(
-            this, android.R.layout.simple_spinner_dropdown_item,
+            this, R.layout.spinner_item,
             listOf("1080p (Twitch : 1080p → 720p)", "720p", "480p", "Auto (meilleure)", "2160p")
-        )
+        ).apply { setDropDownViewResource(R.layout.spinner_item) }
 
         startButton.setOnClickListener { start() }
         cancelButton.setOnClickListener {
