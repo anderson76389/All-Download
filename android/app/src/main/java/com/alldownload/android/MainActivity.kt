@@ -98,6 +98,8 @@ class MainActivity : Activity() {
     private var selectedTab = 0
     private var settingsPanelsCreated = false
     private var lastQueueRevision = -1L
+    private var lastHomeQueueRevision = -1L
+    private lateinit var homeQueuePreview: LinearLayout
     private var queueVisible = 24
     private var lastDrawnState: DownloadService.UiState? = null
     private val fileExecutor = Executors.newSingleThreadExecutor()
@@ -125,6 +127,8 @@ class MainActivity : Activity() {
             }
             if (selectedTab == 1 && lastQueueRevision != DownloadQueue.revision())
                 renderQueue()
+            if (selectedTab == 0 && lastHomeQueueRevision != DownloadQueue.revision())
+                renderHomeQueue()
             handler.postDelayed(this, when {
                 state.busy -> 1800L
                 selectedTab == 1 -> 3000L
@@ -161,6 +165,7 @@ class MainActivity : Activity() {
         progressBar = findViewById(R.id.progressBar)
         cookieStatus = findViewById(R.id.cookieStatus)
         queueList = findViewById(R.id.queueList)
+        homeQueuePreview = findViewById(R.id.homeQueuePreview)
         filesList = findViewById(R.id.filesList)
         homePage = findViewById(R.id.homePage)
         queuePage = findViewById(R.id.queuePage)
@@ -226,6 +231,29 @@ class MainActivity : Activity() {
             lastQueueRevision = -1L
             renderQueue()
         }
+        findViewById<Button>(R.id.clearFailedButton).setOnClickListener {
+            DownloadQueue.clearStatuses(this, setOf(DownloadQueue.ERROR, DownloadQueue.CANCELLED))
+            lastQueueRevision = -1L
+            renderQueue()
+        }
+        findViewById<Button>(R.id.clearWaitingButton).setOnClickListener {
+            DownloadQueue.clearStatuses(this, setOf(DownloadQueue.WAITING, DownloadQueue.PAUSED))
+            lastQueueRevision = -1L
+            renderQueue()
+        }
+        findViewById<Button>(R.id.openFullQueueButton).setOnClickListener {
+            selectTab(1)
+        }
+        findViewById<Button>(R.id.pasteUrlButton).setOnClickListener {
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val value = clipboard.primaryClip?.getItemAt(0)?.coerceToText(this)?.toString()
+                .orEmpty().trim()
+            if (DownloadRules.isValidVideoUrl(value)) {
+                urlInput.setText(value)
+                urlInput.setSelection(value.length)
+            } else Toast.makeText(this, "Aucune URL HTTP(S) valide à coller.",
+                Toast.LENGTH_SHORT).show()
+        }
         findViewById<Button>(R.id.quickVideoButton).setOnClickListener {
             modeSpinner.setSelection(0)
             selectTab(0)
@@ -235,6 +263,15 @@ class MainActivity : Activity() {
             modeSpinner.setSelection(1)
             selectTab(0)
             urlInput.requestFocus()
+        }
+        listOf(R.id.quickGifButton to 4, R.id.quickPlaylistButton to 5,
+            R.id.quickTwitchButton to 0).forEach { (buttonId, mode) ->
+            findViewById<Button>(buttonId).setOnClickListener {
+                modeSpinner.setSelection(mode)
+                if (buttonId == R.id.quickTwitchButton) qualitySpinner.setSelection(0)
+                selectTab(0)
+                urlInput.requestFocus()
+            }
         }
 
         findViewById<CheckBox>(R.id.autoUpdateCheck).apply {
@@ -317,6 +354,7 @@ class MainActivity : Activity() {
             button.setTextColor(if (selected) Color.WHITE else colors.foreground)
             button.isAllCaps = false
         }
+        if (tab == 0) renderHomeQueue()
         if (tab == 1) {
             lastQueueRevision = -1L
             queueVisible = 24
@@ -364,6 +402,39 @@ class MainActivity : Activity() {
             startForegroundService(service)
         else startService(service)
         if (action == DownloadService.ACTION_ADD_QUEUE) selectTab(1)
+    }
+
+    /** Mini Windows-style file view on the home page, capped to three cheap cards. */
+    private fun renderHomeQueue() {
+        val revision = DownloadQueue.revision()
+        if (revision == lastHomeQueueRevision) return
+        lastHomeQueueRevision = revision
+        val jobs = DownloadQueue.snapshot(this)
+        homeQueuePreview.removeAllViews()
+        if (jobs.isEmpty()) {
+            homeQueuePreview.addView(infoCard("Aucun téléchargement",
+                "Ajoutez un lien ci-dessus pour remplir la file d'attente."))
+            return
+        }
+        homeQueuePreview.addView(infoCard(
+            jobs.size.toString() + " élément(s)",
+            "En cours : " + jobs.count { it.status == DownloadQueue.RUNNING } +
+                " · En attente : " + jobs.count { it.status == DownloadQueue.WAITING } +
+                " · Terminés : " + jobs.count { it.status == DownloadQueue.DONE }))
+        jobs.asReversed().take(3).forEach { job ->
+            val stateLabel = when (job.status) {
+                DownloadQueue.RUNNING -> "Téléchargement"
+                DownloadQueue.WAITING -> "En attente"
+                DownloadQueue.PAUSED -> "En pause"
+                DownloadQueue.DONE -> "Terminé"
+                DownloadQueue.ERROR -> "Échec"
+                else -> "Annulé"
+            }
+            val shortUrl = job.url.take(92) + if (job.url.length > 92) "…" else ""
+            val preview = infoCard(stateLabel + " · " + job.progress + " %", shortUrl)
+            preview.setOnClickListener { selectTab(1) }
+            homeQueuePreview.addView(preview)
+        }
     }
 
     private fun renderQueue() {
@@ -777,7 +848,9 @@ class MainActivity : Activity() {
         super.onResume()
         handler.removeCallbacks(refresh)
         handler.post(refresh)
-        // GitHub Android prerelease check: only once every 12 h when enabled.
+        // Resume only a user-authorized APK installation after Android's settings screen.
+        AndroidApkInstaller.onResume(this)
+        // GitHub prerelease updates are cached for 30 minutes and never open a browser.
         AndroidUpdates.check(this)
     }
 

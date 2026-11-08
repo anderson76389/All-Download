@@ -181,6 +181,11 @@ class AndroidSmokeTest {
                 activity.findViewById<ImageView>(R.id.brandLogo).drawable)
             assertEquals("ALL-DOWNLOAD",
                 activity.findViewById<TextView>(R.id.brandTitle).text.toString())
+            assertNotNull(activity.findViewById<LinearLayout>(R.id.homeQueuePreview))
+            assertNotNull(activity.findViewById<Button>(R.id.pasteUrlButton))
+            assertNotNull(activity.findViewById<Button>(R.id.quickGifButton))
+            assertNotNull(activity.findViewById<Button>(R.id.quickPlaylistButton))
+            assertNotNull(activity.findViewById<Button>(R.id.quickTwitchButton))
             instrumentation.runOnMainSync {
                 activity.findViewById<Button>(R.id.navQueue).performClick()
             }
@@ -228,6 +233,24 @@ class AndroidSmokeTest {
                 .selectedItemPosition)
         } finally {
             instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
+
+    @Test fun queueCleanupNeverDeletesRunningTasks() {
+        val base = "https://example.org/alldownload-queue-" + UUID.randomUUID()
+        val waiting = DownloadQueue.enqueue(context, "$base-waiting.mp4", 0, 0)
+        val failed = DownloadQueue.enqueue(context, "$base-failed.mp4", 0, 0)
+        val running = DownloadQueue.enqueue(context, "$base-running.mp4", 0, 0)
+        try {
+            DownloadQueue.update(context, failed.id, DownloadQueue.ERROR)
+            DownloadQueue.update(context, running.id, DownloadQueue.RUNNING)
+            assertEquals(1, DownloadQueue.clearStatuses(context, setOf(DownloadQueue.ERROR)))
+            assertEquals(1, DownloadQueue.clearStatuses(context, setOf(DownloadQueue.WAITING)))
+            assertEquals(0, DownloadQueue.clearStatuses(context, setOf(DownloadQueue.RUNNING)))
+            assertTrue(DownloadQueue.snapshot(context).any { it.id == running.id })
+        } finally {
+            DownloadQueue.update(context, running.id, DownloadQueue.ERROR)
+            listOf(waiting, failed, running).forEach { DownloadQueue.remove(context, it.id) }
         }
     }
 

@@ -177,6 +177,19 @@ internal object DownloadQueue {
         }
     }
 
+    /** Windows-like queue cleanup. Never removes the currently running download. */
+    @Synchronized
+    fun clearStatuses(context: Context, statuses: Set<String>): Int {
+        val accepted = statuses.intersect(setOf(WAITING, PAUSED, DONE, ERROR, CANCELLED))
+        if (accepted.isEmpty()) return 0
+        val tasks = snapshot(context)
+        val removed = tasks.filter { it.status in accepted }
+        if (removed.isEmpty()) return 0
+        save(context, tasks.filterNot { it.status in accepted })
+        removed.forEach { deletePrivateWorkspace(context, it.id) }
+        return removed.size
+    }
+
     @Synchronized
     fun next(context: Context): Task? =
         snapshot(context).firstOrNull { it.status == WAITING }
