@@ -628,7 +628,17 @@ class MainActivity : Activity() {
                 clipboard.setPrimaryClip(ClipData.newPlainText("Lien All-Download", job.url))
                 Toast.makeText(this, "Lien copié.", Toast.LENGTH_SHORT).show()
             })
-            card.addView(actions)
+            // Three actions may exceed 320dp; scroll only the action strip, not the card.
+            val actionScroll = android.widget.HorizontalScrollView(this).apply {
+                isHorizontalScrollBarEnabled = false
+                isFillViewport = true
+            }
+            actionScroll.addView(actions, android.widget.HorizontalScrollView.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            card.addView(actionScroll, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(8)
+            })
             queueList.addView(card)
         }
         if (jobs.size > queueVisible) {
