@@ -443,7 +443,12 @@ class MainActivity : Activity() {
         if (action == DownloadService.ACTION_START && Build.VERSION.SDK_INT >= 26)
             startForegroundService(service)
         else startService(service)
-        if (action == DownloadService.ACTION_ADD_QUEUE) selectTab(1)
+        // Windows' Add button keeps the central queue visible on the same page.
+        // The dedicated queue tab remains available for complete management.
+        if (action == DownloadService.ACTION_ADD_QUEUE) {
+            lastHomeQueueRevision = -1L
+            renderHomeQueue()
+        }
     }
 
     /** Mini Windows-style file view on the home page, capped to three cheap cards. */
@@ -633,7 +638,7 @@ class MainActivity : Activity() {
                 isHorizontalScrollBarEnabled = false
                 isFillViewport = true
             }
-            actionScroll.addView(actions, android.widget.HorizontalScrollView.LayoutParams(
+            actionScroll.addView(actions, android.widget.FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             card.addView(actionScroll, LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
