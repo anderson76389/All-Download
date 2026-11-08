@@ -149,7 +149,7 @@ internal object AndroidUpdates {
             .edit().putBoolean("enabled", value).apply()
     }
 
-    fun showDialog(activity: Activity, release: Release) {
+    fun showDialog(activity: Activity, release: Release): Dialog {
         val light = activity.getSharedPreferences("app_settings_v1",
             Context.MODE_PRIVATE).getInt("theme", 0) == 1
         val background = if (light) Color.WHITE else Color.rgb(33, 33, 33)
@@ -246,5 +246,6 @@ internal object AndroidUpdates {
             card.animate().alpha(1f).scaleX(1f).scaleY(1f)
                 .setDuration(270).start()
         }
+        return dialog
     }
 }
