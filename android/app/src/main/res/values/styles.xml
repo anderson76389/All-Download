@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.AllDownload" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#7C3AED</item>
+        <item name="android:colorControlActivated">#7C3AED</item>
+        <item name="android:statusBarColor">#141414</item>
+        <item name="android:navigationBarColor">#141414</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowBackground">#141414</item>
+        <item name="android:windowSplashScreenBackground">#141414</item>
+    </style>
+    <style name="Theme.AllDownload.Light" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#7C3AED</item>
+        <item name="android:colorControlActivated">#7C3AED</item>
+        <item name="android:statusBarColor">#F8FAFC</item>
+        <item name="android:navigationBarColor">#F8FAFC</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowBackground">#F8FAFC</item>
+    </style>
+    <style name="Theme.AllDownload.Oled" parent="Theme.AllDownload">
+        <item name="android:statusBarColor">#000000</item>
+        <item name="android:navigationBarColor">#000000</item>
+        <item name="android:windowBackground">#000000</item>
+    </style>
+</resources>
