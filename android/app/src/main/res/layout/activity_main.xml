@@ -108,234 +108,302 @@
             </LinearLayout>
         </HorizontalScrollView>
 
+
+        <!-- The Windows primary screen, reflowed for Android touch screens. -->
         <LinearLayout
             android:id="@+id/homePage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="12dp"
             android:orientation="vertical">
 
+            <!-- Windows top toolbar: URL, paste, and Add -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@drawable/panel_background"
                 android:orientation="vertical"
-                android:padding="16dp"
+                android:padding="14dp"
                 android:tag="card">
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Nouveau téléchargement"
                     android:textColor="#F3F4F6"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
+                    android:textSize="17sp"
+                    android:textStyle="bold"/>
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:tag="muted"
-                    android:text="Collez un lien pour télécharger vos médias."
+                    android:text="Vidéo, audio, GIF, playlist ou chaîne"
                     android:textColor="#A1A1AA"
-                    android:textSize="13sp" />
-                <TextView
+                    android:textSize="12sp"/>
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="23dp"
-                    android:text="Lien du média"
-                    android:textColor="#F3F4F6"
-                    android:textStyle="bold"/>
-                <EditText
-                    android:id="@+id/urlInput"
-                    android:layout_width="match_parent"
-                    android:layout_height="54dp"
-                    android:layout_marginTop="8dp"
-                    android:background="@drawable/input_background"
-                    android:hint="https://youtube.com/…"
-                    android:inputType="textUri"
-                    android:paddingLeft="14dp"
-                    android:paddingRight="14dp"
-                    android:singleLine="true"
-                    android:tag="input"
-                    android:textColor="#F3F4F6"
-                    android:textColorHint="#9999AA"/>
-                <Button
-                    android:id="@+id/pasteUrlButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="44dp"
-                    android:layout_marginTop="5dp"
-                    android:text="Coller depuis le presse-papiers"
-                    android:textAllCaps="false"/>
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="20dp"
-                    android:text="Type de téléchargement"
-                    android:textColor="#F3F4F6"
-                    android:textStyle="bold"/>
-                <Spinner
-                    android:id="@+id/modeSpinner"
-                    android:layout_width="match_parent"
-                    android:layout_height="54dp"
-                    android:layout_marginTop="6dp"
-                    android:contentDescription="Type de téléchargement"
-                    android:tag="input"/>
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:text="Qualité vidéo"
-                    android:textColor="#F3F4F6"
-                    android:textStyle="bold"/>
-                <Spinner
-                    android:id="@+id/qualitySpinner"
-                    android:layout_width="match_parent"
-                    android:layout_height="54dp"
-                    android:layout_marginTop="6dp"
-                    android:contentDescription="Qualité vidéo"
-                    android:tag="input"/>
-                <Button
-                    android:id="@+id/startButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="53dp"
-                    android:layout_marginTop="16dp"
-                    android:background="@drawable/brand_button"
-                    android:text="↓  Télécharger maintenant"
-                    android:textAllCaps="false"
-                    android:textColor="#FFFFFF"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:tag="primary"/>
+                    android:layout_marginTop="12dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+                    <EditText
+                        android:id="@+id/urlInput"
+                        android:layout_width="0dp"
+                        android:layout_height="52dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/input_background"
+                        android:hint="Coller une URL…"
+                        android:imeOptions="actionDone"
+                        android:inputType="textUri"
+                        android:paddingLeft="12dp"
+                        android:paddingRight="12dp"
+                        android:singleLine="true"
+                        android:tag="input"
+                        android:textColor="#F3F4F6"
+                        android:textColorHint="#9999AA"/>
+                    <Button
+                        android:id="@+id/pasteUrlButton"
+                        android:layout_width="72dp"
+                        android:layout_height="52dp"
+                        android:layout_marginLeft="7dp"
+                        android:contentDescription="Coller depuis le presse-papiers"
+                        android:text="Coller"
+                        android:textAllCaps="false"
+                        android:textSize="12sp"/>
+                </LinearLayout>
                 <Button
                     android:id="@+id/queueButton"
                     android:layout_width="match_parent"
-                    android:layout_height="51dp"
-                    android:layout_marginTop="5dp"
-                    android:text="＋  Ajouter à la file d’attente"
-                    android:textAllCaps="false"/>
-                <Button
-                    android:id="@+id/cancelButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="49dp"
-                    android:text="Arrêter le téléchargement actif"
-                    android:textAllCaps="false"/>
+                    android:layout_height="50dp"
+                    android:layout_marginTop="9dp"
+                    android:tag="primary"
+                    android:text="＋  Ajouter à la file d'attente"
+                    android:textAllCaps="false"
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold"/>
             </LinearLayout>
 
+            <!-- Main Windows content area: queue cards and empty state -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="17dp"
+                android:layout_marginTop="12dp"
                 android:background="@drawable/panel_background"
                 android:orientation="vertical"
-                android:padding="18dp"
+                android:padding="14dp"
+                android:tag="card">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="File d'attente"
+                        android:textColor="#F3F4F6"
+                        android:textSize="17sp"
+                        android:textStyle="bold"/>
+                    <Button
+                        android:id="@+id/openFullQueueButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="44dp"
+                        android:text="Tout voir"
+                        android:textAllCaps="false"
+                        android:textSize="12sp"/>
+                </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/homeQueuePreview"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="vertical"/>
+            </LinearLayout>
+
+            <!-- Windows footer toolbar: mode, quality, playback and quick actions -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/panel_background"
+                android:orientation="vertical"
+                android:padding="14dp"
                 android:tag="card">
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Téléchargement en cours"
+                    android:text="Options de téléchargement"
                     android:textColor="#F3F4F6"
+                    android:textSize="15sp"
+                    android:textStyle="bold"/>
+                <LinearLayout
+                    android:id="@+id/downloadOptions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="vertical">
+                    <LinearLayout
+                        android:id="@+id/downloadModeGroup"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:tag="muted"
+                            android:text="Format"
+                            android:textColor="#A1A1AA"
+                            android:textSize="12sp"/>
+                        <Spinner
+                            android:id="@+id/modeSpinner"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:layout_marginTop="4dp"
+                            android:contentDescription="Format de téléchargement"
+                            android:tag="input"/>
+                    </LinearLayout>
+                    <LinearLayout
+                        android:id="@+id/downloadQualityGroup"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:tag="muted"
+                            android:text="Qualité"
+                            android:textColor="#A1A1AA"
+                            android:textSize="12sp"/>
+                        <Spinner
+                            android:id="@+id/qualitySpinner"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:layout_marginTop="4dp"
+                            android:contentDescription="Qualité de téléchargement"
+                            android:tag="input"/>
+                    </LinearLayout>
+                </LinearLayout>
+                <Button
+                    android:id="@+id/startButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="49dp"
+                    android:layout_marginTop="10dp"
+                    android:text="↓  Télécharger maintenant"
+                    android:textAllCaps="false"
+                    android:textStyle="bold"/>
+                <Button
+                    android:id="@+id/cancelButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="5dp"
+                    android:text="Arrêter le téléchargement actif"
+                    android:textAllCaps="false"
+                    android:visibility="gone"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="13dp"
+                    android:tag="muted"
+                    android:text="Accès rapide"
+                    android:textColor="#A1A1AA"
+                    android:textSize="12sp"/>
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:fillViewport="false"
+                    android:scrollbars="none">
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+                        <Button
+                            android:id="@+id/quickVideoButton"
+                            android:layout_width="95dp"
+                            android:layout_height="44dp"
+                            android:text="▶ Vidéo"
+                            android:textAllCaps="false"
+                            android:textSize="12sp"/>
+                        <Button
+                            android:id="@+id/quickAudioButton"
+                            android:layout_width="95dp"
+                            android:layout_height="44dp"
+                            android:layout_marginLeft="5dp"
+                            android:text="♫ Audio"
+                            android:textAllCaps="false"
+                            android:textSize="12sp"/>
+                        <Button
+                            android:id="@+id/quickGifButton"
+                            android:layout_width="68dp"
+                            android:layout_height="44dp"
+                            android:layout_marginLeft="5dp"
+                            android:text="GIF"
+                            android:textAllCaps="false"
+                            android:textSize="12sp"/>
+                        <Button
+                            android:id="@+id/quickPlaylistButton"
+                            android:layout_width="95dp"
+                            android:layout_height="44dp"
+                            android:layout_marginLeft="5dp"
+                            android:text="Playlist"
+                            android:textAllCaps="false"
+                            android:textSize="12sp"/>
+                        <Button
+                            android:id="@+id/quickTwitchButton"
+                            android:layout_width="88dp"
+                            android:layout_height="44dp"
+                            android:layout_marginLeft="5dp"
+                            android:text="Twitch"
+                            android:textAllCaps="false"
+                            android:textSize="12sp"/>
+                    </LinearLayout>
+                </HorizontalScrollView>
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:tag="muted"
+                    android:text="Twitch : 1080p native, sinon 720p native"
+                    android:textColor="#A1A1AA"
+                    android:textSize="11sp"/>
+            </LinearLayout>
+
+            <!-- Live Windows-style footer status + progress -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/panel_background"
+                android:orientation="vertical"
+                android:padding="14dp"
+                android:tag="card">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="État du téléchargement"
+                    android:textColor="#F3F4F6"
+                    android:textSize="13sp"
                     android:textStyle="bold"/>
                 <TextView
                     android:id="@+id/statusText"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="11dp"
-                    android:text="Prêt."
+                    android:layout_marginTop="6dp"
+                    android:text="Prêt à télécharger"
                     android:textColor="#C4B5FD"
-                    android:textSize="14sp"
+                    android:textSize="13sp"
                     android:tag="accent"/>
                 <ProgressBar
                     android:id="@+id/progressBar"
                     style="?android:attr/progressBarStyleHorizontal"
                     android:layout_width="match_parent"
-                    android:layout_height="9dp"
-                    android:layout_marginTop="14dp"
+                    android:layout_height="5dp"
+                    android:layout_marginTop="10dp"
                     android:max="100"/>
             </LinearLayout>
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="22dp"
-                android:text="Raccourcis"
-                android:textColor="#F3F4F6"
-                android:textSize="19sp"
-                android:textStyle="bold"/>
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:orientation="horizontal">
-                <Button
-                    android:id="@+id/quickVideoButton"
-                    android:layout_width="0dp"
-                    android:layout_height="53dp"
-                    android:layout_marginRight="5dp"
-                    android:layout_weight="1"
-                    android:text="▶  Vidéos"
-                    android:textAllCaps="false" />
-                <Button
-                    android:id="@+id/quickAudioButton"
-                    android:layout_width="0dp"
-                    android:layout_height="53dp"
-                    android:layout_marginLeft="5dp"
-                    android:layout_weight="1"
-                    android:text="♫  Audios"
-                    android:textAllCaps="false" />
-            </LinearLayout>
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="11dp"
-                android:tag="muted"
-                android:text="Qualité Twitch : 1080p native, sinon 720p native. Aucune résolution artificielle."
-                android:textColor="#A1A1AA"
-                android:textSize="12sp" />
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:orientation="horizontal">
-                <Button
-                    android:id="@+id/quickGifButton"
-                    android:layout_width="0dp"
-                    android:layout_height="52dp"
-                    android:layout_weight="1"
-                    android:text="GIF"
-                    android:textAllCaps="false"/>
-                <Button
-                    android:id="@+id/quickPlaylistButton"
-                    android:layout_width="0dp"
-                    android:layout_height="52dp"
-                    android:layout_weight="1"
-                    android:text="Playlist"
-                    android:textAllCaps="false"/>
-                <Button
-                    android:id="@+id/quickTwitchButton"
-                    android:layout_width="0dp"
-                    android:layout_height="52dp"
-                    android:layout_weight="1"
-                    android:text="Twitch"
-                    android:textAllCaps="false"/>
-            </LinearLayout>
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
-                android:text="File d’attente"
-                android:textColor="#F3F4F6"
-                android:textSize="19sp"
-                android:textStyle="bold" />
-            <LinearLayout
-                android:id="@+id/homeQueuePreview"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:orientation="vertical"/>
-            <Button
-                android:id="@+id/openFullQueueButton"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:text="Voir et gérer tous les téléchargements"
-                android:textAllCaps="false"/>
         </LinearLayout>
 
         <LinearLayout
