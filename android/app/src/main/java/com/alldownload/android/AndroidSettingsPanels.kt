@@ -208,6 +208,18 @@ internal object AndroidSettingsPanels {
             listOf("MP4 (compatibilité)", "MKV (conteneur natif)"),
             "video_format", "MP4")
 
+        toggle(files, "Remuxer dans le conteneur choisi",
+            "Sans réencodage. Certaines sources ne peuvent pas être remuxées en MP4.",
+            "remux_video")
+
+        val audio = card("Audio", "Choisissez la qualité cible de la conversion MP3, comme dans Windows.")
+        spinner(audio, "Qualité MP3",
+            listOf("0", "128K", "192K", "256K", "320K"),
+            listOf("Meilleure qualité disponible", "128 kb/s", "192 kb/s", "256 kb/s", "320 kb/s"),
+            "audio_quality", "0")
+        audio.addView(label("La conversion ne peut pas recréer une qualité absente du fichier d'origine.",
+            11f, tint = muted))
+
         val media = card("Métadonnées et miniatures",
             "Options appliquées au moteur yt-dlp pour les téléchargements suivants.")
         toggle(media, "Ajouter titre et artiste", "Métadonnées intégrées si disponibles.",
@@ -267,14 +279,11 @@ internal object AndroidSettingsPanels {
         toggle(app, "Réduire les animations",
             "Désactive l'entrée animée du popup de mise à jour et les transitions de pages.",
             "reduce_motion")
-        toggle(app, "Actualiser yt-dlp automatiquement",
-            "Tentative hebdomadaire pour les réseaux sociaux ; repli sur la version intégrée.",
-            "auto_update", true)
 
         val updates = card("Mises à jour Android",
             "Mises à jour détectées depuis les Releases Android de GitHub, sans toucher à Windows.")
         toggle(updates, "Me prévenir des nouvelles versions",
-            "Vérification à l'ouverture au plus une fois toutes les 12 h.",
+            "Vérification à l'ouverture au plus une fois toutes les 30 minutes.",
             "update_alerts", true)
         val updateToggle = updates.getChildAt(updates.childCount - 2) as? CheckBox
         updateToggle?.apply {
