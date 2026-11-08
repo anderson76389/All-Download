@@ -14,6 +14,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.IOException
 import java.util.UUID
@@ -125,6 +126,32 @@ class AndroidSmokeTest {
             }
         } finally {
             source.delete()
+        }
+    }
+
+    @Test fun cookieFileIsPrivateValidatedAndCanBeDeleted() {
+        CookieStore.delete(context)
+        val source = "# Netscape HTTP Cookie File\n.example.com\tTRUE\t/\tTRUE\t1999999999\tsession\tCI-dummy-cookie\n"
+        try {
+            CookieStore.importFromStream(context,
+                ByteArrayInputStream(source.toByteArray(Charsets.UTF_8)))
+            val cookies = CookieStore.existing(context)
+            assertNotNull("Cookies absents de l'espace privé.", cookies)
+            assertTrue(cookies!!.canonicalPath.startsWith(context.filesDir.canonicalPath + "/"))
+            assertEquals(source, cookies.readText())
+            try {
+                CookieStore.importFromStream(context,
+                    ByteArrayInputStream("garbage cookie value".toByteArray()))
+                fail("Un fichier non Netscape devait être rejeté.")
+            } catch (expected: IOException) {
+                assertTrue(expected.message.orEmpty().contains("Netscape"))
+            }
+            assertEquals("L'ancien cookie ne doit pas être écrasé en cas d'erreur.",
+                source, CookieStore.file(context).readText())
+            assertTrue(CookieStore.delete(context))
+            assertNull("Cookies présents après suppression.", CookieStore.existing(context))
+        } finally {
+            CookieStore.delete(context)
         }
     }
 
