@@ -12,6 +12,7 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 
 <p>
   <img src="https://img.shields.io/badge/Windows-10%20%2F%2011-0078D4?style=flat-square&logo=windows11&logoColor=white" alt="Windows 10 et 11">
+  <img src="https://img.shields.io/badge/Android-7%2B%20(b%C3%AAta)-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Android 7 ou supérieur (bêta)">
   <img src="https://img.shields.io/badge/Langue-Fran%C3%A7ais-2563EB?style=flat-square" alt="Français">
   <img src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.12">
   <a href="https://github.com/anderson76389/All-Download/actions/workflows/build-windows.yml"><img src="https://github.com/anderson76389/All-Download/actions/workflows/build-windows.yml/badge.svg" alt="Compilation Windows"></a>
@@ -25,15 +26,33 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 &nbsp;
 <a href="https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Classique-Windows.zip"><img src="https://img.shields.io/badge/T%C3%89L%C3%89CHARGER-WINDOWS%20CLASSIQUE-374151?style=for-the-badge&logo=windows11&logoColor=white" alt="Télécharger Windows Classique"></a>
 
-**Deux téléchargements directs en ZIP, toujours à jour.**
+<br><br>
 
-<sub>Les liens restent identiques et pointent vers la dernière <a href="https://github.com/anderson76389/All-Download/releases/latest">version publiée</a>.</sub>
+<a href="https://github.com/anderson76389/All-Download/releases/download/android-v0.1.2-beta/All-Download-Android-0.1.2-beta.apk"><img src="https://img.shields.io/badge/T%C3%89L%C3%89CHARGER-ANDROID%20APK%20B%C3%8ATA-16A34A?style=for-the-badge&logo=android&logoColor=white" alt="Télécharger Android APK bêta"></a>
+
+**Windows :** deux archives ZIP à jour. **Android :** un APK bêta distinct (0.1.2).
+
+<sub>Les boutons Windows pointent vers la <a href="https://github.com/anderson76389/All-Download/releases/latest">dernière version stable Windows</a>. L'APK Android est publié séparément dans sa <a href="https://github.com/anderson76389/All-Download/releases/tag/android-v0.1.2-beta">Release bêta</a>.</sub>
 
 </div>
 
 ---
 
-## ✨ Tout ce qu'il vous faut
+## 📱 All-Download Android — bêta 0.1.2
+
+**[⬇️ Télécharger directement l'APK Android](https://github.com/anderson76389/All-Download/releases/download/android-v0.1.2-beta/All-Download-Android-0.1.2-beta.apk)** · **[Page de la Release et empreinte SHA-256](https://github.com/anderson76389/All-Download/releases/tag/android-v0.1.2-beta)**
+
+L'APK Android est **indépendant des deux versions Windows**, fonctionne à partir d'**Android 7.0** et ne nécessite ni PC, ni Termux, ni serveur personnel. Il comprend yt-dlp et FFmpeg, ainsi que les modes vidéo, audio MP3/M4A/FLAC, GIF, playlist et chaîne. Les médias sont enregistrés dans `Téléchargements/All-Download/`, avec des sous-dossiers par catégorie.
+
+Les tests Android 14 ont réussi sur des liens vidéo publics **Instagram Reels, X/Twitter, Pinterest, TikTok, Facebook Reels, Reddit HLS direct, Bluesky et Dailymotion**, ainsi que sur les formats MP4, WebM, HLS et les clips Twitch. Les tests de base passent également sur Android 9. **Toutes les vidéos et tous les réseaux sociaux ne sont pas garantis** : une publication Reddit classique peut exiger une connexion, certaines anciennes vidéos Facebook ne sont pas reconnues, et YouTube ou les VOD Twitch protégées peuvent être bloqués.
+
+L'application peut actualiser yt-dlp et permet d'importer **facultativement** un fichier `cookies.txt` provenant de votre propre session autorisée, stocké dans l'espace privé de l'application et supprimable dans l'interface. **Attention : cette préversion est un APK de test avec signature de débogage éphémère.** Évitez d'y importer des sessions sensibles ; une future mise à jour pourra nécessiter de désinstaller la bêta, ce qui supprimera les données privées de l'application. Les médias exportés dans le dossier Téléchargements ne sont pas inclus dans ces données privées.
+
+Pour les limitations, les instructions et les détails de la compilation : **[README Android](https://github.com/anderson76389/All-Download/blob/feature/android-app/android/README.md)**.
+
+---
+
+## ✨ Tout ce qu'il vous faut sur Windows
 
 | | Fonctionnalité | Ce que vous pouvez faire |
 |:--:|---|---|
