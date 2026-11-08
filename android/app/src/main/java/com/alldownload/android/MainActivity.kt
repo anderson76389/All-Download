@@ -550,7 +550,8 @@ class MainActivity : Activity() {
         fun visit(view: View) {
             when (view) {
                 is Button -> {
-                    if (view.id == R.id.startButton || view.id == R.id.resumeQueueButton) {
+                    if (view.id == R.id.startButton ||
+                        view.id == R.id.resumeQueueButton || view.tag == "primary") {
                         view.background = rounded(purple, purple, 13)
                         view.setTextColor(Color.WHITE)
                     } else {
