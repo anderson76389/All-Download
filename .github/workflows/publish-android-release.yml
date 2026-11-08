@@ -4,7 +4,8 @@ on:
   push:
     branches: [feature/android-app]
     paths:
-      - "android/**"
+      - "android/app/src/main/**"
+      - "android/app/build.gradle.kts"
       - ".github/workflows/publish-android-release.yml"
   workflow_dispatch:
 
@@ -34,6 +35,13 @@ jobs:
           TESTED_SHA="$(git log -1 --format=%H -- android/)"
           test -n "$TESTED_SHA"
           echo "Version du code Android : $TESTED_SHA"
+          VERSION="$(sed -nE 's/^[[:space:]]*versionName = "([^"]+)".*/\1/p' android/app/build.gradle.kts | head -n1)"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+-beta$ ]]; then
+            echo "Nom de version Android invalide : $VERSION"
+            exit 1
+          fi
+          echo "ANDROID_VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Release Android ciblée : android-v$VERSION"
           validated=0
           for attempt in $(seq 1 100); do
             LATEST="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/feature/android-app" --jq '.object.sha')"
@@ -116,12 +124,12 @@ jobs:
         run: |
           set -euo pipefail
           SRC="android/app/build/outputs/apk/debug/app-debug.apk"
-          DEST="All-Download-Android-0.4.0-beta.apk"
+          DEST="All-Download-Android-${ANDROID_VERSION}.apk"
           test -s "$SRC"
           unzip -tq "$SRC" >/dev/null
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$SRC"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SRC" | grep -E "^(package:|sdkVersion:|targetSdkVersion:)"
-          if ! "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SRC" | grep -q "versionName='0.4.0-beta'"; then
+          if ! "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SRC" | grep -q "versionName='${ANDROID_VERSION}'"; then
             echo "Wrong Android version in the APK"
             exit 1
           fi
@@ -156,13 +164,14 @@ jobs:
           - Import facultatif de cookies Netscape de votre propre compte autorisé ; stockage privé local, effacement possible dans l'application.
 
           **Important : signature Android persistante uniquement si les secrets GitHub Actions du propriétaire sont configurés.**
-          Pour passer de 0.3.0 à 0.4.0, une désinstallation préalable peut être nécessaire à cause d'une signature de débogage différente. Une future mise à jour peut aussi exiger une réinstallation et effacer les données privées de l'application. Les médias déjà exportés dans Téléchargements ne sont pas supprimés par la désinstallation.
+          Pour passer d'une précédente bêta à cette version, une désinstallation préalable peut être nécessaire à cause d'une signature différente. Une future mise à jour peut aussi exiger une réinstallation et effacer les données privées de l'application. Les médias déjà exportés dans Téléchargements ne sont pas supprimés par la désinstallation.
           N'importez pas de sessions sensibles dans cette version de test.
           Ne désactivez pas les protections Android. Installation à vos risques pour cette préversion.
           Les versions Windows Portable/Classique restent sur les Releases stables.
 
-          **Fichier :** `All-Download-Android-0.4.0-beta.apk` — empreinte SHA-256 dans le fichier `.sha256` joint.
+          **Fichier :** APK Android et empreinte SHA-256 joints aux assets de cette Release.
           EOF
+          sed -i "s/0\.4\.0/${ANDROID_VERSION}/g" android-release-notes.md
           if [ "$APK_SIGNING" = "stable" ]; then
             echo "" >> android-release-notes.md
             echo "**Signature :** clé privée persistante configurée. Les futures mises à jour signées avec la même clé sont compatibles avec l'installation par-dessus cette version." >> android-release-notes.md
@@ -175,8 +184,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          TAG="android-v0.4.0-beta"
-          APK="All-Download-Android-0.4.0-beta.apk"
+          TAG="android-v${ANDROID_VERSION}"
+          APK="All-Download-Android-${ANDROID_VERSION}.apk"
           LATEST="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/feature/android-app" --jq '.object.sha')"
           if [ "$LATEST" != "$GITHUB_SHA" ]; then
             echo "Publication refusée : la branche Android a changé."
@@ -194,7 +203,7 @@ jobs:
             gh release create "$TAG" "$APK" "${APK}.sha256" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
-              --title "All-Download Android 0.4.0 bêta" \
+              --title "All-Download Android ${ANDROID_VERSION}" \
               --notes-file android-release-notes.md \
               --prerelease
           fi
