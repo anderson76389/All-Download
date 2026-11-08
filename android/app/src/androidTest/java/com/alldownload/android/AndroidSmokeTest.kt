@@ -190,8 +190,15 @@ class AndroidSmokeTest {
             }
             instrumentation.waitForIdleSync()
             assertEquals(View.VISIBLE, activity.findViewById<View>(R.id.filesPage).visibility)
+            val files = activity.findViewById<LinearLayout>(R.id.filesList)
+            val deadline = android.os.SystemClock.uptimeMillis() + 7000
+            while (files.childCount < 7 &&
+                android.os.SystemClock.uptimeMillis() < deadline) {
+                android.os.SystemClock.sleep(100)
+                instrumentation.waitForIdleSync()
+            }
             assertTrue("Les sept catégories de fichiers doivent être visibles.",
-                activity.findViewById<LinearLayout>(R.id.filesList).childCount >= 7)
+                files.childCount >= 7)
             instrumentation.runOnMainSync {
                 activity.findViewById<Button>(R.id.navSettings).performClick()
             }
@@ -355,6 +362,43 @@ class AndroidSmokeTest {
                 activity.finish()
             }
         }
+    }
+
+    @Test fun queueRevisionSkipsWritesAndSupportsLargeLists() {
+        val link = "https://example.org/perf-" + UUID.randomUUID() + ".mp4"
+        val startRevision = DownloadQueue.revision()
+        val task = DownloadQueue.enqueue(context, link, 0, 0)
+        try {
+            val afterCreate = DownloadQueue.revision()
+            assertTrue("L'ajout doit incrémenter la révision.", afterCreate > startRevision)
+            // A progress callback can repeat identical status and must not write storage.
+            DownloadQueue.update(context, task.id, status = DownloadQueue.WAITING,
+                progress = 0, message = "")
+            assertEquals("Une mise à jour identique ne doit pas écrire sur disque.",
+                afterCreate, DownloadQueue.revision())
+            DownloadQueue.update(context, task.id, progress = 50)
+            val afterProgress = DownloadQueue.revision()
+            assertTrue(afterProgress > afterCreate)
+            DownloadQueue.update(context, task.id, progress = 50)
+            assertEquals("Progression inchangée : aucune écriture supplémentaire.",
+                afterProgress, DownloadQueue.revision())
+            assertEquals(50,
+                DownloadQueue.snapshot(context).find { it.id == task.id }?.progress)
+        } finally {
+            DownloadQueue.remove(context, task.id)
+        }
+    }
+
+    @Test fun queueRejectsInvalidUrlsWithoutLosingExistingTasks() {
+        val size = DownloadQueue.snapshot(context).size
+        for (badUrl in listOf("", "notaurl", "https://", "javascript:alert(1)",
+                "https://user:pass@example.com/video.mp4")) {
+            try {
+                DownloadQueue.enqueue(context, badUrl, 0, 0)
+                fail("URL invalide autorisée : " + badUrl)
+            } catch (_: IllegalArgumentException) {}
+        }
+        assertEquals(size, DownloadQueue.snapshot(context).size)
     }
 
     private fun assertLegacyFolderWritable() {
