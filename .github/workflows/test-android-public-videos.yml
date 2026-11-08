@@ -35,6 +35,30 @@ jobs:
           profile: pixel_5
           emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
           script: gradle --no-daemon -p android :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.alldownload.android.PublicVideoDownloadTest
+      - name: Résumé détaillé des tests publics
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+          files = glob.glob("android/app/build/outputs/androidTest-results/**/*.xml", recursive=True)
+          if not files:
+              print("Aucun rapport XML produit.")
+          for path in files:
+              try:
+                  root = ET.parse(path).getroot()
+              except Exception as exc:
+                  print(path, exc)
+                  continue
+              for case in root.iter("testcase"):
+                  name = case.get("name", "?")
+                  if not case.get("classname", "").endswith("PublicVideoDownloadTest"):
+                      continue
+                  failure = case.find("failure")
+                  if failure is not None:
+                      print(f"FAIL {name}: {failure.get('message', '')[:2000]}\\n{(failure.text or '')[:2000]}")
+                  else:
+                      print(f"PASS {name}")
+          PY
       - name: Journaux et rapports des téléchargements
         if: always()
         uses: actions/upload-artifact@v4
