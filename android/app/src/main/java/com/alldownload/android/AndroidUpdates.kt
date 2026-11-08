@@ -24,7 +24,7 @@ import java.net.URL
 /** Only GitHub Android beta releases, never the Windows "latest" release. */
 internal object AndroidUpdates {
     const val RELEASES_API =
-        "https://api.github.com/repos/anderson76389/All-Download/releases?per_page=25"
+        "https://api.github.com/repos/anderson76389/All-Download/releases?per_page=100"
     private const val PREFS = "android_update_preferences"
     private const val INTERVAL = 30L * 60L * 1000L
 
@@ -94,19 +94,28 @@ internal object AndroidUpdates {
         val handler = Handler(Looper.getMainLooper())
         Thread({
             val result = try {
-                val conn = (URL(RELEASES_API).openConnection() as HttpURLConnection).apply {
-                    connectTimeout = 6500
-                    readTimeout = 6500
-                    instanceFollowRedirects = false
-                    setRequestProperty("User-Agent", "All-Download-Android-updater")
-                    setRequestProperty("Accept", "application/vnd.github+json")
+                var match: Release? = null
+                // Many stable Windows releases may hide Android betas from page 1.
+                // Pagination is bounded and only read-only GitHub API requests are made.
+                for (page in 1..4) {
+                    val conn = (URL(RELEASES_API + "&page=" + page)
+                        .openConnection() as HttpURLConnection).apply {
+                        connectTimeout = 6500
+                        readTimeout = 6500
+                        instanceFollowRedirects = false
+                        setRequestProperty("User-Agent", "All-Download-Android-updater")
+                        setRequestProperty("Accept", "application/vnd.github+json")
+                    }
+                    val body = try {
+                        if (conn.responseCode != 200)
+                            throw IllegalStateException("GitHub : HTTP " + conn.responseCode)
+                        conn.inputStream.bufferedReader().use { it.readText() }
+                    } finally { conn.disconnect() }
+                    if (JSONArray(body).length() == 0) break
+                    match = findNewer(body, BuildConfig.VERSION_NAME)
+                    if (match != null) break
                 }
-                try {
-                    if (conn.responseCode != 200)
-                        throw IllegalStateException("GitHub : HTTP " + conn.responseCode)
-                    val body = conn.inputStream.bufferedReader().use { it.readText() }
-                    findNewer(body, BuildConfig.VERSION_NAME)
-                } finally { conn.disconnect() }
+                match
             } catch (error: Exception) {
                 handler.post {
                     if (!activity.isFinishing && !activity.isDestroyed)
