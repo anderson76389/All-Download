@@ -2,6 +2,10 @@ package com.alldownload.android
 
 import android.Manifest
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import java.util.concurrent.Executors
 import android.content.ContentUris
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -92,22 +96,39 @@ class MainActivity : Activity() {
     private lateinit var tabs: List<Button>
 
     private var selectedTab = 0
-    private var lastQueueSignature = ""
+    private var lastQueueRevision = -1L
+    private var queueVisible = 24
+    private var lastDrawnState: DownloadService.UiState? = null
+    private val fileExecutor = Executors.newSingleThreadExecutor()
+    private var fileRequestId = 0
     private val handler = Handler(Looper.getMainLooper())
+    /** Refresh only while visible, and touch views only when state changed. */
     private val refresh = object : Runnable {
         override fun run() {
             val state = DownloadService.state
-            startButton.isEnabled = !state.busy
-            cancelButton.isEnabled = state.busy
-            pauseQueueButton.isEnabled = state.busy
-            resumeQueueButton.isEnabled = !state.busy
-            queueButton.isEnabled = true
-            importCookiesButton.isEnabled = !state.busy
-            removeCookiesButton.isEnabled = !state.busy && CookieStore.existing(this@MainActivity) != null
-            progressBar.progress = state.progress
-            statusText.text = state.message
-            if (selectedTab == 1) renderQueue()
-            handler.postDelayed(this, 750)
+            if (lastDrawnState != state) {
+                if (lastDrawnState?.busy != state.busy) {
+                    startButton.isEnabled = !state.busy
+                    cancelButton.isEnabled = state.busy
+                    pauseQueueButton.isEnabled = state.busy
+                    resumeQueueButton.isEnabled = !state.busy
+                    importCookiesButton.isEnabled = !state.busy
+                    removeCookiesButton.isEnabled = !state.busy &&
+                        CookieStore.existing(this@MainActivity) != null
+                }
+                if (lastDrawnState?.progress != state.progress)
+                    progressBar.progress = state.progress
+                if (lastDrawnState?.message != state.message)
+                    statusText.text = state.message
+                lastDrawnState = state
+            }
+            if (selectedTab == 1 && lastQueueRevision != DownloadQueue.revision())
+                renderQueue()
+            handler.postDelayed(this, when {
+                state.busy -> 1800L
+                selectedTab == 1 -> 3000L
+                else -> 8000L
+            })
         }
     }
 
@@ -201,7 +222,7 @@ class MainActivity : Activity() {
         }
         clearFinishedButton.setOnClickListener {
             DownloadQueue.clearFinished(this)
-            lastQueueSignature = ""
+            lastQueueRevision = -1L
             renderQueue()
         }
         findViewById<Button>(R.id.quickVideoButton).setOnClickListener {
@@ -289,7 +310,8 @@ class MainActivity : Activity() {
             button.isAllCaps = false
         }
         if (tab == 1) {
-            lastQueueSignature = ""
+            lastQueueRevision = -1L
+            queueVisible = 24
             renderQueue()
         } else if (tab == 2) renderFolders()
         else if (tab == 3) updateCookieStatus()
@@ -338,11 +360,9 @@ class MainActivity : Activity() {
 
     private fun renderQueue() {
         val jobs = DownloadQueue.snapshot(this)
-        val signature = jobs.joinToString("|") {
-            it.id + ":" + it.status + ":" + it.progress + ":" + it.message
-        }
-        if (signature == lastQueueSignature) return
-        lastQueueSignature = signature
+        val revision = DownloadQueue.revision()
+        if (revision == lastQueueRevision) return
+        lastQueueRevision = revision
         val colors = palette()
         queueList.removeAllViews()
         val waiting = jobs.count { it.status == DownloadQueue.WAITING }
@@ -355,7 +375,7 @@ class MainActivity : Activity() {
                 "Depuis l'accueil, ajoutez une vidéo ou un audio pour commencer."))
             return
         }
-        for (job in jobs.asReversed()) {
+        for (job in jobs.asReversed().take(queueVisible)) {
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(dp(16), dp(15), dp(16), dp(12))
@@ -410,20 +430,34 @@ class MainActivity : Activity() {
                     DownloadQueue.ERROR, DownloadQueue.CANCELLED)) {
                 actions.addView(smallAction("↻ Réessayer") {
                     DownloadQueue.retry(this, job.id)
-                    lastQueueSignature = ""
+                    lastQueueRevision = -1L
                     renderQueue()
                 })
             }
             if (job.status != DownloadQueue.RUNNING) {
                 actions.addView(smallAction("Supprimer") {
                     if (DownloadQueue.remove(this, job.id)) {
-                        lastQueueSignature = ""
+                        lastQueueRevision = -1L
                         renderQueue()
                     }
                 })
             }
+            actions.addView(smallAction("Copier le lien") {
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE)
+                    as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("Lien All-Download", job.url))
+                Toast.makeText(this, "Lien copié.", Toast.LENGTH_SHORT).show()
+            })
             card.addView(actions)
             queueList.addView(card)
+        }
+        if (jobs.size > queueVisible) {
+            queueList.addView(smallAction(
+                "Afficher plus (" + (jobs.size - queueVisible) + " restantes)") {
+                queueVisible = (queueVisible + 24).coerceAtMost(jobs.size)
+                lastQueueRevision = -1L
+                renderQueue()
+            })
         }
     }
 
@@ -708,5 +742,12 @@ class MainActivity : Activity() {
     override fun onPause() {
         handler.removeCallbacks(refresh)
         super.onPause()
+    }
+
+    override fun onDestroy() {
+        handler.removeCallbacks(refresh)
+        fileRequestId++
+        fileExecutor.shutdownNow()
+        super.onDestroy()
     }
 }
