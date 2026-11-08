@@ -2,6 +2,7 @@ package com.alldownload.android
 
 import android.content.ContentUris
 import android.media.MediaMetadataRetriever
+import android.util.Log
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -10,6 +11,7 @@ import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import org.junit.Assert.*
+import org.junit.BeforeClass
 import org.junit.Assume
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -29,6 +31,23 @@ import java.util.UUID
  */
 @RunWith(AndroidJUnit4::class)
 class SocialVideoDownloadTest {
+    companion object {
+        @JvmStatic
+        @BeforeClass
+        fun tryFreshYtDlpInTestEnvironment() {
+            // Diagnostic uniquement : mise à jour réelle du moteur testé, pas un simulacre.
+            val ctx = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext
+            try {
+                YoutubeDL.getInstance().init(ctx)
+                val result = YoutubeDL.getInstance().updateYoutubeDL(ctx)
+                Log.i("AllDownloadSocialTest", "yt-dlp updated: $result, version: " +
+                    YoutubeDL.getInstance().version(ctx))
+            } catch (error: Exception) {
+                Log.w("AllDownloadSocialTest", "yt-dlp update unavailable; using bundled engine", error)
+            }
+        }
+    }
+
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
 
     @Test fun redditPublicVideo() = checkPlatform(
@@ -40,7 +59,7 @@ class SocialVideoDownloadTest {
     )
 
     @Test fun xTwitterPublicVideo() = checkPlatform(
-        "X-Twitter", "https://x.com/NASA/status/623160978427936768"
+        "X-Twitter", "https://x.com/TopHeroes_/status/2001950365332455490"
     )
 
     @Test fun instagramPublicReel() = checkPlatform(
@@ -64,7 +83,7 @@ class SocialVideoDownloadTest {
     )
 
     @Test fun dailymotionPublicVideo() = checkPlatform(
-        "Dailymotion", "https://www.dailymotion.com/video/x5kesuj"
+        "Dailymotion", "https://www.dailymotion.com/video/x8vu47w"
     )
 
     private fun checkPlatform(platform: String, url: String) {
@@ -81,8 +100,14 @@ class SocialVideoDownloadTest {
             request.addOption("--socket-timeout", "15")
             request.addOption("--retries", "1")
             request.addOption("--fragment-retries", "1")
-            request.addOption("--download-sections", "*0-4")
-            request.addOption("--force-keyframes-at-cuts")
+            if (platform == "Bluesky" || platform == "Dailymotion") {
+                // Les extraits FFmpeg échouent parfois avec ces deux extracteurs.
+                // Vidéos courtes uniquement, avec une limite stricte de taille.
+                request.addOption("--max-filesize", "35M")
+            } else {
+                request.addOption("--download-sections", "*0-4")
+                request.addOption("--force-keyframes-at-cuts")
+            }
             request.addOption("--format", DownloadRules.videoFormat(url, 0))
             request.addOption("--merge-output-format", "mp4")
             request.addOption("--output", File(work, "$unique-%(id)s.%(ext)s").absolutePath)
@@ -194,13 +219,14 @@ class SocialVideoDownloadTest {
         val text = message.lowercase()
         return listOf(
             "sign in", "login required", "log in", "login to", "authentication required",
+            "account authentication is required", "only works when logged-in",
             "requires authentication", "must be logged", "subscriber-only",
             "private video", "private account", "not available in your country",
             "geo-restricted", "age-restricted", "not a bot", "captcha",
             "rate limit", "too many requests", "http error 429",
             "http error 403", "forbidden", "access denied",
             "unavailable video", "video unavailable", "this video is unavailable",
-            "status code 404", "http error 404", "has been removed",
+            "status code 404", "http error 404", "domain not found", "has been removed",
             "the requested resource does not exist", "post not found"
         ).any { it in text }
     }
