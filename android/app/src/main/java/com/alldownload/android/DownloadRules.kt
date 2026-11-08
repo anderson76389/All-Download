@@ -11,6 +11,23 @@ internal object DownloadRules {
         }
     } catch (_: Exception) { null }
 
+    /**
+     * N'actualiser automatiquement yt-dlp que pour les réseaux sociaux
+     * dont les extracteurs changent fréquemment. Twitch reste inchangé.
+     * Comparaison stricte des domaines (aucun suffixe trompeur).
+     */
+    fun isSocialVideoHost(url: String): Boolean {
+        val host = uri(url)?.host?.lowercase() ?: return false
+        val domains = setOf(
+            "reddit.com", "redd.it", "pinterest.com", "pin.it",
+            "x.com", "twitter.com", "instagram.com", "tiktok.com",
+            "facebook.com", "fb.watch", "fb.com", "vimeo.com",
+            "bsky.app", "dailymotion.com", "dai.ly"
+        )
+        return domains.any { host == it || host.endsWith(".$it") } ||
+            Regex("""(^|\\.)pinterest\\.[a-z]{2,4}$""").containsMatchIn(host)
+    }
+
     fun isTwitchVod(url: String): Boolean {
         val parsed = uri(url) ?: return false
         return parsed.host.lowercase() in setOf("twitch.tv", "www.twitch.tv", "m.twitch.tv") &&
