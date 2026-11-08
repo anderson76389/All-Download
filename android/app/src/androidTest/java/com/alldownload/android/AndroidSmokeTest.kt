@@ -474,8 +474,8 @@ class AndroidSmokeTest {
                 "https://example.com.evil@attacker"))
             assertFalse(DownloadOptions.validProxy("javascript:alert(1)"))
             assertFalse(DownloadOptions.validProxy("http://127.0.0.1:0"))
-            assertEquals(6, context.packageManager.getPackageInfo(context.packageName, 0)
-                .versionCode)
+            assertEquals(BuildConfig.VERSION_CODE,
+                context.packageManager.getPackageInfo(context.packageName, 0).versionCode)
         } finally {
             instrumentation.runOnMainSync { activity.finish() }
         }
