@@ -96,6 +96,7 @@ class MainActivity : Activity() {
     private lateinit var tabs: List<Button>
 
     private var selectedTab = 0
+    private var settingsPanelsCreated = false
     private var lastQueueRevision = -1L
     private var queueVisible = 24
     private var lastDrawnState: DownloadService.UiState? = null
@@ -255,11 +256,7 @@ class MainActivity : Activity() {
         }
         updateCookieStatus()
         engineVersionText.text = "yt-dlp et FFmpeg intégrés • All-Download " + BuildConfig.VERSION_NAME
-        AndroidSettingsPanels.populate(this, settingsPage) { message ->
-            engineVersionText.text = message
-            if (message.contains("est à jour") || message.startsWith("Vérification impossible"))
-                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-        }
+        // Keep cold startup light: advanced settings are built only on first opening.
         applyPalette()
         processSharedUrl(intent)
         if (savedInstanceState != null) {
@@ -293,6 +290,16 @@ class MainActivity : Activity() {
             }
         }.apply { setDropDownViewResource(R.layout.spinner_item) }
 
+    private fun ensureSettingsPanels() {
+        if (settingsPanelsCreated) return
+        settingsPanelsCreated = true
+        AndroidSettingsPanels.populate(this, settingsPage) { message ->
+            engineVersionText.text = message
+            if (message.contains("est à jour") || message.startsWith("Vérification impossible"))
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun selectTab(tab: Int) {
         val changed = selectedTab != tab
         selectedTab = tab
@@ -300,6 +307,7 @@ class MainActivity : Activity() {
         queuePage.visibility = if (tab == 1) View.VISIBLE else View.GONE
         filesPage.visibility = if (tab == 2) View.VISIBLE else View.GONE
         settingsPage.visibility = if (tab == 3) View.VISIBLE else View.GONE
+        if (tab == 3) ensureSettingsPanels()
         val colors = palette()
         tabs.forEachIndexed { index, button ->
             val selected = index == tab
