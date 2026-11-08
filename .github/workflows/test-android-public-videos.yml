@@ -54,8 +54,11 @@ jobs:
                   if not case.get("classname", "").endswith("PublicVideoDownloadTest"):
                       continue
                   failure = case.find("failure")
+                  skipped = case.find("skipped")
                   if failure is not None:
                       print(f"FAIL {name}: {failure.get('message', '')[:2000]}\\n{(failure.text or '')[:2000]}")
+                  elif skipped is not None:
+                      print(f"SKIP {name}: {(skipped.get('message') or skipped.text or 'Restriction externe')[:1000]}")
                   else:
                       print(f"PASS {name}")
           PY
