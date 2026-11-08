@@ -376,7 +376,7 @@ class MainActivity : Activity() {
         if (tab == 3) ensureSettingsPanels()
         styleNavigation()
         // The fixed progress dock belongs to the download screens.
-        val statusDock = homePage.findViewById<View>(R.id.statusFooterCard)
+        val statusDock = findViewById<View>(R.id.statusFooterCard)
         if (statusDock.parent != homePage)
             statusDock.visibility = if (tab < 2) View.VISIBLE else View.GONE
         if (tab == 0) renderHomeQueue()
