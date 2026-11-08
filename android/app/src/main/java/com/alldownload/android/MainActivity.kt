@@ -120,6 +120,7 @@ class MainActivity : Activity() {
                     importCookiesButton.isEnabled = !state.busy
                     removeCookiesButton.isEnabled = !state.busy &&
                         CookieStore.existing(this@MainActivity) != null
+                    cancelButton.visibility = if (state.busy) View.VISIBLE else View.GONE
                 }
                 if (lastDrawnState?.progress != state.progress)
                     progressBar.progress = state.progress
@@ -205,6 +206,7 @@ class MainActivity : Activity() {
             override fun onNothingSelected(parent: AdapterView<*>?) {}
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 settings.edit().putInt("last_mode", position).apply()
+                styleQuickModes()
             }
         }
         qualitySpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
@@ -315,7 +317,12 @@ class MainActivity : Activity() {
             selectedTab = savedInstanceState.getInt("tab", 0).coerceIn(0, 3)
         }
         selectTab(selectedTab)
-        configureWideScreen()
+        // Keep a Windows-like sidebar on large tablets; phones dock the same tabs
+        // below the content instead of spending vertical space above the URL field.
+        if (resources.configuration.screenWidthDp >= 720) configureWideScreen()
+        else configurePhoneNavigation()
+        arrangeOptionPills()
+        styleQuickModes()
     }
 
     private fun spinnerAdapter(items: List<String>): ArrayAdapter<String> =
@@ -367,6 +374,12 @@ class MainActivity : Activity() {
             button.isAllCaps = false
             button.stateListAnimator = null
             button.elevation = 0f
+            button.contentDescription = when (index) {
+                0 -> "Accueil"
+                1 -> "File d'attente"
+                2 -> "Dossiers"
+                else -> "Paramètres"
+            }
         }
         if (tab == 0) renderHomeQueue()
         if (tab == 1) {
@@ -426,8 +439,24 @@ class MainActivity : Activity() {
         val jobs = DownloadQueue.snapshot(this)
         homeQueuePreview.removeAllViews()
         if (jobs.isEmpty()) {
-            homeQueuePreview.addView(infoCard("Aucun téléchargement",
-                "Ajoutez un lien ci-dessus pour remplir la file d'attente."))
+            homeQueuePreview.addView(LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                setPadding(dp(12), dp(26), dp(12), dp(30))
+                addView(text("↓", 34, palette().accent, true).apply {
+                    gravity = Gravity.CENTER
+                })
+                addView(text("Votre file d'attente est vide", 15,
+                    palette().foreground, true).apply {
+                    gravity = Gravity.CENTER
+                    setPadding(0, dp(8), 0, 0)
+                })
+                addView(text("Ajoutez des vidéos, playlists ou chaînes pour commencer.",
+                    12, palette().muted, false).apply {
+                    gravity = Gravity.CENTER
+                    setPadding(0, dp(5), 0, 0)
+                })
+            })
             return
         }
         homeQueuePreview.addView(infoCard(
@@ -435,7 +464,7 @@ class MainActivity : Activity() {
             "En cours : " + jobs.count { it.status == DownloadQueue.RUNNING } +
                 " · En attente : " + jobs.count { it.status == DownloadQueue.WAITING } +
                 " · Terminés : " + jobs.count { it.status == DownloadQueue.DONE }))
-        jobs.asReversed().take(3).forEach { job ->
+        jobs.asReversed().take(5).forEach { job ->
             val stateLabel = when (job.status) {
                 DownloadQueue.RUNNING -> "Téléchargement"
                 DownloadQueue.WAITING -> "En attente"
@@ -751,9 +780,114 @@ class MainActivity : Activity() {
         }
         visit(content)
         findViewById<View>(R.id.navigation).background = rounded(colors.panel, colors.border, 16)
+        styleQuickModes()
         progressBar.progressTintList = ColorStateList.valueOf(purple)
         progressBar.progressBackgroundTintList = ColorStateList.valueOf(colors.border)
         selectTab(selectedTab)
+    }
+
+
+    /** Use the exact same action IDs/listeners on every device: presentation only. */
+    private fun styleQuickModes() {
+        if (!::modeSpinner.isInitialized) return
+        val colors = palette()
+        val selected = modeSpinner.selectedItemPosition
+        val modes = listOf(R.id.quickVideoButton to 0, R.id.quickAudioButton to 1,
+            R.id.quickGifButton to 4, R.id.quickPlaylistButton to 5,
+            R.id.quickTwitchButton to -1)
+        modes.forEach { (id, mode) ->
+            val button = findViewById<Button>(id) ?: return@forEach
+            val active = mode == selected
+            button.background = rounded(
+                if (active) purple else colors.input,
+                if (active) purple else colors.border, 12)
+            button.setTextColor(if (active) Color.WHITE else colors.foreground)
+            button.elevation = 0f
+            button.stateListAnimator = null
+        }
+    }
+
+    /** Compact Windows option pair on tablets/foldables; stacked, readable on phones. */
+    private fun arrangeOptionPills() {
+        val options = findViewById<LinearLayout>(R.id.downloadOptions)
+        val mode = findViewById<LinearLayout>(R.id.downloadModeGroup)
+        val quality = findViewById<LinearLayout>(R.id.downloadQualityGroup)
+        if (resources.configuration.screenWidthDp >= 580) {
+            options.orientation = LinearLayout.HORIZONTAL
+            mode.layoutParams = LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            quality.layoutParams = LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginStart = dp(10)
+                topMargin = 0
+            }
+        } else {
+            options.orientation = LinearLayout.VERTICAL
+            mode.layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            quality.layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(8)
+            }
+        }
+    }
+
+    /**
+     * Phone shell: main content scrolls, while the Windows-inspired four-section
+     * control bar remains accessible at the bottom. No duplicate action buttons.
+     * The original navigation View is moved; all click listeners remain attached.
+     */
+    private fun configurePhoneNavigation() {
+        val menu = findViewById<LinearLayout>(R.id.navigation)
+        val bar = menu.parent as? android.widget.HorizontalScrollView ?: return
+        val host = scroll.parent as? ViewGroup ?: return
+        content.removeView(bar)
+        host.removeView(scroll)
+
+        val shell = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(palette().background)
+        }
+        shell.addView(scroll, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+
+        menu.layoutParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        tabs.forEachIndexed { index, button ->
+            button.minWidth = 0
+            button.minimumWidth = 0
+            button.textSize = 11f
+            button.text = listOf("Accueil", "File", "Dossiers", "Réglages")[index]
+            button.layoutParams = LinearLayout.LayoutParams(0, dp(48), 1f).apply {
+                marginStart = dp(2)
+                marginEnd = dp(2)
+            }
+        }
+        bar.background = rounded(palette().panel, palette().border, 0)
+        bar.setPadding(dp(7), dp(6), dp(7), dp(6))
+        bar.isFillViewport = true
+        shell.addView(bar, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        host.addView(shell, ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+
+        // Android 15+ edge-to-edge: bottom navigation must sit above the gesture bar.
+        if (Build.VERSION.SDK_INT >= 35) {
+            ViewCompat.setOnApplyWindowInsetsListener(scroll) { view, insets ->
+                val safe = insets.getInsets(WindowInsetsCompat.Type.systemBars() or
+                    WindowInsetsCompat.Type.displayCutout())
+                view.setPadding(safe.left, safe.top, safe.right, 0)
+                insets
+            }
+            ViewCompat.setOnApplyWindowInsetsListener(bar) { view, insets ->
+                val safe = insets.getInsets(WindowInsetsCompat.Type.systemBars() or
+                    WindowInsetsCompat.Type.displayCutout())
+                view.setPadding(dp(7) + safe.left, dp(6),
+                    dp(7) + safe.right, dp(6) + safe.bottom)
+                insets
+            }
+            ViewCompat.requestApplyInsets(shell)
+        }
     }
 
     /** Two-column tablet/large foldable layout: left navigation and right content.
