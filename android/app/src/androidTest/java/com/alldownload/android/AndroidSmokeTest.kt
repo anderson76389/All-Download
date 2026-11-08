@@ -35,6 +35,8 @@ class AndroidSmokeTest {
         val activity = instrumentation.startActivitySync(intent) as MainActivity
         instrumentation.waitForIdleSync()
         try {
+            assertNull("Les paramètres avancés ne doivent pas être construits au démarrage.",
+                activity.findViewById<View>(R.id.settingsTabs))
             val mode = activity.findViewById<Spinner>(R.id.modeSpinner)
             val quality = activity.findViewById<Spinner>(R.id.qualitySpinner)
             assertEquals(7, mode.count)
