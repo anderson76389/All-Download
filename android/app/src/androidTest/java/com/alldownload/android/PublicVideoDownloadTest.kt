@@ -66,6 +66,44 @@ class PublicVideoDownloadTest {
         downloadShortExtractedVideo("Twitch VOD", url, DownloadRules.videoFormat(url, 0))
     }
 
+    // URLs de référence maintenues par les extracteurs du projet yt-dlp.
+    // Les serveurs sociaux peuvent imposer une connexion/limite IP même pour les vidéos publiques.
+    @Test fun redditPublicVideo() {
+        downloadShortExtractedVideo("Reddit",
+            "https://www.reddit.com/r/videos/comments/6rrwyj/that_small_heart_attack/",
+            "bestvideo[height<=720]+bestaudio/best[height<=?720]")
+    }
+
+    @Test fun pinterestPublicVideo() {
+        downloadShortExtractedVideo("Pinterest",
+            "https://www.pinterest.com/pin/664281013778109217/",
+            "bestvideo[height<=720]+bestaudio/best[height<=?720]")
+    }
+
+    @Test fun twitterXPublicVideo() {
+        downloadShortExtractedVideo("X/Twitter",
+            "https://twitter.com/NASA/status/623160978427936768",
+            "bestvideo[height<=720]+bestaudio/best[height<=?720]")
+    }
+
+    @Test fun instagramPublicReel() {
+        downloadShortExtractedVideo("Instagram",
+            "https://www.instagram.com/reel/Chunk8-jurw/",
+            "bestvideo[height<=720]+bestaudio/best[height<=?720]")
+    }
+
+    @Test fun tiktokPublicVideo() {
+        downloadShortExtractedVideo("TikTok",
+            "https://www.tiktok.com/@patroxofficial/video/6742501081818877190",
+            "bestvideo[height<=720]+bestaudio/best[height<=?720]")
+    }
+
+    @Test fun facebookPublicVideo() {
+        downloadShortExtractedVideo("Facebook",
+            "https://www.facebook.com/radiokicksfm/videos/3676516585958356/",
+            "bestvideo[height<=720]+bestaudio/best[height<=?720]")
+    }
+
     private fun downloadShortExtractedVideo(label: String, url: String, format: String) {
         val work = File(context.cacheDir, "public-video-test-${UUID.randomUUID()}").apply { mkdirs() }
         try {
