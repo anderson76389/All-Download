@@ -47,6 +47,7 @@ internal object AndroidSettingsPanels {
             text = value
             textSize = size
             setTextColor(tint)
+            if (tint == muted) tag = "muted"
             if (bold) setTypeface(typeface, Typeface.BOLD)
         }
 
@@ -189,6 +190,7 @@ internal object AndroidSettingsPanels {
                 text = title
                 isAllCaps = false
                 setTextColor(Color.WHITE)
+                tag = "primary"
                 background = GradientDrawable().apply {
                     setColor(purple)
                     cornerRadius = px(12).toFloat()
