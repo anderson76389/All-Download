@@ -1,3 +1,7 @@
+import java.awt.Color as DesktopColor
+import java.awt.RenderingHints
+import java.awt.image.BufferedImage
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -73,14 +77,14 @@ val prepareAndroidBranding by tasks.registering {
         val scale = minOf(size.toDouble() / image.width, size.toDouble() / image.height)
         val width = (image.width * scale).toInt().coerceAtLeast(1)
         val height = (image.height * scale).toInt().coerceAtLeast(1)
-        val icon = java.awt.image.BufferedImage(size, size,
-            java.awt.image.BufferedImage.TYPE_INT_ARGB)
+        val icon = BufferedImage(size, size,
+            BufferedImage.TYPE_INT_ARGB)
         val graphics = icon.createGraphics()
         try {
-            graphics.color = java.awt.Color(20, 20, 20)
+            graphics.color = DesktopColor(20, 20, 20)
             graphics.fillRect(0, 0, size, size)
-            graphics.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
-                java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC)
+            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                RenderingHints.VALUE_INTERPOLATION_BICUBIC)
             graphics.drawImage(image, (size - width) / 2, (size - height) / 2,
                 width, height, null)
         } finally {
