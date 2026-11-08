@@ -64,6 +64,7 @@ class AndroidSmokeTest {
 
     @Test fun exportsFileToCorrectAllDownloadFolderWithoutRewritingBytes() {
         grantLegacyStorage()
+        assertLegacyFolderWritable()
         val fileName = "all-download-smoke-${UUID.randomUUID()}.mp4"
         val payload = ByteArray(128 * 1024) { (it % 239).toByte() }
         val source = File(context.cacheDir, fileName)
@@ -99,6 +100,7 @@ class AndroidSmokeTest {
 
     @Test fun cancelledExportDoesNotLeavePartialPublicFile() {
         grantLegacyStorage()
+        assertLegacyFolderWritable()
         val fileName = "all-download-cancel-${UUID.randomUUID()}.mp4"
         val source = File(context.cacheDir, fileName)
         source.writeBytes(ByteArray(512 * 1024) { 67 })
@@ -124,6 +126,20 @@ class AndroidSmokeTest {
         } finally {
             source.delete()
         }
+    }
+
+    private fun assertLegacyFolderWritable() {
+        if (Build.VERSION.SDK_INT > 28) return
+        @Suppress("DEPRECATION")
+        val root = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val permission = context.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        val message = "Android ${Build.VERSION.SDK_INT}: permission=$permission, " +
+            "state=${Environment.getExternalStorageState()}, root=${root.absolutePath}, " +
+            "exists=${root.exists()}, writable=${root.canWrite()}, parent=${root.parentFile?.canWrite()}"
+        assertTrue(message, root.isDirectory || root.mkdirs())
+        val probe = File(root, ".alldownload-test-${UUID.randomUUID()}")
+        assertTrue(message + ", testFileCreate=false", probe.createNewFile())
+        probe.delete()
     }
 
     private fun grantLegacyStorage() {
