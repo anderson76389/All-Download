@@ -868,12 +868,17 @@ class MainActivity : Activity() {
         if (!::modeSpinner.isInitialized) return
         val colors = palette()
         val selected = modeSpinner.selectedItemPosition
+        // Video resolutions do not apply to audio-only extraction. Keep the
+        // setting saved, but never show an irrelevant 1080p selector for MP3/FLAC.
+        findViewById<View>(R.id.downloadQualityGroup)?.visibility =
+            if (selected in 1..3) View.GONE else View.VISIBLE
         val modes = listOf(R.id.quickVideoButton to 0, R.id.quickAudioButton to 1,
             R.id.quickGifButton to 4, R.id.quickPlaylistButton to 5,
             R.id.quickTwitchButton to -1)
         modes.forEach { (id, mode) ->
             val button = findViewById<Button>(id) ?: return@forEach
-            val active = mode == selected
+            val active = mode == selected ||
+                (id == R.id.quickAudioButton && selected in 1..3)
             button.background = rounded(
                 if (active) purple else colors.input,
                 if (active) purple else colors.border, 12)
