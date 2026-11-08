@@ -13,8 +13,8 @@ internal object DownloadOptions {
 
     fun apply(context: Context, request: YoutubeDLRequest, url: String, mode: Int) {
         val prefs = get(context)
-        val retries = prefs.getInt("network_retries", 5).coerceIn(1, 15)
-        val fragments = prefs.getInt("fragments", 2).coerceIn(1, 8)
+        val retries = prefs.getInt("network_retries", 10).coerceIn(1, 15)
+        val fragments = prefs.getInt("fragments", 1).coerceIn(1, 8)
         val timeout = prefs.getInt("network_timeout", 20).coerceIn(10, 60)
         request.addOption("--retries", retries)
         request.addOption("--fragment-retries", retries)
