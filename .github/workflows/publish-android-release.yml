@@ -146,8 +146,10 @@ jobs:
 
           - Android 7+ ; architecture ARM 32/64 bits et x86 32/64 bits.
           - Mise à jour depuis l’application : téléchargement APK privé avec progression, contrôle SHA-256 et vérification du paquet, puis ouverture de l’installateur Android sans navigateur.
-          - Interface Windows repensée sur Android : barre URL, file centrale, commandes compactes, statut fixe sur téléphone et navigation tablette.
-          - Véritable identité All-Download : icône tirée du logo original, nom Android, splash screen et palette violette de Windows.
+          - Interface Windows adaptée à Android : barre d'URL, file centrale, formats, commandes et progression conservés.
+          - Barre de contrôle Liquid Glass : quatre icônes vectorielles, capsule violette translucide sur téléphone et navigation latérale sur tablette ou pliable ouvert.
+          - Navigation sécurisée : zones tactiles lisibles, respect des barres système Android, adaptation automatique au clavier, sans capture d'écran ni flou GPU coûteux.
+          - Identité Windows préservée : logo original, icône adaptative recentrée dans la zone sûre, nom Android, splash screen et palette violette.
           - Optimisation RAM : logo original redimensionné à la compilation (PNG 192 × 192), sans toucher au fichier Windows.
           - Fluidité : mises à jour de l'interface uniquement quand l'activité est visible, moins de re-dessins, pagination des tâches (24 à la fois) et explorateur de dossiers asynchrone (50 fichiers à la fois).
           - Démarrage optimisé : contrôles avancés de l'application construits seulement à l'ouverture des Réglages, avec leur état sauvegardé.
@@ -179,7 +181,7 @@ jobs:
 
           **Fichier :** APK Android et empreinte SHA-256 joints aux assets de cette Release.
           EOF
-          sed -i "s/0\.4\.0/${ANDROID_VERSION}/g" android-release-notes.md
+          sed -i "s/0\.6\.0/${ANDROID_VERSION}/g" android-release-notes.md
           if [ "$APK_SIGNING" = "stable" ]; then
             echo "" >> android-release-notes.md
             echo "**Signature :** clé privée persistante configurée. Les futures mises à jour signées avec la même clé sont compatibles avec l'installation par-dessus cette version." >> android-release-notes.md
