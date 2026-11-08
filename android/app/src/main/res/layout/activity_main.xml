@@ -28,7 +28,7 @@
                 android:layout_height="48dp"
                 android:contentDescription="Logo All-Download"
                 android:scaleType="centerCrop"
-                android:src="@drawable/all_download_logo" />
+                android:src="@drawable/all_download_android_logo" />
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"

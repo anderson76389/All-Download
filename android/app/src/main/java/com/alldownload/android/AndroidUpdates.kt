@@ -240,11 +240,11 @@ internal object AndroidUpdates {
             setPadding(px(24), px(25), px(24), px(20))
             this.background = GradientDrawable().apply {
                 setColor(background)
-                cornerRadius = px(26).toFloat()
+                cornerRadius = px(14).toFloat()
             }
         }
         val image = ImageView(activity).apply {
-            setImageResource(R.drawable.all_download_logo)
+            setImageResource(R.drawable.all_download_android_logo)
             scaleType = ImageView.ScaleType.CENTER_CROP
         }
         card.addView(image, LinearLayout.LayoutParams(px(74), px(74)))

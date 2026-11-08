@@ -130,7 +130,7 @@ internal object AndroidSettingsPanels {
                 setPadding(px(19), px(18), px(19), px(19))
                 background = GradientDrawable().apply {
                     setColor(panelColor)
-                    cornerRadius = px(18).toFloat()
+                    cornerRadius = px(12).toFloat()
                     setStroke(px(1), borderColor)
                 }
                 layoutParams = LinearLayout.LayoutParams(

@@ -14,8 +14,8 @@ android {
         applicationId = "com.alldownload.android"
         minSdk = 24
         targetSdk = 35
-        versionCode = 8
-        versionName = "0.6.1-beta"
+        versionCode = 9
+        versionName = "0.6.2-beta"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
@@ -64,16 +64,23 @@ dependencies {
 // The original Windows logo.jpg is read-only and is never changed in the repository.
 // Avoid decoding a full-size JPEG every time the Android launcher or splash appears.
 val originalLogo = rootProject.projectDir.resolve("../logo.jpg")
+// An Android-only asset; Windows's original logo remains unchanged.
+val androidLogo = rootProject.projectDir.resolve("branding/android-launcher.jpg")
 val compactLogo = layout.buildDirectory.file(
     "generated/all-download-brand/drawable-nodpi/all_download_logo.png"
 )
 val launcherLogo = layout.buildDirectory.file(
     "generated/all-download-brand/drawable-nodpi/all_download_launcher.png"
 )
+val androidBrandLogo = layout.buildDirectory.file(
+    "generated/all-download-brand/drawable-nodpi/all_download_android_logo.png"
+)
 val prepareAndroidBranding by tasks.registering {
     inputs.file(originalLogo)
+    inputs.file(androidLogo)
     outputs.file(compactLogo)
     outputs.file(launcherLogo)
+    outputs.file(androidBrandLogo)
     doLast {
         val image = javax.imageio.ImageIO.read(originalLogo)
             ?: error("Original All-Download logo.jpg is invalid.")
@@ -99,27 +106,29 @@ val prepareAndroidBranding by tasks.registering {
         check(javax.imageio.ImageIO.write(icon, "png", target)) {
             "Unable to create the compact original All-Download Android logo."
         }
-        // Retain exact Windows artwork within the adaptive launcher's safe area.
-        val launcher = BufferedImage(288, 288, BufferedImage.TYPE_INT_ARGB)
-        val launcherGraphics = launcher.createGraphics()
-        try {
-            launcherGraphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                RenderingHints.VALUE_INTERPOLATION_BICUBIC)
-            val safeSize = 192
-            val safeScale = minOf(safeSize.toDouble() / image.width,
-                safeSize.toDouble() / image.height)
-            val safeWidth = (image.width * safeScale).toInt().coerceAtLeast(1)
-            val safeHeight = (image.height * safeScale).toInt().coerceAtLeast(1)
-            launcherGraphics.drawImage(image, (288 - safeWidth) / 2,
-                (288 - safeHeight) / 2, safeWidth, safeHeight, null)
-        } finally {
-            launcherGraphics.dispose()
+        // Render the supplied original Android artwork; do not alter logo.jpg.
+        val artwork = javax.imageio.ImageIO.read(androidLogo)
+            ?: error("Android-only brand artwork is corrupt.")
+        check(artwork.width == artwork.height && artwork.width >= 96) {
+            "Android app icon source must be square."
         }
-        val launcherTarget = launcherLogo.get().asFile
-        launcherTarget.parentFile.mkdirs()
-        check(javax.imageio.ImageIO.write(launcher, "png", launcherTarget)) {
-            "Unable to create the original All-Download adaptive launcher icon."
+        fun renderIcon(size: Int, canvas: Int, destination: java.io.File) {
+            val bitmap = BufferedImage(canvas, canvas, BufferedImage.TYPE_INT_ARGB)
+            val paint = bitmap.createGraphics()
+            try {
+                paint.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                    RenderingHints.VALUE_INTERPOLATION_BICUBIC)
+                paint.setRenderingHint(RenderingHints.KEY_RENDERING,
+                    RenderingHints.VALUE_RENDER_QUALITY)
+                paint.drawImage(artwork, (canvas - size) / 2, (canvas - size) / 2,
+                    size, size, null)
+            } finally { paint.dispose() }
+            destination.parentFile.mkdirs()
+            check(javax.imageio.ImageIO.write(bitmap, "png", destination))
         }
+        renderIcon(192, 192, androidBrandLogo.get().asFile)
+        // Adaptive icon visible region stays inside Android's OEM mask safe zone.
+        renderIcon(192, 288, launcherLogo.get().asFile)
     }
 }
 tasks.named("preBuild") { dependsOn(prepareAndroidBranding) }

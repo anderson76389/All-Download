@@ -650,8 +650,8 @@ class MainActivity : Activity() {
         filesList.removeAllViews()
         filesList.addView(infoCard("Dossiers All-Download", "Chargement des catégories…"))
         val categories = listOf(
-            "VIDÉOS" to "▶", "AUDIOS" to "♫", "TWITCH" to "▣",
-            "GIFS" to "▤", "CHAÎNES" to "▦", "PLAYLIST" to "☷", "AUTRES" to "◈")
+            "VIDÉOS" to "🎬", "AUDIOS" to "🎵", "TWITCH" to "🟣",
+            "GIFS" to "🎞️", "CHAÎNES" to "📺", "PLAYLIST" to "📑", "AUTRES" to "📁")
         fileExecutor.execute {
             val counts = categories.map { (name, symbol) ->
                 Triple(name, symbol, filesForCategory(name, 0).count)
@@ -756,7 +756,7 @@ class MainActivity : Activity() {
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(17), dp(16), dp(17))
-            background = rounded(colors.panel, colors.border, 17)
+            background = rounded(colors.panel, colors.border, 12)
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) }
             addView(text(title, 17, colors.foreground, true))
@@ -818,19 +818,18 @@ class MainActivity : Activity() {
             Color.argb(247, 23, 22, 39)
         )
         return GradientDrawable(GradientDrawable.Orientation.TL_BR, shades).apply {
-            cornerRadius = dp(if (sidebar) 22 else 26).toFloat()
-            setStroke(dp(1), if (light) Color.argb(235, 255, 255, 255)
-                else Color.argb(135, 204, 187, 255))
+            cornerRadius = dp(12).toFloat()
+            setStroke(dp(1), if (light) Color.rgb(226, 232, 240)
+                else Color.rgb(58, 52, 70))
         }
     }
 
-    private fun navigationPill(selected: Boolean): GradientDrawable =
-        GradientDrawable(GradientDrawable.Orientation.TL_BR,
-            if (selected) intArrayOf(Color.rgb(155, 107, 245), Color.rgb(110, 47, 212))
-            else intArrayOf(Color.TRANSPARENT, Color.TRANSPARENT)).apply {
-            cornerRadius = dp(19).toFloat()
-            if (selected) setStroke(dp(1), Color.argb(160, 232, 212, 255))
-        }
+    /** Rectangular Windows-inspired tabs, with the original vector pictograms. */
+    private fun navigationPill(selected: Boolean): GradientDrawable {
+        val colors = palette()
+        return rounded(if (selected) purple else colors.input,
+            if (selected) purple else colors.border, 10)
+    }
 
     /** One navigation implementation, four unchanged actions, two responsive layouts. */
     private fun styleNavigation() {
@@ -883,12 +882,12 @@ class MainActivity : Activity() {
                 is Button -> {
                     if (view.id == R.id.startButton ||
                         view.id == R.id.resumeQueueButton || view.tag == "primary") {
-                        view.background = rounded(purple, purple, 13)
+                        view.background = rounded(purple, purple, 10)
                         view.setTextColor(Color.WHITE)
                         view.elevation = 0f
                         view.stateListAnimator = null
                     } else {
-                        view.background = rounded(colors.input, colors.border, 13)
+                        view.background = rounded(colors.input, colors.border, 10)
                         view.setTextColor(colors.foreground)
                         view.elevation = 0f
                         view.stateListAnimator = null
@@ -897,7 +896,7 @@ class MainActivity : Activity() {
                     view.setPadding(dp(12), view.paddingTop, dp(12), view.paddingBottom)
                 }
                 is EditText -> {
-                    view.background = rounded(colors.input, colors.border, 13)
+                    view.background = rounded(colors.input, colors.border, 10)
                     view.setTextColor(colors.foreground)
                     view.setHintTextColor(colors.muted)
                 }
@@ -910,11 +909,11 @@ class MainActivity : Activity() {
                 }
             }
             if (view.tag == "card") {
-                view.background = rounded(colors.panel, colors.border, 18)
+                view.background = rounded(colors.panel, colors.border, 12)
                 view.elevation = 0f
             }
             if (view.tag == "input" && view !is EditText) {
-                view.background = rounded(colors.input, colors.border, 13)
+                view.background = rounded(colors.input, colors.border, 10)
             }
             if (view is ViewGroup) for (index in 0 until view.childCount)
                 visit(view.getChildAt(index))
@@ -946,7 +945,7 @@ class MainActivity : Activity() {
                 (id == R.id.quickAudioButton && selected in 1..3)
             button.background = rounded(
                 if (active) purple else colors.input,
-                if (active) purple else colors.border, 12)
+                if (active) purple else colors.border, 10)
             button.setTextColor(if (active) Color.WHITE else colors.foreground)
             button.elevation = 0f
             button.stateListAnimator = null
