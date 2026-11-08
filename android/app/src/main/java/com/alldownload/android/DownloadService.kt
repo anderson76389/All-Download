@@ -148,7 +148,13 @@ class DownloadService : Service() {
             state = UiState(false, 0, "Erreur de la file : " + errorSummary(error))
         } finally {
             active = false
-            stopForeground(if (cancelled) STOP_FOREGROUND_REMOVE else STOP_FOREGROUND_DETACH)
+            // Android always shows the foreground notification while a task is running.
+            // The user may choose to hide only the final completion notification.
+            val showFinished = DownloadOptions.get(this).getBoolean("notify_finished", true)
+            stopForeground(if (cancelled || !showFinished)
+                STOP_FOREGROUND_REMOVE else STOP_FOREGROUND_DETACH)
+            if (cancelled || !showFinished)
+                getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
             stopSelfResult(startId)
         }
     }
@@ -272,9 +278,12 @@ class DownloadService : Service() {
             4 -> request.addOption("--recode-video", "gif")
             else -> {
                 request.addOption("--format", DownloadRules.videoFormat(url, quality))
-                request.addOption("--merge-output-format", "mp4")
+                val container = if (DownloadOptions.get(this)
+                        .getString("video_format", "MP4") == "MKV") "mkv" else "mp4"
+                request.addOption("--merge-output-format", container)
             }
         }
+        DownloadOptions.apply(this, request, url, mode)
         return request
     }
 
