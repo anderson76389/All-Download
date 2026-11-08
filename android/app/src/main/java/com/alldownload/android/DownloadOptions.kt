@@ -75,7 +75,7 @@ internal object DownloadOptions {
 
     fun validProxy(value: String): Boolean {
         if (value.isBlank() || value.length > 500 ||
-            value.any { it.isWhitespace() || it.isISOControl() }) return false
+            value.any { it.isWhitespace() || Character.isISOControl(it) }) return false
         val uri = try { java.net.URI(value) } catch (_: Exception) { return false }
         if (uri.scheme?.lowercase() !in setOf("http", "https", "socks4", "socks5", "socks5h"))
             return false
