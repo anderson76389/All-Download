@@ -28,23 +28,26 @@ Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https:/
 
 <br><br>
 
-<a href="https://github.com/anderson76389/All-Download/releases/download/android-v0.5.0-beta/All-Download-Android-0.5.0-beta.apk"><img src="https://img.shields.io/badge/T%C3%89L%C3%89CHARGER-ANDROID%20APK%20B%C3%8ATA-16A34A?style=for-the-badge&logo=android&logoColor=white" alt="Télécharger Android APK bêta"></a>
+<a href="https://github.com/anderson76389/All-Download/releases/download/android-v0.6.2-beta/All-Download-Android-0.6.2-beta.apk"><img src="https://img.shields.io/badge/T%C3%89L%C3%89CHARGER-ANDROID%20APK%20B%C3%8ATA-16A34A?style=for-the-badge&logo=android&logoColor=white" alt="Télécharger Android APK bêta"></a>
 
-**Windows :** deux archives ZIP à jour. **Android :** un APK bêta distinct (0.5.0).
+**Windows :** deux archives ZIP à jour. **Android :** un APK bêta distinct (0.6.2).
 
-<sub>Les boutons Windows pointent vers la <a href="https://github.com/anderson76389/All-Download/releases/latest">dernière version stable Windows</a>. L'APK Android est publié séparément dans sa <a href="https://github.com/anderson76389/All-Download/releases/tag/android-v0.5.0-beta">Release bêta</a>.</sub>
+<sub>Les boutons Windows pointent vers la <a href="https://github.com/anderson76389/All-Download/releases/latest">dernière version stable Windows</a>. L'APK Android est publié séparément dans sa <a href="https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.2-beta">Release bêta</a>.</sub>
 
 </div>
 
 ---
 
-## 📱 All-Download Android — bêta 0.5.0
+## 📱 All-Download Android — bêta 0.6.2
 
-**[⬇️ Télécharger directement l'APK Android](https://github.com/anderson76389/All-Download/releases/download/android-v0.5.0-beta/All-Download-Android-0.5.0-beta.apk)** · **[Page de la Release et empreinte SHA-256](https://github.com/anderson76389/All-Download/releases/tag/android-v0.5.0-beta)**
+**[⬇️ Télécharger directement l'APK Android](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.2-beta/All-Download-Android-0.6.2-beta.apk)** · **[Page de la Release et empreinte SHA-256](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.2-beta)**
+
+
+**[Voir le nouveau logo Android dans le dépôt](https://github.com/anderson76389/All-Download/blob/feature/android-app/android/branding/android-launcher.jpg)** — uniquement l'application Android a changé ; l'icône et les builds Windows restent intacts.
 
 L'APK Android est **indépendant des deux versions Windows**, fonctionne à partir d'**Android 7.0** et ne nécessite ni PC, ni Termux, ni serveur personnel. Il comprend yt-dlp et FFmpeg, ainsi que les modes vidéo, audio MP3/M4A/FLAC, GIF, playlist et chaîne. Les médias sont enregistrés dans `Téléchargements/All-Download/`, avec des sous-dossiers par catégorie.
 
-**Interface Android 0.5.0 :** le logo et l'icône All-Download, écran de lancement, palette violette Windows et thèmes **Sombre, Clair et OLED**. Quatre rubriques natives **Accueil, File d'attente, Dossiers et Paramètres** ; aperçu compact de la file sur l'accueil, collage d'URL, raccourcis vidéo/audio/GIF/playlist/Twitch, pause et reprise (selon le serveur), nettoyage ciblé de la file et stockage temporaire maîtrisé. Explorateur des sept catégories et **navigation latérale sur tablette et téléphone pliable ouvert**.
+**Interface Android 0.6.2 :** nouveau logo violet Android original (flèche de téléchargement, vidéo et AD), écran de lancement, cartes et onglets plus carrés comme Windows, pictogrammes et emojis de dossiers, palette violette Windows et thèmes **Sombre, Clair et OLED**. Quatre rubriques natives **Accueil, File d'attente, Dossiers et Paramètres** ; aperçu compact de la file sur l'accueil, collage d'URL, raccourcis vidéo/audio/GIF/playlist/Twitch, pause et reprise (selon le serveur), nettoyage ciblé de la file et stockage temporaire maîtrisé. Explorateur des sept catégories et **navigation latérale sur tablette et téléphone pliable ouvert**.
 
 **Mises à jour intégrées :** à partir de cette bêta, l'application recherche les nouvelles **Releases Android sur GitHub** à l'ouverture. Lorsqu'une version Android plus récente est disponible, un **popup animé** affiche le logo, les nouveautés, « Télécharger la mise à jour » et « Plus tard ». La recherche manuelle et l'option de désactivation sont disponibles dans les paramètres ; **les Releases Windows ne déclenchent pas ce popup**. **Depuis la bêta 0.5.0**, le bouton de mise à jour télécharge l'APK officiel **dans All-Download**, sans navigateur. L'empreinte SHA-256, le paquet, la version et la signature sont contrôlés avant l'ouverture de l'installateur sécurisé Android. Android peut demander une autorisation et une confirmation ; aucune installation forcée ou silencieuse n'est promise.
 
