@@ -158,6 +158,22 @@ class MainActivity : Activity() {
             "720p", "480p", "Auto (meilleure)", "2160p")
         modeSpinner.adapter = spinnerAdapter(modes)
         qualitySpinner.adapter = spinnerAdapter(qualities)
+        if (savedInstanceState == null) {
+            modeSpinner.setSelection(settings.getInt("last_mode", 0).coerceIn(0, 6))
+            qualitySpinner.setSelection(settings.getInt("last_quality", 0).coerceIn(0, 4))
+        }
+        modeSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                settings.edit().putInt("last_mode", position).apply()
+            }
+        }
+        qualitySpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                settings.edit().putInt("last_quality", position).apply()
+            }
+        }
         themeSpinner.adapter = spinnerAdapter(listOf("Sombre", "Clair", "OLED noir"))
         themeSpinner.setSelection(themeChoice())
         themeSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
@@ -217,7 +233,12 @@ class MainActivity : Activity() {
             } else Toast.makeText(this, "Suppression impossible.", Toast.LENGTH_LONG).show()
         }
         updateCookieStatus()
-        engineVersionText.text = "yt-dlp et FFmpeg intégrés • moteur indépendant de Windows"
+        engineVersionText.text = "yt-dlp et FFmpeg intégrés • All-Download " + BuildConfig.VERSION_NAME
+        AndroidSettingsPanels.populate(this, settingsPage) { message ->
+            engineVersionText.text = message
+            if (message.contains("est à jour") || message.startsWith("Vérification impossible"))
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        }
         applyPalette()
         processSharedUrl(intent)
         if (savedInstanceState != null) {
@@ -252,6 +273,7 @@ class MainActivity : Activity() {
         }.apply { setDropDownViewResource(R.layout.spinner_item) }
 
     private fun selectTab(tab: Int) {
+        val changed = selectedTab != tab
         selectedTab = tab
         homePage.visibility = if (tab == 0) View.VISIBLE else View.GONE
         queuePage.visibility = if (tab == 1) View.VISIBLE else View.GONE
@@ -271,6 +293,12 @@ class MainActivity : Activity() {
             renderQueue()
         } else if (tab == 2) renderFolders()
         else if (tab == 3) updateCookieStatus()
+        if (changed && !settings.getBoolean("reduce_motion", false)) {
+            val target = listOf(homePage, queuePage, filesPage, settingsPage)[tab]
+            target.animate().cancel()
+            target.alpha = 0f
+            target.animate().alpha(1f).setDuration(180).start()
+        }
         scroll.post { scroll.smoothScrollTo(0, 0) }
     }
 
@@ -555,14 +583,66 @@ class MainActivity : Activity() {
         selectTab(selectedTab)
     }
 
+    /** Two-column tablet/large foldable layout: left navigation and right content.
+     * The same page instances and event listeners are re-used, not duplicated.
+     */
     private fun configureWideScreen() {
         val widthDp = resources.configuration.screenWidthDp
-        if (widthDp >= 790) {
-            content.layoutParams = content.layoutParams.apply {
-                width = dp(750)
-            }
-            content.setPadding(dp(30), dp(28), dp(30), dp(40))
+        if (widthDp < 720) return
+        content.layoutParams = content.layoutParams.apply {
+            width = dp(widthDp.coerceAtMost(1200))
         }
+        content.setPadding(dp(20), dp(24), dp(20), dp(40))
+        val menu = findViewById<LinearLayout>(R.id.navigation)
+        val bar = menu.parent as? android.widget.HorizontalScrollView ?: return
+        bar.removeView(menu)
+        content.removeView(bar)
+
+        val pages = listOf(homePage, queuePage, filesPage, settingsPage)
+        pages.forEach { content.removeView(it) }
+
+        val split = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                    topMargin = dp(22)
+                }
+        }
+        val sidebar = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(9), dp(10), dp(9), dp(12))
+            background = rounded(palette().panel, palette().border, 19)
+        }
+        menu.orientation = LinearLayout.VERTICAL
+        menu.layoutParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT)
+        tabs.forEach { button ->
+            button.layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(52)).apply {
+                    bottomMargin = dp(9)
+                }
+        }
+        sidebar.addView(menu)
+        split.addView(sidebar, LinearLayout.LayoutParams(dp(210),
+            ViewGroup.LayoutParams.WRAP_CONTENT))
+        val mainColumn = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(17), 0, 0, 0)
+        }
+        pages.forEach { page ->
+            val original = page.layoutParams
+            mainColumn.addView(page, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                    topMargin = dp(0)
+                })
+        }
+        split.addView(mainColumn, LinearLayout.LayoutParams(0,
+            ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        content.addView(split)
+        selectTab(selectedTab)
     }
 
     @Deprecated("Android document picker callback")
@@ -620,6 +700,8 @@ class MainActivity : Activity() {
         super.onResume()
         handler.removeCallbacks(refresh)
         handler.post(refresh)
+        // GitHub Android prerelease check: only once every 12 h when enabled.
+        AndroidUpdates.check(this)
     }
 
     override fun onPause() {
