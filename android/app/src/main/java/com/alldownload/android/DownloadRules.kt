@@ -11,6 +11,10 @@ internal object DownloadRules {
         }
     } catch (_: Exception) { null }
 
+    /** Reject malformed URLs and embedded credentials before they enter the queue. */
+    fun isValidVideoUrl(url: String): Boolean =
+        url.length in 8..16384 && uri(url) != null
+
     /**
      * N'actualiser automatiquement yt-dlp que pour les réseaux sociaux
      * dont les extracteurs changent fréquemment. Twitch reste inchangé.
