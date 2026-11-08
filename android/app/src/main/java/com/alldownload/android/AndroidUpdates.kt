@@ -9,6 +9,8 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Handler
+import android.os.PowerManager
+import java.util.concurrent.atomic.AtomicBoolean
 import android.os.Looper
 import android.view.Gravity
 import android.view.ViewGroup
@@ -27,6 +29,7 @@ internal object AndroidUpdates {
         "https://api.github.com/repos/anderson76389/All-Download/releases?per_page=100"
     private const val PREFS = "android_update_preferences"
     private const val INTERVAL = 30L * 60L * 1000L
+    private val checking = AtomicBoolean(false)
 
     data class Release(val version: String, val tag: String, val title: String,
         val summary: String, val page: String, val apkUrl: String, val size: Long)
@@ -87,9 +90,13 @@ internal object AndroidUpdates {
               onStatus: ((String) -> Unit)? = null) {
         val prefs = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (!force && !prefs.getBoolean("enabled", true)) return
+        // Don't wake the network in system battery-saver mode unless user asks.
+        if (!force && (activity.getSystemService(Context.POWER_SERVICE)
+                as PowerManager).isPowerSaveMode) return
         val now = System.currentTimeMillis()
         val last = prefs.getLong("last_attempt", 0L)
         if (!force && last > 0 && now - last in 0 until INTERVAL) return
+        if (!checking.compareAndSet(false, true)) return
         prefs.edit().putLong("last_attempt", now).apply()
         val handler = Handler(Looper.getMainLooper())
         Thread({
@@ -105,13 +112,24 @@ internal object AndroidUpdates {
                         instanceFollowRedirects = false
                         setRequestProperty("User-Agent", "All-Download-Android-updater")
                         setRequestProperty("Accept", "application/vnd.github+json")
+                        val cached = prefs.getString("etag_releases_$page", "").orEmpty()
+                        if (!force && cached.isNotBlank())
+                            setRequestProperty("If-None-Match", cached)
                     }
                     val body = try {
-                        if (conn.responseCode != 200)
-                            throw IllegalStateException("GitHub : HTTP " + conn.responseCode)
-                        conn.inputStream.bufferedReader().use { it.readText() }
+                        when (conn.responseCode) {
+                            304 -> null // Same releases: don't download JSON again.
+                            200 -> {
+                                val response = conn.inputStream.bufferedReader().use { it.readText() }
+                                val etag = conn.getHeaderField("ETag")
+                                if (!etag.isNullOrBlank())
+                                    prefs.edit().putString("etag_releases_$page", etag).apply()
+                                response
+                            }
+                            else -> throw IllegalStateException("GitHub : HTTP " + conn.responseCode)
+                        }
                     } finally { conn.disconnect() }
-                    if (JSONArray(body).length() == 0) break
+                    if (body == null || JSONArray(body).length() == 0) break
                     match = findNewer(body, BuildConfig.VERSION_NAME)
                     if (match != null) break
                 }
@@ -122,8 +140,10 @@ internal object AndroidUpdates {
                         onStatus?.invoke("Vérification impossible : " +
                             (error.localizedMessage ?: "réseau indisponible"))
                 }
+                checking.set(false)
                 return@Thread
             }
+            checking.set(false)
             handler.post {
                 if (activity.isFinishing || activity.isDestroyed) return@post
                 if (result == null) {
