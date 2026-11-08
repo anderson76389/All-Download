@@ -199,6 +199,11 @@ class AndroidSmokeTest {
             assertEquals(View.VISIBLE,
                 activity.findViewById<View>(R.id.settingsPage).visibility)
             assertEquals(3, activity.findViewById<Spinner>(R.id.themeSpinner).count)
+            val wide = activity.resources.configuration.screenWidthDp >= 720
+            val navOrientation = activity.findViewById<LinearLayout>(R.id.navigation).orientation
+            assertEquals("La navigation doit devenir une barre latérale sur tablette.",
+                if (wide) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL,
+                navOrientation)
             instrumentation.runOnMainSync {
                 activity.findViewById<Button>(R.id.navHome).performClick()
                 activity.findViewById<Button>(R.id.quickAudioButton).performClick()
