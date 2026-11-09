@@ -129,8 +129,8 @@ internal object AndroidSettingsPanels {
                 }
                 buttons[section].tag = if (active) "primary" else "settings-tab"
                 buttons[section].setTextColor(if (active) Color.WHITE else color)
-                buttons[section].compoundDrawablesRelative[0]
-                    ?.setTint(if (active) Color.WHITE else color)
+                buttons[section].compoundDrawablesRelative.filterNotNull()
+                    .forEach { it.setTint(if (active) Color.WHITE else color) }
             }
             prefs.edit().putInt("settings_tab", index).apply()
         }
@@ -296,6 +296,10 @@ internal object AndroidSettingsPanels {
         fun button(panel: LinearLayout, title: String, onClick: () -> Unit) {
             val b = Button(activity).apply {
                 text = title
+                textSize = 13f
+                setSingleLine(true)
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                contentDescription = title
                 isAllCaps = false
                 setTextColor(Color.WHITE)
                 val iconRes = if (title.contains("mise à jour", ignoreCase = true))
@@ -422,7 +426,7 @@ internal object AndroidSettingsPanels {
         updates.addView(label("All-Download Android " + BuildConfig.VERSION_NAME +
             " · les prochaines Releases nécessitent la signature permanente. Une ancienne bêta debug peut demander une dernière réinstallation.",
             11f, tint = muted))
-        button(updates, "Voir toutes les Releases Android") {
+        button(updates, "Voir les Releases GitHub") {
             activity.startActivity(Intent(Intent.ACTION_VIEW,
                 Uri.parse("https://github.com/anderson76389/All-Download/releases")))
         }

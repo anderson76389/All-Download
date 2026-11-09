@@ -932,7 +932,8 @@ class MainActivity : Activity() {
             if (wide) {
                 button.setCompoundDrawablesRelative(icon, null, null, null)
                 button.gravity = Gravity.CENTER_VERTICAL or Gravity.START
-                button.text = fullNames[index]
+                button.text = if (resources.configuration.screenWidthDp < 840)
+                    shortNames[index] else fullNames[index]
                 button.textSize = 13f
                 button.setPadding(dp(16), 0, dp(8), 0)
                 button.compoundDrawablePadding = dp(11)
@@ -968,7 +969,12 @@ class MainActivity : Activity() {
             R.id.homeQueueTitleIcon to R.drawable.nav_queue,
             R.id.queuePageTitleIcon to R.drawable.nav_queue,
             R.id.filesPageTitleIcon to R.drawable.nav_folders,
-            R.id.settingsPageTitleIcon to R.drawable.nav_settings
+            R.id.settingsPageTitleIcon to R.drawable.nav_settings,
+            R.id.quickAccessTitleIcon to R.drawable.ic_playlist,
+            R.id.statusFooterTitleIcon to R.drawable.ic_download,
+            R.id.settingsAppearanceTitleIcon to R.drawable.ic_sliders,
+            R.id.settingsEngineTitleIcon to R.drawable.ic_download,
+            R.id.settingsCookiesTitleIcon to R.drawable.ic_security
         )
         sections.forEach { (labelId, iconId) ->
             findViewById<TextView>(labelId)?.apply {
@@ -979,6 +985,8 @@ class MainActivity : Activity() {
                 setCompoundDrawablesRelative(icon, null, null, null)
                 compoundDrawablePadding = dp(9)
                 includeFontPadding = false
+                maxLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.END
             }
         }
     }
@@ -1072,7 +1080,9 @@ class MainActivity : Activity() {
             Triple(R.id.openFullQueueButton, R.drawable.nav_queue, foreground),
             Triple(R.id.clearFinishedButton, R.drawable.ic_done, foreground),
             Triple(R.id.clearFailedButton, R.drawable.ic_error, foreground),
-            Triple(R.id.clearWaitingButton, R.drawable.ic_waiting, foreground)
+            Triple(R.id.clearWaitingButton, R.drawable.ic_waiting, foreground),
+            Triple(R.id.importCookiesButton, R.drawable.ic_file, foreground),
+            Triple(R.id.removeCookiesButton, R.drawable.ic_trash, foreground)
         ).forEach { (id, icon, tint) ->
             val button = findViewById<Button>(id)
             setButtonIcon(button, icon, tint, if (id == R.id.pasteUrlButton) 16 else 18)

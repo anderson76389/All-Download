@@ -334,8 +334,10 @@ class AndroidSmokeTest {
             for (id in listOf(R.id.settingsTabDownload, R.id.settingsTabApplication,
                     R.id.settingsTabNetwork)) {
                 val button = activity.findViewById<Button>(id)
+                val stacked = activity.resources.configuration.screenWidthDp < 390 ||
+                    activity.resources.configuration.fontScale > 1.2f
                 assertNotNull("Settings tab icon missing: $id",
-                    button.compoundDrawablesRelative[0])
+                    button.compoundDrawablesRelative[if (stacked) 1 else 0])
                 assertTrue("Settings tab label empty: $id", button.text.isNotBlank())
             }
             val mediaCards = activity.findViewById<LinearLayout>(
@@ -345,6 +347,71 @@ class AndroidSmokeTest {
             val heading = firstCard.getChildAt(0) as TextView
             assertNotNull("Settings section icon missing",
                 heading.compoundDrawablesRelative[0])
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
+
+    @Test fun readableAlignmentAndResponsiveTextAcrossAllPages() {
+        val activity = instrumentation.startActivitySync(
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        ) as MainActivity
+        instrumentation.waitForIdleSync()
+        try {
+            val density = activity.resources.displayMetrics.density
+            fun dp(px: Int): Int = (px / density + .5f).toInt()
+            val paste = activity.findViewById<Button>(R.id.pasteUrlButton)
+            val add = activity.findViewById<Button>(R.id.queueButton)
+            assertTrue("Presse-papiers trop étroit avec son pictogramme", dp(paste.width) >= 87)
+            assertEquals("Action de file différente de Windows", "Ajouter", add.text.toString())
+            assertEquals("Icône de file manquante", true,
+                add.compoundDrawablesRelative[0] != null)
+            for (id in intArrayOf(R.id.quickVideoButton, R.id.quickAudioButton,
+                    R.id.quickGifButton, R.id.quickPlaylistButton, R.id.quickTwitchButton)) {
+                val button = activity.findViewById<Button>(id)
+                assertTrue("Raccourci sous les 48 dp : $id", dp(button.height) >= 48)
+                assertEquals("Texte sur plusieurs lignes : $id", 1, button.maxLines)
+            }
+            for (id in intArrayOf(R.id.homeTitleIcon, R.id.optionsTitleIcon,
+                    R.id.homeQueueTitleIcon, R.id.queuePageTitleIcon,
+                    R.id.filesPageTitleIcon, R.id.settingsPageTitleIcon,
+                    R.id.quickAccessTitleIcon, R.id.statusFooterTitleIcon,
+                    R.id.settingsAppearanceTitleIcon, R.id.settingsEngineTitleIcon,
+                    R.id.settingsCookiesTitleIcon)) {
+                val heading = activity.findViewById<TextView>(id)
+                assertNotNull("Titre non présent : $id", heading)
+                assertNotNull("Pictogramme de titre non présent : $id",
+                    heading.compoundDrawablesRelative[0])
+                assertEquals("Un titre long doit pouvoir revenir sur deux lignes : $id",
+                    2, heading.maxLines)
+            }
+            instrumentation.runOnMainSync {
+                activity.findViewById<Button>(R.id.navSettings).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            val stacked = activity.resources.configuration.screenWidthDp < 390 ||
+                activity.resources.configuration.fontScale > 1.2f
+            for (id in intArrayOf(R.id.settingsTabDownload,
+                    R.id.settingsTabApplication, R.id.settingsTabNetwork)) {
+                val button = activity.findViewById<Button>(id)
+                assertTrue("Onglet réglages inaccessible : $id", button.isClickable)
+                assertTrue("Onglet réglages trop petit : $id", dp(button.height) >= 48)
+                assertTrue("Onglet hors de sa grille : $id", button.width > 0)
+                assertNotNull("Icône mal placée : $id",
+                    button.compoundDrawablesRelative[if (stacked) 1 else 0])
+                val measuredText = button.paint.measureText(button.text.toString())
+                assertTrue("Libellé coupé dans l'onglet : $id",
+                    measuredText <= button.width - button.paddingLeft - button.paddingRight + 2f)
+            }
+            val group = activity.findViewById<LinearLayout>(R.id.settingsDownloadPanel)
+            val firstCard = group.getChildAt(0) as LinearLayout
+            val checkboxIndex = (0 until firstCard.childCount).first {
+                firstCard.getChildAt(it) is CheckBox
+            }
+            val explanation = firstCard.getChildAt(checkboxIndex + 1) as TextView
+            assertTrue("Description non alignée avec le texte de la case",
+                dp(explanation.paddingLeft) >= 38)
         } finally {
             instrumentation.runOnMainSync { activity.finish() }
         }
