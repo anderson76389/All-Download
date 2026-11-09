@@ -333,6 +333,7 @@ class MainActivity : Activity() {
         if (resources.configuration.screenWidthDp >= 600) configureWideScreen()
         else configurePhoneNavigation()
         arrangeOptionPills()
+        arrangeQuickAccess()
         styleQuickModes()
     }
 
@@ -1121,6 +1122,52 @@ class MainActivity : Activity() {
             setButtonIcon(button, icons.getValue(id),
                 if (active) Color.WHITE else colors.foreground, 17)
         }
+    }
+
+    /**
+     * Keep all five Windows-style shortcuts simultaneously visible on narrow
+     * phones and medium foldables: 3 equal cells + 2 equal cells.
+     * Reparent the original Buttons, preserving all actual download listeners.
+     * Wide tablets retain the single compact row from the XML layout.
+     */
+    private fun arrangeQuickAccess() {
+        if (resources.configuration.screenWidthDp >= 900) return
+        val group = findViewById<LinearLayout>(R.id.quickModesRow)
+        val ids = listOf(
+            R.id.quickVideoButton, R.id.quickAudioButton, R.id.quickGifButton,
+            R.id.quickPlaylistButton, R.id.quickTwitchButton
+        )
+        val items = ids.map { findViewById<Button>(it) }
+        items.forEach { (it.parent as? ViewGroup)?.removeView(it) }
+        group.removeAllViews()
+        group.orientation = LinearLayout.VERTICAL
+        group.layoutParams = android.widget.FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        (group.parent as? android.widget.HorizontalScrollView)?.isFillViewport = true
+
+        fun addRow(buttons: List<Button>, second: Boolean) {
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            group.addView(row, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                if (second) topMargin = dp(7)
+            })
+            buttons.forEachIndexed { index, button ->
+                button.minWidth = 0
+                button.minimumWidth = 0
+                button.textSize = 12f
+                button.setSingleLine(true)
+                button.ellipsize = android.text.TextUtils.TruncateAt.END
+                button.layoutParams = LinearLayout.LayoutParams(0, dp(48), 1f).apply {
+                    if (index > 0) marginStart = dp(7)
+                }
+                row.addView(button)
+            }
+        }
+        addRow(items.take(3), false)
+        addRow(items.drop(3), true)
     }
 
     /** Compact Windows option pair on tablets/foldables; stacked, readable on phones. */

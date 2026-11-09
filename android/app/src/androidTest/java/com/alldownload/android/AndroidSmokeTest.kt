@@ -352,6 +352,54 @@ class AndroidSmokeTest {
         }
     }
 
+    @Test fun quickAccessButtonsNeverHideOffscreenOnCompactScreens() {
+        val activity = instrumentation.startActivitySync(
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        ) as MainActivity
+        instrumentation.waitForIdleSync()
+        try {
+            val grid = activity.findViewById<LinearLayout>(R.id.quickModesRow)
+            val ids = intArrayOf(R.id.quickVideoButton, R.id.quickAudioButton,
+                R.id.quickGifButton, R.id.quickPlaylistButton, R.id.quickTwitchButton)
+            if (activity.resources.configuration.screenWidthDp < 900) {
+                assertEquals("Cinq raccourcis doivent former deux lignes",
+                    LinearLayout.VERTICAL, grid.orientation)
+                assertEquals(2, grid.childCount)
+                val firstRow = grid.getChildAt(0) as LinearLayout
+                val secondRow = grid.getChildAt(1) as LinearLayout
+                assertEquals(3, firstRow.childCount)
+                assertEquals(2, secondRow.childCount)
+                val screenDp = activity.resources.displayMetrics.density
+                ids.forEach { id ->
+                    val button = activity.findViewById<Button>(id)
+                    assertTrue("Le raccourci a une largeur nulle : $id", button.width > 0)
+                    assertTrue("Raccourci trop bas : $id", button.height / screenDp >= 47.5f)
+                    assertTrue("Libellé illisible : $id", button.text.isNotBlank())
+                    assertEquals(1, button.maxLines)
+                    assertTrue("Bouton qui déborde à droite : $id",
+                        button.right <= (button.parent as LinearLayout).width)
+                    assertTrue("Bouton qui déborde à gauche : $id", button.left >= 0)
+                }
+                assertTrue("La rangée est trop large pour l'écran",
+                    grid.width <= activity.resources.displayMetrics.widthPixels)
+                instrumentation.runOnMainSync {
+                    activity.findViewById<Button>(R.id.quickPlaylistButton).performClick()
+                    activity.findViewById<Button>(R.id.quickTwitchButton).performClick()
+                }
+                instrumentation.waitForIdleSync()
+                assertEquals("Twitch doit conserver la qualité vidéo native", 0,
+                    activity.findViewById<Spinner>(R.id.qualitySpinner).selectedItemPosition)
+            } else {
+                assertEquals("Tablettes larges : garder la barre compacte",
+                    LinearLayout.HORIZONTAL, grid.orientation)
+                assertEquals(5, grid.childCount)
+            }
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
+
     @Test fun readableAlignmentAndResponsiveTextAcrossAllPages() {
         val activity = instrumentation.startActivitySync(
             Intent(context, MainActivity::class.java)
