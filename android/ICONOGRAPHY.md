@@ -4,7 +4,7 @@
 
 **Identité : All-Download Windows.** Utiliser le logo original de Windows, sans recadrage, et les couleurs du thème déjà disponibles. Les captures de YTDLnis servent de référence **ergonomique** : icônes simples, boutons compacts et information claire, sans réutiliser ses fichiers graphiques.
 
-Toutes les icônes sont des **VectorDrawable natifs originaux** au format `24 × 24`, avec des formes pleines monochromes et une couleur appliquée par le thème. Pas d'emoji, de police spéciale, de chargement réseau ou de filtres GPU. Le même glyphe est réutilisé partout où la fonction est identique.
+Toutes les icônes sont des **VectorDrawable natifs originaux** au format `24 × 24`, avec des formes pleines ou des contours nets monochromes et une couleur appliquée par le thème. Pas d'emoji, de police spéciale, de chargement réseau ou de filtres GPU. Le même glyphe est réutilisé partout où la fonction est identique.
 
 ## Navigation Liquid Glass
 
@@ -90,3 +90,7 @@ Tous les dossiers utilisent la même silhouette et un signe intérieur différen
 - Fond clair/sombre/OLED selon le thème. Le violet est réservé aux actions actives ou aux accents, sans animation permanente.
 
 **Ne pas changer :** logo principal Windows, identifiants des commandes, moteurs yt-dlp/FFmpeg/Twitch, logique de file et téléchargements, structure des releases Windows. Les évolutions restent dans `android/`.
+
+### Contrôle de visibilité
+
+Les pictogrammes de dossiers ont un **contour clair et un symbole central séparé** pour éviter qu'un détail blanc sur un fond blanc soit invisible. Le test d'instrumentation `sevenFolderGlyphsRenderAsDistinctVisibleShapes` dessine réellement les sept vecteurs et vérifie qu'ils ont des pixels visibles et des silhouettes différentes.

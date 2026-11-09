@@ -350,6 +350,43 @@ class AndroidSmokeTest {
         }
     }
 
+    @Test fun sevenFolderGlyphsRenderAsDistinctVisibleShapes() {
+        val activity = instrumentation.startActivitySync(
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        ) as MainActivity
+        instrumentation.waitForIdleSync()
+        try {
+            val resourceIds = intArrayOf(
+                R.drawable.ic_folder_video, R.drawable.ic_folder_audio,
+                R.drawable.ic_folder_twitch, R.drawable.ic_folder_gif,
+                R.drawable.ic_folder_channel, R.drawable.ic_folder_playlist,
+                R.drawable.ic_folder_other
+            )
+            val bitmaps = resourceIds.map { res ->
+                val bitmap = android.graphics.Bitmap.createBitmap(96, 96,
+                    android.graphics.Bitmap.Config.ARGB_8888)
+                val drawable = activity.getDrawable(res)!!
+                drawable.setBounds(0, 0, 96, 96)
+                drawable.draw(android.graphics.Canvas(bitmap))
+                val pixels = IntArray(96 * 96)
+                bitmap.getPixels(pixels, 0, 96, 0, 0, 96, 96)
+                assertTrue("Folder vector contains no visible pixels: $res",
+                    pixels.any { it != android.graphics.Color.TRANSPARENT })
+                bitmap
+            }
+            for (i in bitmaps.indices) {
+                for (j in 0 until i) {
+                    assertFalse("Folder $i and $j have identical visual symbols.",
+                        bitmaps[i].sameAs(bitmaps[j]))
+                }
+            }
+            bitmaps.forEach { it.recycle() }
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
+
     @Test fun unifiedIconCatalogLoadsAndQueueActionsRetainTheirLabels() {
         val activity = instrumentation.startActivitySync(
             Intent(context, MainActivity::class.java)
