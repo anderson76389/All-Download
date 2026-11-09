@@ -1,25 +1,36 @@
-# All-Download Android — bêta 0.6.8
+# All-Download Android — bêta 0.6.9
 
 Nouvelle application Android **indépendante de Windows**, dans le dossier `android/`. Les éditions Portable/Classique Windows, `yt_app.py`, `twitch_hls.py` et `build-windows.yml` ne sont pas modifiés.
 
-## Raccourcis visibles et textes cohérents — bêta 0.6.8
+## Identité verrouillée et mises à jour intégrées — bêta 0.6.9
+
+- **Nom permanent « All-Download »** sur le lanceur Android, sans nom de test et sans modification liée au thème.
+- **Logo Android d'origine conservé** dans la barre supérieure, le lanceur, le splash et le dialogue de mise à jour ; cadrage entier, sans recadrage.
+- **En-tête fixe** sur téléphone, pliable et tablette : le logo et le titre restent en haut, même en défilant ou en changeant de page.
+- **Bannière de mise à jour native, dans l'esprit Kovelyx** : apparition en haut lorsqu'une nouvelle Release Android existe, numéro de version, notes détaillées, bouton Installer, progression et « Plus tard ». Réapparition à la version suivante.
+- Téléchargement dans le cache privé de l'application, contrôle du SHA-256 et de la signature, puis installation par le **programme d'installation Android**, sans navigateur. Android doit toujours demander la confirmation de l'utilisateur, sauf gestion privilégiée hors de cette application.
+- Vérifications automatiques au retour dans l'application, avec cache HTTP et limite de fréquence pour préserver la batterie ; aucun scrutage permanent.
+- Test de non-régression pour le bandeau fixe, les quatre pages et la fermeture de la bannière jusqu'à une nouvelle version.
+- Windows, yt-dlp, FFmpeg et Twitch sont inchangés.
+
+## Raccourcis visibles et textes cohérents — bêta 0.6.9
 
 - Sur téléphone et pliable de largeur limitée, les cinq raccourcis du bloc « Accès rapide » apparaissent **ensemble** sur deux rangées (3 + 2) : aucun onglet Twitch ou Playlist caché derrière un défilement horizontal.
 - Tous les raccourcis utilisent la même hauteur (48 dp), des colonnes équilibrées et un espacement de 7 dp ; leurs icônes, labels et actions originales sont conservés.
 - Sur les grandes tablettes (à partir de 900 dp), le bandeau reste en une seule rangée fidèle à Windows.
 - Un test Android vérifie le nombre de rangées, la largeur réelle des boutons, les débordements, leur libellé et les clics Playlist/Twitch.
-- Aucun fichier de la version Windows n'est modifié ; la publication APK nécessite toujours les secrets de signature permanente.
+- Aucun fichier de la version Windows n'est modifié ; la publication APK utilise la signature permanente configurée dans GitHub.
 
-## Cohérence des textes et placements — bêta 0.6.8
+## Cohérence des textes et placements — bêta 0.6.9
 
 - Sur téléphone : bouton « Coller » élargi à **88 dp**, raccourcis rapides d'au moins **48 dp**, action « Ajouter » comme sur Windows et en-têtes avec icône et deux lignes possibles.
 - Sur les écrans étroits ou avec une police système agrandie : onglets « Médias / Appli / Réseau » en disposition **icône au-dessus du texte**. Le contraste de l'onglet actif est mis à jour dans les deux orientations d'icône.
 - Sur tablette et pliable ouvert : barre latérale conservée, avec libellés raccourcis quand la largeur ne permet pas les noms complets.
 - Descriptions des cases à cocher alignées sur le début du texte, listes déroulantes sur une ligne, menu déroulant aux couleurs du thème. Le fond bleu foncé fixe des sélecteurs a été retiré en clair et OLED.
 - Libellés plus courts et explicites, accessibilité complète conservée via les descriptions vocales Android. Une nouvelle suite de tests vérifie les tailles, titres, icônes et alignements réels.
-- Aucune modification des versions Windows, ni des moteurs de téléchargement. La publication APK attend toujours la signature permanente.
+- Aucune modification des versions Windows, ni des moteurs de téléchargement. La publication APK exige la signature permanente déjà configurée.
 
-## Icônes harmonisées — bêta 0.6.8
+## Icônes harmonisées — bêta 0.6.9
 
 - Une seule famille de vecteurs Android 24 × 24 (formes pleines, teinte appliquée par le thème) pour navigation, formats, téléchargements, dossiers et réglages. Aucun emoji utilisé comme icône.
 - Les sept catégories de dossiers ont chacune une icône dédiée. Les fichiers vidéo, audio et GIF utilisent une vignette correspondant à leur extension.
@@ -29,7 +40,7 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 - La Release Android exige toujours une signature permanente : consulter [SIGNING.md](SIGNING.md). Aucune clé privée n'est incluse au dépôt.
 - Aucun code Windows modifié.
 
-## Identité Windows sur Android — bêta 0.6.8
+## Identité Windows sur Android — bêta 0.6.9
 
 - Les quatre pictogrammes Liquid Glass de navigation, les contrôles de téléchargement et les dossiers adoptent le langage visuel **Material plein** des SVG employés dans la version Windows.
 - Nouveaux pictogrammes dédiés pour les titres Nouveau lien, Options, File, Dossiers et Réglages.
@@ -38,7 +49,7 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 - **Signature permanente obligatoire :** les Releases Android ne basculent plus sur une APK debug en l'absence des secrets de signature. Le propriétaire doit créer et configurer les secrets expliqués dans [SIGNING.md](SIGNING.md).
 - Les composants et Releases Windows ne sont pas modifiés.
 
-## Icônes vectorielles et textes réajustés — bêta 0.6.8
+## Icônes vectorielles et textes réajustés — bêta 0.6.9
 
 - Fin des emojis et des glyphes texte comme pictogrammes. Icônes vectorielles cohérentes pour la navigation, les raccourcis, les fichiers et les téléchargements.
 - Barre Liquid Glass inchangée dans son principe, mais icônes Accueil / File / Dossiers / Réglages redessinées, textes centrés et uniformes.
@@ -47,7 +58,7 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 - Cartes de fichiers plus régulières, textes longs tronqués sur une ligne et réglages plus lisibles.
 - Tests dédiés au chargement des ressources vectorielles et au placement des boutons. Aucun fichier Windows modifié.
 
-## Design minimaliste Liquid Glass — bêta 0.6.8
+## Design minimaliste Liquid Glass — bêta 0.6.9
 
 - Barre de navigation flottante, translucide, à reflet discret et capsule violette active ; rendu natif sans flou GPU continu.
 - Accueil réorganisé : URL puis actions Télécharger / Dans la file sur une ligne, options et raccourcis, aperçu de la file.
@@ -65,7 +76,7 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 - **Android pliable/tablette** : interface centrée et limitée en largeur sur les grands écrans, recalcul au changement d'orientation ; contrôles tactiles natifs sur petit écran.
 - **Fichiers accessibles** depuis les sept dossiers de l'app : MediaStore Android 10+ et FileProvider Android 7–9, sans permission « gérer tous les fichiers ».
 
-## Refonte de l'interface Windows sur téléphone et tablette (bêta 0.6.8)
+## Refonte de l'interface Windows sur téléphone et tablette (bêta 0.6.9)
 
 - **Écran réellement inactif :** aucune boucle d'actualisation quand l'activité est en arrière-plan. Quand elle est visible, le rafraîchissement s'adapte (1,8 s pendant le téléchargement, 3 s dans la file, 8 s au repos) et ne redessine pas les contrôles si leur état n'a pas changé.
 - **File d'attente optimisée :** les tâches restent enregistrées de façon atomique et persistante, avec un cache en mémoire et une révision. Les écritures identiques sont ignorées, la progression sur disque est regroupée et seulement 24 cartes sont affichées au départ (« Afficher plus » pour la suite). Aucun téléchargement n'est perdu si une carte n'est pas affichée.

@@ -98,6 +98,7 @@ class MainActivity : Activity() {
     private lateinit var filesPage: LinearLayout
     private lateinit var settingsPage: LinearLayout
     private lateinit var tabs: List<Button>
+    private var updateBanner: AndroidUpdateBanner? = null
 
     private var selectedTab = 0
     private var settingsPanelsCreated = false
@@ -332,6 +333,7 @@ class MainActivity : Activity() {
         // below the content instead of spending vertical space above the URL field.
         if (resources.configuration.screenWidthDp >= 600) configureWideScreen()
         else configurePhoneNavigation()
+        pinBrandAndUpdater()
         arrangeOptionPills()
         arrangeQuickAccess()
         styleQuickModes()
@@ -1259,19 +1261,84 @@ class MainActivity : Activity() {
             bar.visibility = if (typing) View.GONE else View.VISIBLE
             footer.visibility = if (typing || selectedTab >= 2) View.GONE else View.VISIBLE
             if (Build.VERSION.SDK_INT >= 35)
-                view.setPadding(safe.left, 0, safe.right, if (typing) 0 else safe.bottom)
+                view.setPadding(safe.left, safe.top, safe.right,
+                    if (typing) 0 else safe.bottom)
             insets
         }
         if (Build.VERSION.SDK_INT >= 35) {
             ViewCompat.setOnApplyWindowInsetsListener(scroll) { view, insets ->
                 val safe = insets.getInsets(WindowInsetsCompat.Type.systemBars() or
                     WindowInsetsCompat.Type.displayCutout())
-                view.setPadding(0, safe.top, 0, 0)
+                // The fixed brand row owns the top system inset.
+                view.setPadding(0, 0, 0, 0)
                 insets
             }
         }
         ViewCompat.requestApplyInsets(shell)
         styleNavigation()
+    }
+
+    /**
+     * Brand is a locked, unchanging identity across theme, page and rotation.
+     * Reparent its ORIGINAL view outside the scrolling area; never duplicate
+     * the logo or title. The update banner stays directly under the header.
+     */
+    private fun pinBrandAndUpdater() {
+        val brand = findViewById<LinearLayout>(R.id.brandHeader)
+        (brand.parent as? ViewGroup)?.removeView(brand)
+        findViewById<TextView>(R.id.brandTitle).text = "ALL-DOWNLOAD"
+        findViewById<ImageView>(R.id.brandLogo).apply {
+            setImageResource(R.drawable.all_download_android_logo)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+        }
+        brand.setPadding(dp(12), dp(9), dp(12), dp(9))
+        brand.background = rounded(palette().panel, palette().border, 16)
+
+        val upper = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), dp(8), dp(12), dp(7))
+        }
+        upper.addView(brand, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        val banner = AndroidUpdateBanner(this)
+        updateBanner = banner
+        upper.addView(banner.view, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            topMargin = dp(7)
+        })
+
+        if (resources.configuration.screenWidthDp < 600) {
+            val shell = scroll.parent as? LinearLayout ?: return
+            shell.addView(upper, 0, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        } else {
+            // Keep the same pinned branding on foldables/tablets with a sidebar.
+            val host = scroll.parent as? ViewGroup ?: return
+            host.removeView(scroll)
+            val shell = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setBackgroundColor(palette().background)
+            }
+            shell.addView(upper, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            shell.addView(scroll, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+            host.addView(shell, ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            if (Build.VERSION.SDK_INT >= 35) {
+                ViewCompat.setOnApplyWindowInsetsListener(shell) { view, insets ->
+                    val safe = insets.getInsets(WindowInsetsCompat.Type.systemBars() or
+                        WindowInsetsCompat.Type.displayCutout())
+                    view.setPadding(safe.left, safe.top, safe.right, safe.bottom)
+                    insets
+                }
+                ViewCompat.setOnApplyWindowInsetsListener(scroll) { view, insets ->
+                    view.setPadding(0, 0, 0, 0)
+                    insets
+                }
+                ViewCompat.requestApplyInsets(shell)
+            }
+        }
     }
 
     /** Two-column tablet/large foldable layout: left navigation and right content.
@@ -1395,8 +1462,11 @@ class MainActivity : Activity() {
         handler.post(refresh)
         // Resume only a user-authorized APK installation after Android's settings screen.
         AndroidApkInstaller.onResume(this)
-        // GitHub prerelease updates are cached for 30 minutes and never open a browser.
-        AndroidUpdates.check(this)
+        // Like Kovelyx: restore a pinned banner immediately, then refresh from GitHub.
+        // Installation remains inside All-Download until Android requests user approval.
+        updateBanner?.onReturnToApp()
+        updateBanner?.show(AndroidUpdates.cachedCandidate(this))
+        AndroidUpdates.check(this, onRelease = { release -> updateBanner?.show(release) })
     }
 
     override fun onPause() {

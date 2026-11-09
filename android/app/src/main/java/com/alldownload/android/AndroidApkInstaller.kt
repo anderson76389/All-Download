@@ -32,6 +32,9 @@ internal object AndroidApkInstaller {
     private val cancelled = AtomicBoolean(false)
     private val main = Handler(Looper.getMainLooper())
 
+    /** Used by the pinned banner when returning from system installer settings. */
+    fun isBusy(): Boolean = busy.get()
+
     fun cancelDownload(context: Context) {
         cancelled.set(true)
         context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)

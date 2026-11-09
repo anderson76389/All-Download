@@ -120,17 +120,44 @@ internal object AndroidUpdates {
             saved.optLong("size"))
     }
 
+    /** Restores a verified Android-only candidate immediately after rotation or restart. */
+    fun cachedCandidate(context: Context): Release? {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        var best: Release? = null
+        for (page in 1..4) {
+            val release = decodeCandidate(
+                prefs.getString("candidate_releases_" + page, "").orEmpty(),
+                BuildConfig.VERSION_NAME) ?: continue
+            if (best == null || compareVersions(release.version, best.version) > 0)
+                best = release
+        }
+        return best
+    }
+
     fun check(activity: Activity, force: Boolean = false,
-              onStatus: ((String) -> Unit)? = null) {
+              onStatus: ((String) -> Unit)? = null,
+              onRelease: ((Release?) -> Unit)? = null) {
         val prefs = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        if (!force && !prefs.getBoolean("enabled", true)) return
+        if (!force && !prefs.getBoolean("enabled", true)) {
+            onRelease?.invoke(null)
+            return
+        }
         // Don't wake the network in system battery-saver mode unless user asks.
         if (!force && (activity.getSystemService(Context.POWER_SERVICE)
-                as PowerManager).isPowerSaveMode) return
+                as PowerManager).isPowerSaveMode) {
+            onRelease?.invoke(cachedCandidate(activity))
+            return
+        }
         val now = System.currentTimeMillis()
         val last = prefs.getLong("last_attempt", 0L)
-        if (!force && last > 0 && now - last in 0 until INTERVAL) return
-        if (!checking.compareAndSet(false, true)) return
+        if (!force && last > 0 && now - last in 0 until INTERVAL) {
+            onRelease?.invoke(cachedCandidate(activity))
+            return
+        }
+        if (!checking.compareAndSet(false, true)) {
+            onRelease?.invoke(cachedCandidate(activity))
+            return
+        }
         prefs.edit().putLong("last_attempt", now).apply()
         val handler = Handler(Looper.getMainLooper())
         Thread({
@@ -187,6 +214,8 @@ internal object AndroidUpdates {
                     if (!activity.isFinishing && !activity.isDestroyed)
                         onStatus?.invoke("Vérification impossible : " +
                             (error.localizedMessage ?: "réseau indisponible"))
+                    if (!activity.isFinishing && !activity.isDestroyed)
+                        onRelease?.invoke(cachedCandidate(activity))
                 }
                 checking.set(false)
                 return@Thread
@@ -195,14 +224,20 @@ internal object AndroidUpdates {
             handler.post {
                 if (activity.isFinishing || activity.isDestroyed) return@post
                 if (result == null) {
+                    onRelease?.invoke(null)
                     onStatus?.invoke("All-Download " + BuildConfig.VERSION_NAME + " est à jour.")
                     return@post
                 }
                 onStatus?.invoke("Nouvelle version : " + result.version)
-                val shown = prefs.getString("last_shown", "")
-                if (force || result.tag != shown) {
-                    prefs.edit().putString("last_shown", result.tag).apply()
-                    showDialog(activity, result)
+                if (onRelease != null) {
+                    // Kovelyx-style in-app banner: never pop a dialog on every resume.
+                    onRelease(result)
+                } else {
+                    val shown = prefs.getString("last_shown", "")
+                    if (force || result.tag != shown) {
+                        prefs.edit().putString("last_shown", result.tag).apply()
+                        showDialog(activity, result)
+                    }
                 }
             }
         }, "all-download-update-check").start()
@@ -218,9 +253,11 @@ internal object AndroidUpdates {
     }
 
     fun showDialog(activity: Activity, release: Release): Dialog {
-        val light = activity.getSharedPreferences("app_settings_v1",
-            Context.MODE_PRIVATE).getInt("theme", 0) == 1
-        val background = if (light) Color.WHITE else Color.rgb(33, 33, 33)
+        val theme = activity.getSharedPreferences("app_settings_v1",
+            Context.MODE_PRIVATE).getInt("theme", 0)
+        val light = theme == 1
+        val background = if (light) Color.WHITE
+            else if (theme == 2) Color.BLACK else Color.rgb(27, 28, 36)
         val foreground = if (light) Color.rgb(15, 23, 42) else Color.WHITE
         val secondary = if (light) Color.rgb(100, 116, 139) else Color.rgb(177, 177, 190)
         val dp = activity.resources.displayMetrics.density
@@ -245,7 +282,7 @@ internal object AndroidUpdates {
         }
         val image = ImageView(activity).apply {
             setImageResource(R.drawable.all_download_android_logo)
-            scaleType = ImageView.ScaleType.CENTER_CROP
+            scaleType = ImageView.ScaleType.FIT_CENTER
         }
         card.addView(image, LinearLayout.LayoutParams(px(74), px(74)))
         card.addView(text("MISE À JOUR DISPONIBLE", 12f, purple, true).apply {

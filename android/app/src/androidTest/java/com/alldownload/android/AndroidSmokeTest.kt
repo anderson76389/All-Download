@@ -568,6 +568,83 @@ class AndroidSmokeTest {
         }
     }
 
+    @Test fun brandAndKovelyxStyleBannerStayPinnedAcrossAllPages() {
+        val activity = instrumentation.startActivitySync(
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        ) as MainActivity
+        instrumentation.waitForIdleSync()
+        try {
+            val header = activity.findViewById<LinearLayout>(R.id.brandHeader)
+            val scroller = activity.findViewById<View>(R.id.scroll)
+            val chrome = header.parent as LinearLayout
+            assertSame("Brand must be outside the page scroll view",
+                chrome.parent, scroller.parent)
+            assertEquals("The pinned brand must have one in-app update banner",
+                2, chrome.childCount)
+            assertEquals("ALL-DOWNLOAD",
+                activity.findViewById<TextView>(R.id.brandTitle).text.toString())
+            assertEquals(android.widget.ImageView.ScaleType.FIT_CENTER,
+                activity.findViewById<ImageView>(R.id.brandLogo).scaleType)
+            for (id in intArrayOf(R.id.navHome, R.id.navQueue,
+                    R.id.navFiles, R.id.navSettings)) {
+                instrumentation.runOnMainSync {
+                    activity.findViewById<Button>(id).performClick()
+                }
+                instrumentation.waitForIdleSync()
+                assertTrue("Brand disappeared on navigation: $id", header.isShown)
+                assertSame("Brand was accidentally moved into scroll",
+                    chrome.parent, scroller.parent)
+            }
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
+
+    @Test fun pinnedUpdateBannerCanBeDismissedUntilTheNextRelease() {
+        val activity = instrumentation.startActivitySync(
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        ) as MainActivity
+        instrumentation.waitForIdleSync()
+        val prefs = activity.getSharedPreferences("android_update_banner_v1",
+            android.content.Context.MODE_PRIVATE)
+        val wasEnabled = AndroidUpdates.enabled(activity)
+        try {
+            instrumentation.runOnMainSync {
+                AndroidUpdates.setEnabled(activity, true)
+                prefs.edit().clear().commit()
+                val banner = AndroidUpdateBanner(activity)
+                fun release(version: String) = AndroidUpdates.Release(
+                    version, "android-v" + version, "All-Download Android " + version,
+                    "Corrections d'affichage",
+                    "https://github.com/anderson76389/All-Download/releases/tag/android-v" + version,
+                    "https://github.com/anderson76389/All-Download/releases/download/android-v" +
+                        version + "/All-Download-Android-" + version + ".apk", 2_000_000)
+                banner.show(release("99.0.0-beta"))
+                assertEquals(View.VISIBLE, banner.view.visibility)
+                val actions = banner.view.getChildAt(3) as LinearLayout
+                assertEquals(3, actions.childCount)
+                assertTrue((actions.getChildAt(0) as Button).text.contains("Installer"))
+                (actions.getChildAt(2) as Button).performClick()
+                assertEquals(View.GONE, banner.view.visibility)
+                banner.show(release("99.0.0-beta"))
+                assertEquals("Dismissed tag must not pop up again", View.GONE,
+                    banner.view.visibility)
+                banner.show(release("99.0.1-beta"))
+                assertEquals("A newer release must show again", View.VISIBLE,
+                    banner.view.visibility)
+                banner.hide()
+            }
+        } finally {
+            instrumentation.runOnMainSync {
+                prefs.edit().clear().commit()
+                AndroidUpdates.setEnabled(activity, wasEnabled)
+                activity.finish()
+            }
+        }
+    }
+
     @Test fun originalBrandAndFourNativeTabsAreFunctional() {
         val activity = instrumentation.startActivitySync(
             Intent(context, MainActivity::class.java)
