@@ -7,7 +7,7 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 - Sur téléphone : bouton « Coller » élargi à **88 dp**, raccourcis rapides d'au moins **48 dp**, action « Ajouter » comme sur Windows et en-têtes avec icône et deux lignes possibles.
 - Sur les écrans étroits ou avec une police système agrandie : onglets « Médias / Appli / Réseau » en disposition **icône au-dessus du texte**. Le contraste de l'onglet actif est mis à jour dans les deux orientations d'icône.
 - Sur tablette et pliable ouvert : barre latérale conservée, avec libellés raccourcis quand la largeur ne permet pas les noms complets.
-- Descriptions des cases à cocher alignées sur le début du texte, listes déroulantes sur une ligne, menu déroulant aux couleurs du thème.
+- Descriptions des cases à cocher alignées sur le début du texte, listes déroulantes sur une ligne, menu déroulant aux couleurs du thème. Le fond bleu foncé fixe des sélecteurs a été retiré en clair et OLED.
 - Libellés plus courts et explicites, accessibilité complète conservée via les descriptions vocales Android. Une nouvelle suite de tests vérifie les tailles, titres, icônes et alignements réels.
 - Aucune modification des versions Windows, ni des moteurs de téléchargement. La publication APK attend toujours la signature permanente.
 
