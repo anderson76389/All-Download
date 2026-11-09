@@ -78,7 +78,7 @@ internal object AndroidSettingsPanels {
             setPadding(0, px(8), 0, px(4))
         }
         val sections = listOf(downloadPanel, applicationPanel, networkPanel)
-        val labels = listOf("Médias", "Application", "Réseau")
+        val labels = listOf("Médias", "Appli", "Réseau")
         val tabIcons = listOf(R.drawable.ic_video, R.drawable.nav_settings,
             R.drawable.ic_network)
         val buttonIds = listOf(R.id.settingsTabDownload,
