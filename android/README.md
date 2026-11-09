@@ -1,8 +1,18 @@
-# All-Download Android — bêta 0.6.5
+# All-Download Android — bêta 0.6.6
 
 Nouvelle application Android **indépendante de Windows**, dans le dossier `android/`. Les éditions Portable/Classique Windows, `yt_app.py`, `twitch_hls.py` et `build-windows.yml` ne sont pas modifiés.
 
-## Identité Windows sur Android — bêta 0.6.5
+## Icônes harmonisées — bêta 0.6.6
+
+- Une seule famille de vecteurs Android 24 × 24 (formes pleines, teinte appliquée par le thème) pour navigation, formats, téléchargements, dossiers et réglages. Aucun emoji utilisé comme icône.
+- Les sept catégories de dossiers ont chacune une icône dédiée. Les fichiers vidéo, audio et GIF utilisent une vignette correspondant à leur extension.
+- Actions de file : reprise, pause, terminé, erreur, attente, copier, réessayer et supprimer reconnaissables même sans lire tout le texte.
+- Boutons et libellés alignés avec des cibles tactiles confortables ; barre Liquid Glass conservée, logo original Windows conservé.
+- Voir [ICONOGRAPHY.md](ICONOGRAPHY.md) pour le catalogue final, les tailles et les règles de cohérence.
+- La Release Android exige toujours une signature permanente : consulter [SIGNING.md](SIGNING.md). Aucune clé privée n'est incluse au dépôt.
+- Aucun code Windows modifié.
+
+## Identité Windows sur Android — bêta 0.6.6
 
 - Les quatre pictogrammes Liquid Glass de navigation, les contrôles de téléchargement et les dossiers adoptent le langage visuel **Material plein** des SVG employés dans la version Windows.
 - Nouveaux pictogrammes dédiés pour les titres Nouveau lien, Options, File, Dossiers et Réglages.
@@ -11,7 +21,7 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 - **Signature permanente obligatoire :** les Releases Android ne basculent plus sur une APK debug en l'absence des secrets de signature. Le propriétaire doit créer et configurer les secrets expliqués dans [SIGNING.md](SIGNING.md).
 - Les composants et Releases Windows ne sont pas modifiés.
 
-## Icônes vectorielles et textes réajustés — bêta 0.6.5
+## Icônes vectorielles et textes réajustés — bêta 0.6.6
 
 - Fin des emojis et des glyphes texte comme pictogrammes. Icônes vectorielles cohérentes pour la navigation, les raccourcis, les fichiers et les téléchargements.
 - Barre Liquid Glass inchangée dans son principe, mais icônes Accueil / File / Dossiers / Réglages redessinées, textes centrés et uniformes.
@@ -20,7 +30,7 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 - Cartes de fichiers plus régulières, textes longs tronqués sur une ligne et réglages plus lisibles.
 - Tests dédiés au chargement des ressources vectorielles et au placement des boutons. Aucun fichier Windows modifié.
 
-## Design minimaliste Liquid Glass — bêta 0.6.5
+## Design minimaliste Liquid Glass — bêta 0.6.6
 
 - Barre de navigation flottante, translucide, à reflet discret et capsule violette active ; rendu natif sans flou GPU continu.
 - Accueil réorganisé : URL puis actions Télécharger / Dans la file sur une ligne, options et raccourcis, aperçu de la file.
@@ -38,7 +48,7 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 - **Android pliable/tablette** : interface centrée et limitée en largeur sur les grands écrans, recalcul au changement d'orientation ; contrôles tactiles natifs sur petit écran.
 - **Fichiers accessibles** depuis les sept dossiers de l'app : MediaStore Android 10+ et FileProvider Android 7–9, sans permission « gérer tous les fichiers ».
 
-## Refonte de l'interface Windows sur téléphone et tablette (bêta 0.6.5)
+## Refonte de l'interface Windows sur téléphone et tablette (bêta 0.6.6)
 
 - **Écran réellement inactif :** aucune boucle d'actualisation quand l'activité est en arrière-plan. Quand elle est visible, le rafraîchissement s'adapte (1,8 s pendant le téléchargement, 3 s dans la file, 8 s au repos) et ne redessine pas les contrôles si leur état n'a pas changé.
 - **File d'attente optimisée :** les tâches restent enregistrées de façon atomique et persistante, avec un cache en mémoire et une révision. Les écritures identiques sont ignorées, la progression sur disque est regroupée et seulement 24 cartes sont affichées au départ (« Afficher plus » pour la suite). Aucun téléchargement n'est perdu si une carte n'est pas affichée.

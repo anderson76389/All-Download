@@ -741,7 +741,16 @@ class MainActivity : Activity() {
                     if (folder.count == 0) "Aucun fichier dans ce dossier."
                     else "${folder.count} fichier(s)"))
                 folder.entries.forEach { entry ->
-                    val card = mediaCard(entry.name, "Ouvrir", R.drawable.ic_file)
+                    val card = mediaCard(entry.name, "Ouvrir", when {
+                        entry.name.endsWith(".mp3", true) ||
+                            entry.name.endsWith(".m4a", true) ||
+                            entry.name.endsWith(".flac", true) -> R.drawable.ic_audio
+                        entry.name.endsWith(".mp4", true) ||
+                            entry.name.endsWith(".mkv", true) ||
+                            entry.name.endsWith(".webm", true) -> R.drawable.ic_video
+                        entry.name.endsWith(".gif", true) -> R.drawable.ic_gif
+                        else -> R.drawable.ic_file
+                    })
                     card.setOnClickListener {
                         try {
                             startActivity(Intent(Intent.ACTION_VIEW).apply {
@@ -767,12 +776,13 @@ class MainActivity : Activity() {
 
     /** Vector icon tiles make folders and files align exactly on all screens. */
     private fun folderIcon(category: String): Int = when (category) {
-        "VIDÉOS" -> R.drawable.ic_video
-        "AUDIOS" -> R.drawable.ic_audio
-        "TWITCH", "CHAÎNES" -> R.drawable.ic_stream
-        "GIFS" -> R.drawable.ic_gif
-        "PLAYLIST" -> R.drawable.ic_playlist
-        else -> R.drawable.nav_folders
+        "VIDÉOS" -> R.drawable.ic_folder_video
+        "AUDIOS" -> R.drawable.ic_folder_audio
+        "TWITCH" -> R.drawable.ic_folder_twitch
+        "GIFS" -> R.drawable.ic_folder_gif
+        "CHAÎNES" -> R.drawable.ic_folder_channel
+        "PLAYLIST" -> R.drawable.ic_folder_playlist
+        else -> R.drawable.ic_folder_other
     }
 
     private fun mediaCard(title: String, subtitle: String, iconRes: Int): LinearLayout {
@@ -837,8 +847,8 @@ class MainActivity : Activity() {
             text = label
             isAllCaps = false
             textSize = 12f
-            minHeight = dp(42)
-            minimumHeight = dp(42)
+            minHeight = dp(48)
+            minimumHeight = dp(48)
             setTextColor(palette().foreground)
             background = rounded(palette().input, palette().border, 10)
             elevation = 0f
@@ -846,7 +856,7 @@ class MainActivity : Activity() {
             setPadding(dp(10), 0, dp(10), 0)
             if (iconRes != 0) setButtonIcon(this, iconRes, palette().foreground, 16)
             layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, dp(42)).apply {
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(48)).apply {
                 marginStart = dp(4)
             }
             setOnClickListener { action() }
@@ -953,7 +963,7 @@ class MainActivity : Activity() {
     private fun styleSectionHeaders() {
         val tint = palette().accent
         val sections = listOf(
-            R.id.homeTitleIcon to R.drawable.ic_add,
+            R.id.homeTitleIcon to R.drawable.ic_queue_add,
             R.id.optionsTitleIcon to R.drawable.ic_sliders,
             R.id.homeQueueTitleIcon to R.drawable.nav_queue,
             R.id.queuePageTitleIcon to R.drawable.nav_queue,
@@ -1054,11 +1064,15 @@ class MainActivity : Activity() {
         val foreground = palette().foreground
         listOf(
             Triple(R.id.startButton, R.drawable.ic_download, Color.WHITE),
-            Triple(R.id.queueButton, R.drawable.ic_add, foreground),
+            Triple(R.id.queueButton, R.drawable.ic_queue_add, foreground),
             Triple(R.id.pasteUrlButton, R.drawable.ic_paste, foreground),
             Triple(R.id.resumeQueueButton, R.drawable.ic_play, Color.WHITE),
             Triple(R.id.pauseQueueButton, R.drawable.ic_pause, foreground),
-            Triple(R.id.cancelButton, R.drawable.ic_stop, foreground)
+            Triple(R.id.cancelButton, R.drawable.ic_stop, foreground),
+            Triple(R.id.openFullQueueButton, R.drawable.nav_queue, foreground),
+            Triple(R.id.clearFinishedButton, R.drawable.ic_done, foreground),
+            Triple(R.id.clearFailedButton, R.drawable.ic_error, foreground),
+            Triple(R.id.clearWaitingButton, R.drawable.ic_waiting, foreground)
         ).forEach { (id, icon, tint) ->
             val button = findViewById<Button>(id)
             setButtonIcon(button, icon, tint, if (id == R.id.pasteUrlButton) 16 else 18)

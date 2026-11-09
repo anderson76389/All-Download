@@ -350,6 +350,47 @@ class AndroidSmokeTest {
         }
     }
 
+    @Test fun unifiedIconCatalogLoadsAndQueueActionsRetainTheirLabels() {
+        val activity = instrumentation.startActivitySync(
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        ) as MainActivity
+        instrumentation.waitForIdleSync()
+        try {
+            val glyphs = intArrayOf(
+                R.drawable.nav_home, R.drawable.nav_queue, R.drawable.nav_folders,
+                R.drawable.nav_settings, R.drawable.ic_download, R.drawable.ic_queue_add,
+                R.drawable.ic_audio, R.drawable.ic_video, R.drawable.ic_gif,
+                R.drawable.ic_playlist, R.drawable.ic_stream, R.drawable.ic_metadata,
+                R.drawable.ic_notifications, R.drawable.ic_done, R.drawable.ic_error,
+                R.drawable.ic_waiting, R.drawable.ic_folder_video, R.drawable.ic_folder_audio,
+                R.drawable.ic_folder_twitch, R.drawable.ic_folder_gif,
+                R.drawable.ic_folder_channel, R.drawable.ic_folder_playlist,
+                R.drawable.ic_folder_other
+            )
+            for (resId in glyphs) {
+                assertNotNull("Icône native manquante : $resId", activity.getDrawable(resId))
+            }
+            instrumentation.runOnMainSync {
+                activity.findViewById<Button>(R.id.navQueue).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            val actionIds = intArrayOf(
+                R.id.resumeQueueButton, R.id.pauseQueueButton,
+                R.id.clearFinishedButton, R.id.clearFailedButton, R.id.clearWaitingButton
+            )
+            actionIds.forEach { id ->
+                val action = activity.findViewById<Button>(id)
+                assertNotNull("Pictogramme de file manquant : $id",
+                    action.compoundDrawablesRelative[0])
+                assertTrue("Texte de file manquant : $id", action.text.isNotBlank())
+                assertTrue("Action de file non cliquable : $id", action.isClickable)
+            }
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
+
     @Test fun minimalistLiquidGlassAndDownloadActionsKeepWorking() {
         val activity = instrumentation.startActivitySync(
             Intent(context, MainActivity::class.java)

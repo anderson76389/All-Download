@@ -158,10 +158,10 @@ internal object AndroidSettingsPanels {
             val sectionIcon = when (title) {
                 "Téléchargements" -> R.drawable.ic_download
                 "Audio" -> R.drawable.ic_audio
-                "Métadonnées et miniatures" -> R.drawable.ic_sliders
+                "Métadonnées et miniatures" -> R.drawable.ic_metadata
                 "SponsorBlock" -> R.drawable.ic_security
                 "Réseau et connexions" -> R.drawable.ic_network
-                "Application et notifications" -> R.drawable.nav_settings
+                "Application et notifications" -> R.drawable.ic_notifications
                 "Mises à jour Android" -> R.drawable.ic_update
                 else -> R.drawable.ic_sliders
             }
@@ -299,7 +299,7 @@ internal object AndroidSettingsPanels {
                 isAllCaps = false
                 setTextColor(Color.WHITE)
                 val iconRes = if (title.contains("mise à jour", ignoreCase = true))
-                    R.drawable.ic_update else R.drawable.ic_network
+                    R.drawable.ic_update else R.drawable.nav_queue
                 val image = activity.getDrawable(iconRes)?.mutate()?.apply {
                     setTint(Color.WHITE)
                     setBounds(0, 0, px(18), px(18))
@@ -420,7 +420,7 @@ internal object AndroidSettingsPanels {
             AndroidUpdates.check(activity, true, updateMessage)
         }
         updates.addView(label("All-Download Android " + BuildConfig.VERSION_NAME +
-            " · les APK bêta actuels ont une signature de test. Une désinstallation peut être nécessaire pour les mises à jour.",
+            " · les prochaines Releases nécessitent la signature permanente. Une ancienne bêta debug peut demander une dernière réinstallation.",
             11f, tint = muted))
         button(updates, "Voir toutes les Releases Android") {
             activity.startActivity(Intent(Intent.ACTION_VIEW,
