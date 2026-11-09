@@ -90,7 +90,7 @@ jobs:
           gradle-version: "8.9"
       - name: Unit tests and APK build
         run: gradle --no-daemon -p android :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease
-      - name: Sign with a private persistent Android key when configured
+      - name: Sign with a permanent private Android release key
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -98,34 +98,39 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "::warning::Clé de signature Android persistante non configurée. APK debug ; une réinstallation peut être nécessaire pour la prochaine version."
-            echo "APK_SIGNING=debug" >> "$GITHUB_ENV"
-          else
-            if [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ] || [ -z "$ANDROID_KEY_PASSWORD" ]; then
-              echo "Clé Android incomplète : renseigner les 4 secrets GitHub Actions."
-              exit 1
-            fi
-            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/all-download-release.jks"
-            chmod 600 "$RUNNER_TEMP/all-download-release.jks"
-            SRC="android/app/build/outputs/apk/release/app-release-unsigned.apk"
-            test -s "$SRC"
-            "$ANDROID_HOME/build-tools/35.0.0/zipalign" -f -p 4 "$SRC" "$RUNNER_TEMP/all-download-aligned.apk"
-            "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign \
-              --ks "$RUNNER_TEMP/all-download-release.jks" \
-              --ks-key-alias "$ANDROID_KEY_ALIAS" \
-              --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
-              --key-pass env:ANDROID_KEY_PASSWORD \
-              --out android/app/build/outputs/apk/debug/app-debug.apk \
-              "$RUNNER_TEMP/all-download-aligned.apk"
-            rm -f "$RUNNER_TEMP/all-download-release.jks" "$RUNNER_TEMP/all-download-aligned.apk"
-            echo "APK_SIGNING=stable" >> "$GITHUB_ENV"
-            echo "Signature Android persistante configurée depuis les secrets GitHub."
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ] ||
+             [ -z "$ANDROID_KEY_ALIAS" ] || [ -z "$ANDROID_KEY_PASSWORD" ]; then
+            echo "::error::Configurez les 4 secrets Android Actions dans android/SIGNING.md. Publication bloquée : aucune APK de débogage ne sera diffusée."
+            exit 1
           fi
+          if [ "$ANDROID_KEY_ALIAS" = "androiddebugkey" ]; then
+            echo "::error::La clé Android Debug est interdite pour une Release."
+            exit 1
+          fi
+          KEYSTORE="$RUNNER_TEMP/all-download-release.p12"
+          ALIGNED="$RUNNER_TEMP/all-download-aligned.apk"
+          trap 'rm -f "$KEYSTORE" "$ALIGNED"' EXIT
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+          chmod 600 "$KEYSTORE"
+          SRC="android/app/build/outputs/apk/release/app-release-unsigned.apk"
+          test -s "$SRC"
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -f -p 4 "$SRC" "$ALIGNED"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign \
+            --ks "$KEYSTORE" \
+            --ks-type PKCS12 \
+            --ks-key-alias "$ANDROID_KEY_ALIAS" \
+            --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
+            --key-pass env:ANDROID_KEY_PASSWORD \
+            --out android/app/build/outputs/apk/release/app-release-signed.apk \
+            "$ALIGNED"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs \
+            android/app/build/outputs/apk/release/app-release-signed.apk
+          echo "APK_SIGNING=stable" >> "$GITHUB_ENV"
+          echo "Signature Android permanente validée."
       - name: Validate APK and prepare release file
         run: |
           set -euo pipefail
-          SRC="android/app/build/outputs/apk/debug/app-debug.apk"
+          SRC="android/app/build/outputs/apk/release/app-release-signed.apk"
           DEST="All-Download-Android-${ANDROID_VERSION}.apk"
           test -s "$SRC"
           unzip -tq "$SRC" >/dev/null
@@ -175,8 +180,10 @@ jobs:
           - Reddit (publication classique) et certaines vidéos Facebook exigent un accès ou un extracteur compatible ; Vimeo non confirmé. YouTube anti-bot, VOD Twitch protégées et DRM non garantis.
           - Import facultatif de cookies Netscape de votre propre compte autorisé ; stockage privé local, effacement possible dans l'application.
 
-          **Important : signature Android persistante uniquement si les secrets GitHub Actions du propriétaire sont configurés.**
-          Pour passer d'une précédente bêta à cette version, une désinstallation préalable peut être nécessaire à cause d'une signature différente. Une future mise à jour peut aussi exiger une réinstallation et effacer les données privées de l'application. Les médias déjà exportés dans Téléchargements ne sont pas supprimés par la désinstallation.
+          **Signature :** clé privée de publication permanente, conservée hors du dépôt.
+          Si une ancienne bêta a une signature debug différente, une dernière désinstallation peut être nécessaire ; les futures mises à jour signées avec la même clé s'installent par-dessus via le programme d'installation Android.
+          Les fichiers exportés dans Téléchargements restent disponibles, mais les données privées de l'application peuvent être supprimées par une désinstallation.
+          Conservez et sauvegardez la clé privée pour toutes les futures versions.
           N'importez pas de sessions sensibles dans cette version de test.
           Ne désactivez pas les protections Android. Installation à vos risques pour cette préversion.
           Les versions Windows Portable/Classique restent sur les Releases stables.
@@ -184,13 +191,6 @@ jobs:
           **Fichier :** APK Android et empreinte SHA-256 joints aux assets de cette Release.
           EOF
           sed -i "s/0\.6\.0/${ANDROID_VERSION}/g" android-release-notes.md
-          if [ "$APK_SIGNING" = "stable" ]; then
-            echo "" >> android-release-notes.md
-            echo "**Signature :** clé privée persistante configurée. Les futures mises à jour signées avec la même clé sont compatibles avec l'installation par-dessus cette version." >> android-release-notes.md
-          else
-            echo "" >> android-release-notes.md
-            echo "**Signature :** débogage éphémère (aucune clé stable configurée). Une désinstallation peut être nécessaire entre deux APK." >> android-release-notes.md
-          fi
       - name: Publish separate Android prerelease
         env:
           GH_TOKEN: ${{ github.token }}

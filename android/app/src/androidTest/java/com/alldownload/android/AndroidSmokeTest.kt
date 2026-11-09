@@ -311,6 +311,45 @@ class AndroidSmokeTest {
         }
     }
 
+    @Test fun windowsStyleSectionIconsAndSettingsTabsHaveNativeVectors() {
+        val activity = instrumentation.startActivitySync(
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        ) as MainActivity
+        instrumentation.waitForIdleSync()
+        try {
+            val sectionIds = listOf(
+                R.id.homeTitleIcon, R.id.optionsTitleIcon, R.id.homeQueueTitleIcon,
+                R.id.queuePageTitleIcon, R.id.filesPageTitleIcon, R.id.settingsPageTitleIcon)
+            for (id in sectionIds) {
+                val label = activity.findViewById<TextView>(id)
+                assertNotNull("Section title missing: $id", label)
+                assertNotNull("Native Windows-style icon missing: $id",
+                    label.compoundDrawablesRelative[0])
+            }
+            instrumentation.runOnMainSync {
+                activity.findViewById<Button>(R.id.navSettings).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            for (id in listOf(R.id.settingsTabDownload, R.id.settingsTabApplication,
+                    R.id.settingsTabNetwork)) {
+                val button = activity.findViewById<Button>(id)
+                assertNotNull("Settings tab icon missing: $id",
+                    button.compoundDrawablesRelative[0])
+                assertTrue("Settings tab label empty: $id", button.text.isNotBlank())
+            }
+            val mediaCards = activity.findViewById<LinearLayout>(
+                R.id.settingsDownloadPanel)
+            assertTrue("Expected at least one media settings section", mediaCards.childCount > 0)
+            val firstCard = mediaCards.getChildAt(0) as LinearLayout
+            val heading = firstCard.getChildAt(0) as TextView
+            assertNotNull("Settings section icon missing",
+                heading.compoundDrawablesRelative[0])
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
+
     @Test fun minimalistLiquidGlassAndDownloadActionsKeepWorking() {
         val activity = instrumentation.startActivitySync(
             Intent(context, MainActivity::class.java)

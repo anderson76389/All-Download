@@ -79,6 +79,8 @@ internal object AndroidSettingsPanels {
         }
         val sections = listOf(downloadPanel, applicationPanel, networkPanel)
         val labels = listOf("Médias", "Application", "Réseau")
+        val tabIcons = listOf(R.drawable.ic_video, R.drawable.nav_settings,
+            R.drawable.ic_network)
         val buttonIds = listOf(R.id.settingsTabDownload,
             R.id.settingsTabApplication, R.id.settingsTabNetwork)
         val buttons = labels.mapIndexed { index, caption ->
@@ -86,6 +88,13 @@ internal object AndroidSettingsPanels {
                 id = buttonIds[index]
                 text = caption
                 textSize = 12f
+                val image = activity.getDrawable(tabIcons[index])?.mutate()?.apply {
+                    setTint(color)
+                    setBounds(0, 0, px(17), px(17))
+                }
+                setCompoundDrawablesRelative(image, null, null, null)
+                compoundDrawablePadding = px(5)
+                gravity = android.view.Gravity.CENTER
                 setSingleLine(true)
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 includeFontPadding = false
@@ -120,6 +129,8 @@ internal object AndroidSettingsPanels {
                 }
                 buttons[section].tag = if (active) "primary" else "settings-tab"
                 buttons[section].setTextColor(if (active) Color.WHITE else color)
+                buttons[section].compoundDrawablesRelative[0]
+                    ?.setTint(if (active) Color.WHITE else color)
             }
             prefs.edit().putInt("settings_tab", index).apply()
         }
@@ -144,7 +155,25 @@ internal object AndroidSettingsPanels {
                     topMargin = px(10)
                 }
             }
-            panel.addView(label(title, 16f, true))
+            val sectionIcon = when (title) {
+                "Téléchargements" -> R.drawable.ic_download
+                "Audio" -> R.drawable.ic_audio
+                "Métadonnées et miniatures" -> R.drawable.ic_sliders
+                "SponsorBlock" -> R.drawable.ic_security
+                "Réseau et connexions" -> R.drawable.ic_network
+                "Application et notifications" -> R.drawable.nav_settings
+                "Mises à jour Android" -> R.drawable.ic_update
+                else -> R.drawable.ic_sliders
+            }
+            panel.addView(label(title, 16f, true).apply {
+                val image = activity.getDrawable(sectionIcon)?.mutate()?.apply {
+                    setTint(purple)
+                    setBounds(0, 0, px(19), px(19))
+                }
+                setCompoundDrawablesRelative(image, null, null, null)
+                compoundDrawablePadding = px(9)
+                includeFontPadding = false
+            })
             panel.addView(label(subtitle, 11f, tint = muted).apply {
                 maxLines = 2
                 setPadding(0, px(5), 0, px(10))
@@ -269,6 +298,15 @@ internal object AndroidSettingsPanels {
                 text = title
                 isAllCaps = false
                 setTextColor(Color.WHITE)
+                val iconRes = if (title.contains("mise à jour", ignoreCase = true))
+                    R.drawable.ic_update else R.drawable.ic_network
+                val image = activity.getDrawable(iconRes)?.mutate()?.apply {
+                    setTint(Color.WHITE)
+                    setBounds(0, 0, px(18), px(18))
+                }
+                setCompoundDrawablesRelative(image, null, null, null)
+                compoundDrawablePadding = px(8)
+                gravity = android.view.Gravity.CENTER
                 tag = "primary"
                 background = GradientDrawable().apply {
                     setColor(purple)

@@ -1,8 +1,17 @@
-# All-Download Android — bêta 0.6.4
+# All-Download Android — bêta 0.6.5
 
 Nouvelle application Android **indépendante de Windows**, dans le dossier `android/`. Les éditions Portable/Classique Windows, `yt_app.py`, `twitch_hls.py` et `build-windows.yml` ne sont pas modifiés.
 
-## Icônes vectorielles et textes réajustés — bêta 0.6.4
+## Identité Windows sur Android — bêta 0.6.5
+
+- Les quatre pictogrammes Liquid Glass de navigation, les contrôles de téléchargement et les dossiers adoptent le langage visuel **Material plein** des SVG employés dans la version Windows.
+- Nouveaux pictogrammes dédiés pour les titres Nouveau lien, Options, File, Dossiers et Réglages.
+- Les trois sections des réglages, leurs cartes et les boutons de mise à jour ont désormais de vrais glyphes vectoriels homogènes, teintés selon le thème.
+- Pas de capture d'écran ni de flou GPU permanent ; les mêmes comportements téléphone/tablette/pliable sont conservés.
+- **Signature permanente obligatoire :** les Releases Android ne basculent plus sur une APK debug en l'absence des secrets de signature. Le propriétaire doit créer et configurer les secrets expliqués dans [SIGNING.md](SIGNING.md).
+- Les composants et Releases Windows ne sont pas modifiés.
+
+## Icônes vectorielles et textes réajustés — bêta 0.6.5
 
 - Fin des emojis et des glyphes texte comme pictogrammes. Icônes vectorielles cohérentes pour la navigation, les raccourcis, les fichiers et les téléchargements.
 - Barre Liquid Glass inchangée dans son principe, mais icônes Accueil / File / Dossiers / Réglages redessinées, textes centrés et uniformes.
@@ -11,7 +20,7 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 - Cartes de fichiers plus régulières, textes longs tronqués sur une ligne et réglages plus lisibles.
 - Tests dédiés au chargement des ressources vectorielles et au placement des boutons. Aucun fichier Windows modifié.
 
-## Design minimaliste Liquid Glass — bêta 0.6.4
+## Design minimaliste Liquid Glass — bêta 0.6.5
 
 - Barre de navigation flottante, translucide, à reflet discret et capsule violette active ; rendu natif sans flou GPU continu.
 - Accueil réorganisé : URL puis actions Télécharger / Dans la file sur une ligne, options et raccourcis, aperçu de la file.
@@ -29,7 +38,7 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 - **Android pliable/tablette** : interface centrée et limitée en largeur sur les grands écrans, recalcul au changement d'orientation ; contrôles tactiles natifs sur petit écran.
 - **Fichiers accessibles** depuis les sept dossiers de l'app : MediaStore Android 10+ et FileProvider Android 7–9, sans permission « gérer tous les fichiers ».
 
-## Refonte de l'interface Windows sur téléphone et tablette (bêta 0.6.4)
+## Refonte de l'interface Windows sur téléphone et tablette (bêta 0.6.5)
 
 - **Écran réellement inactif :** aucune boucle d'actualisation quand l'activité est en arrière-plan. Quand elle est visible, le rafraîchissement s'adapte (1,8 s pendant le téléchargement, 3 s dans la file, 8 s au repos) et ne redessine pas les contrôles si leur état n'a pas changé.
 - **File d'attente optimisée :** les tâches restent enregistrées de façon atomique et persistante, avec un cache en mémoire et une révision. Les écritures identiques sont ignorées, la progression sur disque est regroupée et seulement 24 cartes sont affichées au départ (« Afficher plus » pour la suite). Aucun téléchargement n'est perdu si une carte n'est pas affichée.
@@ -81,7 +90,7 @@ Les flux protégés/DRM, les contenus privés sans autorisation et les vidéos s
 
 ## Compilation
 
-Via GitHub Actions : workflow `Build Android (beta)`, puis récupérer l'artefact `All-Download-Android-beta` après succès. La préversion `android-v0.6.4-beta` est distribuée séparément des Releases stables Windows.
+Via GitHub Actions : workflow `Build Android (beta)`, puis récupérer l'artefact `All-Download-Android-beta` après succès. La préversion `android-v0.6.5-beta` est distribuée séparément des Releases stables Windows.
 
 En local : Android SDK plateforme 35, JDK 17 et Gradle 8.9, puis `gradle -p android :app:assembleDebug`.
 

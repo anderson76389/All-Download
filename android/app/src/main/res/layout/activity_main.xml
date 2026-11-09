@@ -130,6 +130,7 @@
                 android:padding="14dp"
                 android:tag="card">
                 <TextView
+                    android:id="@+id/homeTitleIcon"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Nouveau lien"
@@ -211,6 +212,7 @@
                 android:padding="14dp"
                 android:tag="card">
                 <TextView
+                    android:id="@+id/optionsTitleIcon"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Options"
@@ -358,6 +360,7 @@
                     android:gravity="center_vertical"
                     android:orientation="horizontal">
                     <TextView
+                    android:id="@+id/homeQueueTitleIcon"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
@@ -425,6 +428,7 @@
             android:orientation="vertical"
             android:visibility="gone">
             <TextView
+                    android:id="@+id/queuePageTitleIcon"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="File d’attente"
@@ -505,6 +509,7 @@
             android:orientation="vertical"
             android:visibility="gone">
             <TextView
+                    android:id="@+id/filesPageTitleIcon"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Mes téléchargements"
@@ -534,6 +539,7 @@
             android:orientation="vertical"
             android:visibility="gone">
             <TextView
+                    android:id="@+id/settingsPageTitleIcon"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Paramètres"

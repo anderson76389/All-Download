@@ -917,7 +917,7 @@ class MainActivity : Activity() {
             val foreground = if (index == selectedTab) Color.WHITE else colors.foreground
             val icon = getDrawable(icons[index])?.mutate()?.apply {
                 setTint(foreground)
-                setBounds(0, 0, dp(20), dp(20))
+                setBounds(0, 0, dp(21), dp(21))
             }
             if (wide) {
                 button.setCompoundDrawablesRelative(icon, null, null, null)
@@ -932,7 +932,7 @@ class MainActivity : Activity() {
                 button.text = shortNames[index]
                 button.textSize = 11f
                 button.setPadding(0, dp(6), 0, dp(6))
-                button.compoundDrawablePadding = dp(4)
+                button.compoundDrawablePadding = dp(5)
             }
             button.backgroundTintList = null
             button.background = navigationPill(index == selectedTab)
@@ -946,6 +946,30 @@ class MainActivity : Activity() {
             button.minWidth = 0
             button.minHeight = 0
             button.contentDescription = fullNames[index]
+        }
+    }
+
+    /** Windows-style Material section glyphs, rendered as native tinted vectors. */
+    private fun styleSectionHeaders() {
+        val tint = palette().accent
+        val sections = listOf(
+            R.id.homeTitleIcon to R.drawable.ic_add,
+            R.id.optionsTitleIcon to R.drawable.ic_sliders,
+            R.id.homeQueueTitleIcon to R.drawable.nav_queue,
+            R.id.queuePageTitleIcon to R.drawable.nav_queue,
+            R.id.filesPageTitleIcon to R.drawable.nav_folders,
+            R.id.settingsPageTitleIcon to R.drawable.nav_settings
+        )
+        sections.forEach { (labelId, iconId) ->
+            findViewById<TextView>(labelId)?.apply {
+                val icon = getDrawable(iconId)?.mutate()?.apply {
+                    setTint(tint)
+                    setBounds(0, 0, dp(19), dp(19))
+                }
+                setCompoundDrawablesRelative(icon, null, null, null)
+                compoundDrawablePadding = dp(9)
+                includeFontPadding = false
+            }
         }
     }
 
@@ -994,6 +1018,7 @@ class MainActivity : Activity() {
                 visit(view.getChildAt(index))
         }
         visit(content)
+        styleSectionHeaders()
         findViewById<View>(R.id.navigation).setBackgroundColor(Color.TRANSPARENT)
         styleQuickModes()
         styleActionIcons()
