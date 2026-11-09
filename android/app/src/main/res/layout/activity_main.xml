@@ -169,7 +169,7 @@
                         android:textColorHint="#9999AA"/>
                     <Button
                         android:id="@+id/pasteUrlButton"
-                        android:layout_width="72dp"
+                        android:layout_width="88dp"
                         android:layout_height="48dp"
                         android:layout_marginLeft="7dp"
                         android:contentDescription="Coller depuis le presse-papiers"
@@ -279,6 +279,7 @@
                     android:visibility="gone"/>
 
                 <TextView
+                android:id="@+id/quickAccessTitleIcon"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="13dp"
@@ -299,14 +300,14 @@
                         <Button
                             android:id="@+id/quickVideoButton"
                             android:layout_width="99dp"
-                            android:layout_height="46dp"
+                            android:layout_height="48dp"
                             android:text="Vidéo"
                             android:textAllCaps="false"
                             android:textSize="12sp"/>
                         <Button
                             android:id="@+id/quickAudioButton"
                             android:layout_width="99dp"
-                            android:layout_height="46dp"
+                            android:layout_height="48dp"
                             android:layout_marginLeft="5dp"
                             android:text="Audio"
                             android:textAllCaps="false"
@@ -314,7 +315,7 @@
                         <Button
                             android:id="@+id/quickGifButton"
                             android:layout_width="80dp"
-                            android:layout_height="46dp"
+                            android:layout_height="48dp"
                             android:layout_marginLeft="5dp"
                             android:text="GIF"
                             android:textAllCaps="false"
@@ -322,7 +323,7 @@
                         <Button
                             android:id="@+id/quickPlaylistButton"
                             android:layout_width="116dp"
-                            android:layout_height="46dp"
+                            android:layout_height="48dp"
                             android:layout_marginLeft="5dp"
                             android:text="Playlist"
                             android:textAllCaps="false"
@@ -330,7 +331,7 @@
                         <Button
                             android:id="@+id/quickTwitchButton"
                             android:layout_width="102dp"
-                            android:layout_height="46dp"
+                            android:layout_height="48dp"
                             android:layout_marginLeft="5dp"
                             android:text="Twitch"
                             android:textAllCaps="false"
@@ -342,7 +343,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:tag="muted"
-                    android:text="Twitch : qualité native, sans réencodage"
+                    android:text="Qualité d’origine, selon la source."
                     android:textColor="#A1A1AA"
                     android:textSize="11sp"/>
             </LinearLayout>
@@ -374,7 +375,8 @@
                         android:id="@+id/openFullQueueButton"
                         android:layout_width="wrap_content"
                         android:layout_height="44dp"
-                        android:text="Tout voir"
+                        android:text="Voir tout"
+                        android:contentDescription="Afficher toute la file d’attente"
                         android:textAllCaps="false"
                         android:textSize="12sp"/>
                 </LinearLayout>
@@ -397,6 +399,7 @@
                 android:padding="14dp"
                 android:tag="card">
                 <TextView
+                android:id="@+id/statusFooterTitleIcon"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="État du téléchargement"
@@ -474,7 +477,8 @@
                 android:id="@+id/clearFinishedButton"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
-                android:text="Nettoyer les terminés"
+                android:text="Effacer les terminés"
+                android:contentDescription="Supprimer les téléchargements terminés de la file"
                 android:textAllCaps="false"/>
             <LinearLayout
                 android:layout_width="match_parent"
@@ -486,6 +490,7 @@
                     android:layout_height="48dp"
                     android:layout_weight="1"
                     android:text="Erreurs"
+                    android:contentDescription="Supprimer les téléchargements en erreur"
                     android:textAllCaps="false"/>
                 <Button
                     android:id="@+id/clearWaitingButton"
@@ -493,6 +498,7 @@
                     android:layout_height="48dp"
                     android:layout_weight="1"
                     android:text="Attente"
+                    android:contentDescription="Supprimer les téléchargements en attente"
                     android:textAllCaps="false"/>
             </LinearLayout>
             <LinearLayout
@@ -523,7 +529,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
                 android:tag="muted"
-                android:text="7 dossiers · Téléchargements/All-Download"
+                android:text="7 dossiers organisés automatiquement"
                 android:textColor="#A1A1AA"/>
             <LinearLayout
                 android:id="@+id/filesList"
@@ -558,6 +564,7 @@
                 android:padding="15dp"
                 android:tag="card">
                 <TextView
+                android:id="@+id/settingsAppearanceTitleIcon"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Apparence"
@@ -588,6 +595,7 @@
                 android:padding="15dp"
                 android:tag="card">
                 <TextView
+                android:id="@+id/settingsEngineTitleIcon"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Moteur de téléchargement"
@@ -628,6 +636,7 @@
                 android:padding="15dp"
                 android:tag="card">
                 <TextView
+                android:id="@+id/settingsCookiesTitleIcon"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Connexion facultative"
@@ -647,7 +656,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="49dp"
                     android:layout_marginTop="12dp"
-                    android:text="Importer mes cookies.txt"
+                    android:text="Importer cookies.txt"
                     android:textAllCaps="false"/>
                 <Button
                     android:id="@+id/removeCookiesButton"
