@@ -294,7 +294,9 @@ class AndroidSmokeTest {
                 assertEquals("Multiline / clipped button $id", 1, button.maxLines)
                 assertFalse("Legacy text glyph used as icon for $id",
                     button.text.any { it in "▶♫↓＋Ⅱ🎬🎵📁" })
-                assertTrue("Button has no measurable touch target: $id", button.width > 0)
+                // Hidden pages are intentionally GONE and are not measured until opened.
+                if (button.isShown)
+                    assertTrue("Visible button has no touch width: $id", button.width > 0)
             }
             val brand = activity.findViewById<ImageView>(R.id.brandLogo)
             assertEquals("Brand logo must never be cropped on Android",
