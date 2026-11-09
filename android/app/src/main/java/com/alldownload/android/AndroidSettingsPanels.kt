@@ -78,7 +78,7 @@ internal object AndroidSettingsPanels {
             setPadding(0, px(8), 0, px(4))
         }
         val sections = listOf(downloadPanel, applicationPanel, networkPanel)
-        val labels = listOf("Téléchargement", "Application", "Réseau")
+        val labels = listOf("Médias", "Application", "Réseau")
         val buttonIds = listOf(R.id.settingsTabDownload,
             R.id.settingsTabApplication, R.id.settingsTabNetwork)
         val buttons = labels.mapIndexed { index, caption ->
@@ -86,8 +86,13 @@ internal object AndroidSettingsPanels {
                 id = buttonIds[index]
                 text = caption
                 textSize = 12f
+                setSingleLine(true)
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                includeFontPadding = false
+                setPadding(px(4), 0, px(4), 0)
                 isAllCaps = false
                 minHeight = px(48)
+                gravity = android.view.Gravity.CENTER
                 tabs.addView(this, LinearLayout.LayoutParams(
                     0, px(49), 1f).apply {
                     marginStart = if (index == 0) 0 else px(3)

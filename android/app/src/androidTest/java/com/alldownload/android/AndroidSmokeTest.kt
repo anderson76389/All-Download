@@ -274,6 +274,41 @@ class AndroidSmokeTest {
         }
     }
 
+    @Test fun vectorsAndButtonLabelsAreUniformAcrossScreenWidths() {
+        val activity = instrumentation.startActivitySync(
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        ) as MainActivity
+        instrumentation.waitForIdleSync()
+        try {
+            val actionIds = listOf(
+                R.id.startButton, R.id.queueButton, R.id.pasteUrlButton,
+                R.id.quickVideoButton, R.id.quickAudioButton, R.id.quickGifButton,
+                R.id.quickPlaylistButton, R.id.quickTwitchButton,
+                R.id.resumeQueueButton, R.id.pauseQueueButton
+            )
+            for (id in actionIds) {
+                val button = activity.findViewById<Button>(id)
+                assertNotNull("Missing vector icon for $id", button.compoundDrawablesRelative[0])
+                assertTrue("Empty button label $id", button.text.isNotBlank())
+                assertEquals("Multiline / clipped button $id", 1, button.maxLines)
+                assertFalse("Legacy text glyph used as icon for $id",
+                    button.text.any { it in "▶♫↓＋Ⅱ🎬🎵📁" })
+                assertTrue("Button has no measurable touch target: $id", button.width > 0)
+            }
+            val brand = activity.findViewById<ImageView>(R.id.brandLogo)
+            assertEquals("Brand logo must never be cropped on Android",
+                ImageView.ScaleType.FIT_CENTER, brand.scaleType)
+            for (res in listOf(R.drawable.ic_video, R.drawable.ic_audio,
+                    R.drawable.ic_gif, R.drawable.ic_playlist, R.drawable.ic_stream,
+                    R.drawable.ic_file, R.drawable.ic_download)) {
+                assertNotNull("Vector drawable not loaded", activity.getDrawable(res))
+            }
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
+
     @Test fun minimalistLiquidGlassAndDownloadActionsKeepWorking() {
         val activity = instrumentation.startActivitySync(
             Intent(context, MainActivity::class.java)

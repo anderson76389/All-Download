@@ -28,6 +28,7 @@ import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
@@ -341,7 +342,10 @@ class MainActivity : Activity() {
                 val view = super.getView(position, convertView, parent)
                 if (view is TextView) {
                     view.setTextColor(palette().foreground)
-                    view.setBackgroundColor(palette().input)
+                    view.gravity = Gravity.CENTER_VERTICAL
+                    view.setSingleLine(true)
+                    view.ellipsize = android.text.TextUtils.TruncateAt.END
+                    view.setPadding(dp(14), 0, dp(10), 0)
                 }
                 return view
             }
@@ -350,7 +354,7 @@ class MainActivity : Activity() {
                 val view = super.getDropDownView(position, convertView, parent)
                 if (view is TextView) {
                     view.setTextColor(palette().foreground)
-                    view.setBackgroundColor(palette().panel)
+                    view.setPadding(dp(14), dp(12), dp(14), dp(12))
                 }
                 return view
             }
@@ -456,9 +460,11 @@ class MainActivity : Activity() {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
                 setPadding(dp(12), dp(15), dp(12), dp(17))
-                addView(text("↓", 24, palette().accent, true).apply {
-                    gravity = Gravity.CENTER
-                })
+                addView(ImageView(this@MainActivity).apply {
+                    setImageResource(R.drawable.ic_download)
+                    imageTintList = ColorStateList.valueOf(palette().accent)
+                    contentDescription = "File vide"
+                }, LinearLayout.LayoutParams(dp(28), dp(28)))
                 addView(text("Votre file d'attente est vide", 15,
                     palette().foreground, true).apply {
                     gravity = Gravity.CENTER
@@ -510,9 +516,11 @@ class MainActivity : Activity() {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
                 setPadding(dp(12), dp(26), dp(12), dp(24))
-                addView(text("↓", 28, colors.accent, true).apply {
-                    gravity = Gravity.CENTER
-                })
+                addView(ImageView(this@MainActivity).apply {
+                    setImageResource(R.drawable.ic_playlist)
+                    imageTintList = ColorStateList.valueOf(colors.accent)
+                    contentDescription = "Aucun téléchargement"
+                }, LinearLayout.LayoutParams(dp(32), dp(32)))
                 addView(text("Votre file d'attente est vide", 17,
                     colors.foreground, true).apply {
                     gravity = Gravity.CENTER
@@ -549,32 +557,35 @@ class MainActivity : Activity() {
             // The badge uses the *actual* job media type and never invents metadata.
             val media = listOf("Vidéo", "MP3", "M4A", "FLAC", "GIF", "Playlist", "Chaîne")
                 .getOrElse(job.mode) { "Vidéo" }
-            val glyph = when (job.mode) {
-                1, 2, 3 -> "♫"
-                4 -> "GIF"
-                5, 6 -> "☷"
-                else -> "▶"
+            val mediaIcon = when (job.mode) {
+                1, 2, 3 -> R.drawable.ic_audio
+                4 -> R.drawable.ic_gif
+                5 -> R.drawable.ic_playlist
+                6 -> R.drawable.ic_stream
+                else -> R.drawable.ic_video
             }
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
             }
-            val thumbnail = TextView(this).apply {
-                text = glyph
-                textSize = if (job.mode == 4) 15f else 26f
-                gravity = Gravity.CENTER
-                setTextColor(colors.accent)
-                background = rounded(colors.input, colors.border, 11)
+            val thumbnail = ImageView(this).apply {
+                setImageResource(mediaIcon)
+                imageTintList = ColorStateList.valueOf(colors.accent)
+                background = rounded(colors.input, colors.border, 12)
+                setPadding(dp(11), dp(11), dp(11), dp(11))
                 contentDescription = "Type de média : $media"
             }
             row.addView(thumbnail, LinearLayout.LayoutParams(dp(46), dp(46)).apply {
                 marginEnd = dp(12)
             })
             val details = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-            details.addView(text("$label · $media · ${job.progress} %", 13,
+            details.addView(text("$label · $media · ${job.progress} %", 12,
                 if (job.status == DownloadQueue.ERROR) Color.rgb(239, 68, 68)
                 else if (job.status == DownloadQueue.DONE) Color.rgb(34, 197, 94)
-                else colors.accent, true))
+                else colors.accent, true).apply {
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            })
             details.addView(text(job.url, 12, colors.foreground, false).apply {
                 maxLines = 2
                 ellipsize = android.text.TextUtils.TruncateAt.END
@@ -595,8 +606,8 @@ class MainActivity : Activity() {
                     progress = job.progress
                     progressTintList = ColorStateList.valueOf(purple)
                     layoutParams = LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(7)).apply {
-                        topMargin = dp(12)
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(4)).apply {
+                        topMargin = dp(10)
                     }
                 })
             }
@@ -606,21 +617,21 @@ class MainActivity : Activity() {
             }
             if (job.status in listOf(DownloadQueue.PAUSED,
                     DownloadQueue.ERROR, DownloadQueue.CANCELLED)) {
-                actions.addView(smallAction("↻ Réessayer") {
+                actions.addView(smallAction("Réessayer", R.drawable.ic_retry) {
                     DownloadQueue.retry(this, job.id)
                     lastQueueRevision = -1L
                     renderQueue()
                 })
             }
             if (job.status != DownloadQueue.RUNNING) {
-                actions.addView(smallAction("Supprimer") {
+                actions.addView(smallAction("Supprimer", R.drawable.ic_trash) {
                     if (DownloadQueue.remove(this, job.id)) {
                         lastQueueRevision = -1L
                         renderQueue()
                     }
                 })
             }
-            actions.addView(smallAction("Copier le lien") {
+            actions.addView(smallAction("Copier", R.drawable.ic_copy) {
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE)
                     as ClipboardManager
                 clipboard.setPrimaryClip(ClipData.newPlainText("Lien All-Download", job.url))
@@ -654,20 +665,18 @@ class MainActivity : Activity() {
         val request = ++fileRequestId
         filesList.removeAllViews()
         filesList.addView(infoCard("Dossiers All-Download", "Chargement des catégories…"))
-        val categories = listOf(
-            "VIDÉOS" to "🎬", "AUDIOS" to "🎵", "TWITCH" to "🟣",
-            "GIFS" to "🎞️", "CHAÎNES" to "📺", "PLAYLIST" to "📑", "AUTRES" to "📁")
+        val categories = listOf("VIDÉOS", "AUDIOS", "TWITCH", "GIFS",
+            "CHAÎNES", "PLAYLIST", "AUTRES")
         fileExecutor.execute {
-            val counts = categories.map { (name, symbol) ->
-                Triple(name, symbol, filesForCategory(name, 0).count)
+            val counts = categories.map { name ->
+                name to filesForCategory(name, 0).count
             }
             runOnUiThread {
                 if (request != fileRequestId || isFinishing || isDestroyed ||
                     selectedTab != 2) return@runOnUiThread
                 filesList.removeAllViews()
-                for ((name, symbol, count) in counts) {
-                    val item = infoCard(symbol + "  " + name,
-                        "$count fichier(s) · Ouvrir le dossier")
+                for ((name, count) in counts) {
+                    val item = mediaCard(name, "$count fichier(s)", folderIcon(name))
                     item.setOnClickListener { showFolderContents(name) }
                     filesList.addView(item)
                 }
@@ -727,12 +736,12 @@ class MainActivity : Activity() {
                 if (request != fileRequestId || isFinishing || isDestroyed ||
                     selectedTab != 2) return@runOnUiThread
                 filesList.removeAllViews()
-                filesList.addView(smallAction("‹  Toutes les catégories") { renderFolders() })
+                filesList.addView(smallAction("Dossiers", R.drawable.ic_back) { renderFolders() })
                 filesList.addView(infoCard(category,
                     if (folder.count == 0) "Aucun fichier dans ce dossier."
                     else "${folder.count} fichier(s)"))
                 folder.entries.forEach { entry ->
-                    val card = infoCard("◉  " + entry.name, "Ouvrir")
+                    val card = mediaCard(entry.name, "Ouvrir", R.drawable.ic_file)
                     card.setOnClickListener {
                         try {
                             startActivity(Intent(Intent.ACTION_VIEW).apply {
@@ -756,6 +765,56 @@ class MainActivity : Activity() {
         }
     }
 
+    /** Vector icon tiles make folders and files align exactly on all screens. */
+    private fun folderIcon(category: String): Int = when (category) {
+        "VIDÉOS" -> R.drawable.ic_video
+        "AUDIOS" -> R.drawable.ic_audio
+        "TWITCH", "CHAÎNES" -> R.drawable.ic_stream
+        "GIFS" -> R.drawable.ic_gif
+        "PLAYLIST" -> R.drawable.ic_playlist
+        else -> R.drawable.nav_folders
+    }
+
+    private fun mediaCard(title: String, subtitle: String, iconRes: Int): LinearLayout {
+        val colors = palette()
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            minimumHeight = dp(64)
+            setPadding(dp(13), dp(10), dp(12), dp(10))
+            background = rounded(colors.panel, colors.border, 16)
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(8) }
+            addView(ImageView(this@MainActivity).apply {
+                setImageResource(iconRes)
+                imageTintList = ColorStateList.valueOf(colors.accent)
+                setPadding(dp(10), dp(10), dp(10), dp(10))
+                background = rounded(colors.input, colors.border, 12)
+                contentDescription = null
+            }, LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(12) })
+            val detail = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(text(title, 14, colors.foreground, true).apply {
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                })
+                addView(text(subtitle, 12, colors.muted, false).apply {
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    setPadding(0, dp(4), 0, 0)
+                })
+            }
+            addView(detail, LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(ImageView(this@MainActivity).apply {
+                setImageResource(R.drawable.ic_chevron)
+                imageTintList = ColorStateList.valueOf(colors.muted)
+                contentDescription = null
+            }, LinearLayout.LayoutParams(dp(18), dp(18)).apply { marginStart = dp(8) })
+        }
+    }
+
     private fun infoCard(title: String, description: String): LinearLayout {
         val colors = palette()
         return LinearLayout(this).apply {
@@ -773,7 +832,7 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun smallAction(label: String, action: () -> Unit): Button =
+    private fun smallAction(label: String, iconRes: Int = 0, action: () -> Unit): Button =
         Button(this).apply {
             text = label
             isAllCaps = false
@@ -784,7 +843,8 @@ class MainActivity : Activity() {
             background = rounded(palette().input, palette().border, 10)
             elevation = 0f
             stateListAnimator = null
-            setPadding(dp(9), 0, dp(9), 0)
+            setPadding(dp(10), 0, dp(10), 0)
+            if (iconRes != 0) setButtonIcon(this, iconRes, palette().foreground, 16)
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, dp(42)).apply {
                 marginStart = dp(4)
@@ -852,26 +912,26 @@ class MainActivity : Activity() {
         val icons = intArrayOf(R.drawable.nav_home, R.drawable.nav_queue,
             R.drawable.nav_folders, R.drawable.nav_settings)
         val shortNames = arrayOf("Accueil", "File", "Dossiers", "Réglages")
-        val fullNames = arrayOf("Accueil", "File d'attente", "Dossiers", "Paramètres")
+        val fullNames = arrayOf("Accueil", "File d'attente", "Dossiers", "Réglages")
         tabs.forEachIndexed { index, button ->
             val foreground = if (index == selectedTab) Color.WHITE else colors.foreground
             val icon = getDrawable(icons[index])?.mutate()?.apply {
                 setTint(foreground)
-                setBounds(0, 0, dp(21), dp(21))
+                setBounds(0, 0, dp(20), dp(20))
             }
             if (wide) {
                 button.setCompoundDrawablesRelative(icon, null, null, null)
                 button.gravity = Gravity.CENTER_VERTICAL or Gravity.START
                 button.text = fullNames[index]
                 button.textSize = 13f
-                button.setPadding(dp(14), 0, dp(8), 0)
+                button.setPadding(dp(16), 0, dp(8), 0)
                 button.compoundDrawablePadding = dp(11)
             } else {
                 button.setCompoundDrawablesRelative(null, icon, null, null)
                 button.gravity = Gravity.CENTER
                 button.text = shortNames[index]
-                button.textSize = 10.5f
-                button.setPadding(dp(1), dp(5), dp(1), dp(4))
+                button.textSize = 11f
+                button.setPadding(0, dp(6), 0, dp(6))
                 button.compoundDrawablePadding = dp(4)
             }
             button.backgroundTintList = null
@@ -879,6 +939,7 @@ class MainActivity : Activity() {
             button.setTextColor(foreground)
             button.isAllCaps = false
             button.setSingleLine(true)
+            button.ellipsize = android.text.TextUtils.TruncateAt.END
             button.includeFontPadding = false
             button.stateListAnimator = null
             button.elevation = 0f
@@ -935,11 +996,49 @@ class MainActivity : Activity() {
         visit(content)
         findViewById<View>(R.id.navigation).setBackgroundColor(Color.TRANSPARENT)
         styleQuickModes()
+        styleActionIcons()
         progressBar.progressTintList = ColorStateList.valueOf(purple)
         progressBar.progressBackgroundTintList = ColorStateList.valueOf(colors.border)
+        statusText.maxLines = 1
+        statusText.ellipsize = android.text.TextUtils.TruncateAt.END
+        queueStatusText.maxLines = 2
+        queueStatusText.ellipsize = android.text.TextUtils.TruncateAt.END
         selectTab(selectedTab)
     }
 
+
+    /** The same vector weight and baseline on all Android devices and themes. */
+    private fun setButtonIcon(button: Button, iconRes: Int, tint: Int, size: Int = 18) {
+        val icon = getDrawable(iconRes)?.mutate()?.apply {
+            setTint(tint)
+            setBounds(0, 0, dp(size), dp(size))
+        }
+        button.setCompoundDrawablesRelative(icon, null, null, null)
+        button.compoundDrawablePadding = dp(5)
+        button.gravity = Gravity.CENTER
+        button.includeFontPadding = false
+        button.isAllCaps = false
+        button.setSingleLine(true)
+        button.ellipsize = android.text.TextUtils.TruncateAt.END
+        button.minWidth = 0
+        button.minimumWidth = 0
+        button.setPadding(dp(6), 0, dp(6), 0)
+    }
+
+    private fun styleActionIcons() {
+        val foreground = palette().foreground
+        listOf(
+            Triple(R.id.startButton, R.drawable.ic_download, Color.WHITE),
+            Triple(R.id.queueButton, R.drawable.ic_add, foreground),
+            Triple(R.id.pasteUrlButton, R.drawable.ic_paste, foreground),
+            Triple(R.id.resumeQueueButton, R.drawable.ic_play, Color.WHITE),
+            Triple(R.id.pauseQueueButton, R.drawable.ic_pause, foreground),
+            Triple(R.id.cancelButton, R.drawable.ic_stop, foreground)
+        ).forEach { (id, icon, tint) ->
+            val button = findViewById<Button>(id)
+            setButtonIcon(button, icon, tint, if (id == R.id.pasteUrlButton) 16 else 18)
+        }
+    }
 
     /** Use the exact same action IDs/listeners on every device: presentation only. */
     private fun styleQuickModes() {
@@ -953,6 +1052,13 @@ class MainActivity : Activity() {
         val modes = listOf(R.id.quickVideoButton to 0, R.id.quickAudioButton to 1,
             R.id.quickGifButton to 4, R.id.quickPlaylistButton to 5,
             R.id.quickTwitchButton to -1)
+        val icons = mapOf(
+            R.id.quickVideoButton to R.drawable.ic_video,
+            R.id.quickAudioButton to R.drawable.ic_audio,
+            R.id.quickGifButton to R.drawable.ic_gif,
+            R.id.quickPlaylistButton to R.drawable.ic_playlist,
+            R.id.quickTwitchButton to R.drawable.ic_stream
+        )
         modes.forEach { (id, mode) ->
             val button = findViewById<Button>(id) ?: return@forEach
             val active = mode == selected ||
@@ -963,6 +1069,8 @@ class MainActivity : Activity() {
             button.setTextColor(if (active) Color.WHITE else colors.foreground)
             button.elevation = 0f
             button.stateListAnimator = null
+            setButtonIcon(button, icons.getValue(id),
+                if (active) Color.WHITE else colors.foreground, 17)
         }
     }
 
