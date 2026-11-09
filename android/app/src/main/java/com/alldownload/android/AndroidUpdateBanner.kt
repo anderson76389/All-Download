@@ -91,7 +91,8 @@ internal class AndroidUpdateBanner(private val activity: Activity) {
         text = "Détails"
         isAllCaps = false
         textSize = 12f
-        setTextColor(foreground)
+        // View.foreground is a Drawable; explicitly use the theme text color.
+        setTextColor(this@AndroidUpdateBanner.foreground)
         background = background(panel, border, 12)
         minWidth = 0
         minimumWidth = 0
