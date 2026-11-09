@@ -79,6 +79,8 @@ internal object AndroidSettingsPanels {
         }
         val sections = listOf(downloadPanel, applicationPanel, networkPanel)
         val labels = listOf("Médias", "Appli", "Réseau")
+        val stackedTabs = activity.resources.configuration.screenWidthDp < 390 ||
+            activity.resources.configuration.fontScale > 1.2f
         val tabIcons = listOf(R.drawable.ic_video, R.drawable.nav_settings,
             R.drawable.ic_network)
         val buttonIds = listOf(R.id.settingsTabDownload,
@@ -87,23 +89,24 @@ internal object AndroidSettingsPanels {
             Button(activity).apply {
                 id = buttonIds[index]
                 text = caption
-                textSize = 12f
+                textSize = if (stackedTabs) 11.5f else 12f
                 val image = activity.getDrawable(tabIcons[index])?.mutate()?.apply {
                     setTint(color)
                     setBounds(0, 0, px(17), px(17))
                 }
-                setCompoundDrawablesRelative(image, null, null, null)
-                compoundDrawablePadding = px(5)
+                setCompoundDrawablesRelative(
+                    if (stackedTabs) null else image,
+                    if (stackedTabs) image else null, null, null)
+                compoundDrawablePadding = px(if (stackedTabs) 2 else 5)
                 gravity = android.view.Gravity.CENTER
                 setSingleLine(true)
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 includeFontPadding = false
                 setPadding(px(4), 0, px(4), 0)
                 isAllCaps = false
-                minHeight = px(48)
-                gravity = android.view.Gravity.CENTER
+                minHeight = px(if (stackedTabs) 60 else 48)
                 tabs.addView(this, LinearLayout.LayoutParams(
-                    0, px(49), 1f).apply {
+                    0, px(if (stackedTabs) 62 else 49), 1f).apply {
                     marginStart = if (index == 0) 0 else px(3)
                     marginEnd = if (index == 2) 0 else px(3)
                 })
@@ -175,7 +178,7 @@ internal object AndroidSettingsPanels {
                 includeFontPadding = false
             })
             panel.addView(label(subtitle, 11f, tint = muted).apply {
-                maxLines = 2
+                maxLines = 4
                 setPadding(0, px(5), 0, px(10))
             })
             // Insert before the footer text explaining the beta version.
@@ -204,9 +207,24 @@ internal object AndroidSettingsPanels {
                     val textView = super.getView(position, convertView, parent)
                     if (textView is TextView) {
                         textView.setTextColor(color)
-                        textView.setPadding(px(13), px(12), px(8), px(12))
+                        textView.textSize = 14f
+                        textView.gravity = android.view.Gravity.CENTER_VERTICAL
+                        textView.setSingleLine(true)
+                        textView.ellipsize = android.text.TextUtils.TruncateAt.END
+                        textView.setPadding(px(13), 0, px(12), 0)
                     }
                     return textView
+                }
+                override fun getDropDownView(position: Int, convertView: android.view.View?,
+                                             parent: ViewGroup): android.view.View {
+                    val item = super.getDropDownView(position, convertView, parent)
+                    if (item is TextView) {
+                        item.setTextColor(color)
+                        item.textSize = 14f
+                        item.setPadding(px(14), px(13), px(14), px(13))
+                        item.minHeight = px(48)
+                    }
+                    return item
                 }
             }
             view.adapter = adapter
@@ -256,7 +274,7 @@ internal object AndroidSettingsPanels {
             panel.addView(check, LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             panel.addView(label(detail, 11f, tint = muted).apply {
-                setPadding(px(8), 0, px(8), px(8))
+                setPadding(px(40), 0, px(8), px(10))
             })
         }
 
