@@ -407,7 +407,7 @@ class AndroidSmokeTest {
             val group = activity.findViewById<LinearLayout>(R.id.settingsDownloadPanel)
             val firstCard = group.getChildAt(0) as LinearLayout
             val checkboxIndex = (0 until firstCard.childCount).first {
-                firstCard.getChildAt(it) is CheckBox
+                firstCard.getChildAt(it) is android.widget.CheckBox
             }
             val explanation = firstCard.getChildAt(checkboxIndex + 1) as TextView
             assertTrue("Description non alignée avec le texte de la case",
