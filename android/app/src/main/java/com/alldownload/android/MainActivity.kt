@@ -1286,8 +1286,9 @@ class MainActivity : Activity() {
     private fun pinBrandAndUpdater() {
         val brand = findViewById<LinearLayout>(R.id.brandHeader)
         (brand.parent as? ViewGroup)?.removeView(brand)
-        findViewById<TextView>(R.id.brandTitle).text = "ALL-DOWNLOAD"
-        findViewById<ImageView>(R.id.brandLogo).apply {
+        // The row is detached now: use its local hierarchy, not Activity.findViewById.
+        brand.findViewById<TextView>(R.id.brandTitle).text = "ALL-DOWNLOAD"
+        brand.findViewById<ImageView>(R.id.brandLogo).apply {
             setImageResource(R.drawable.all_download_android_logo)
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
