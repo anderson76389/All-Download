@@ -59,7 +59,7 @@ La barre mobile affiche l'icône au-dessus du texte, sans retour à la ligne. En
 | PLAYLIST | `ic_folder_playlist` |
 | AUTRES | `ic_folder_other` |
 
-Tous les dossiers utilisent la même silhouette et un signe intérieur différent. Les fichiers affichent `ic_video`, `ic_audio`, `ic_gif` ou `ic_file` selon leur extension, plus un chevron discret `ic_chevron`.
+Les sept dossiers utilisent des pictogrammes autonomes plus lisibles (lecture, casque, chat en direct, pellicule, chaîne, playlist et dossier). Les fichiers affichent `ic_video`, `ic_audio`, `ic_gif` ou `ic_file` selon leur extension, plus un chevron discret `ic_chevron`.
 
 ## Réglages
 
@@ -83,7 +83,7 @@ Tous les dossiers utilisent la même silhouette et un signe intérieur différen
 - Barre latérale tablette : **21 dp** ; icône à gauche du libellé.
 - En-têtes de sections : **19 dp**.
 - Boutons principaux : **18 dp** ; formats rapides : **17 dp**.
-- Icônes de dossiers : case **42 dp**, pictogramme avec espace intérieur **10 dp**.
+- Icônes de dossiers : case **50 dp**, pictogramme de **32 dp** avec marge intérieure de **9 dp**. La silhouette n'est plus un double cadre avec symbole minuscule.
 - Action secondaire : pictogramme **16 dp**, cible tactile **48 dp** minimum.
 - Espacement icône-texte : généralement **5 à 9 dp**.
 - Textes de navigation sur une ligne, labels de fichiers longs tronqués avec ellipse, sans casser l'appui tactile.
@@ -93,4 +93,12 @@ Tous les dossiers utilisent la même silhouette et un signe intérieur différen
 
 ### Contrôle de visibilité
 
-Les pictogrammes de dossiers ont un **contour clair et un symbole central séparé** pour éviter qu'un détail blanc sur un fond blanc soit invisible. Le test d'instrumentation `sevenFolderGlyphsRenderAsDistinctVisibleShapes` dessine réellement les sept vecteurs et vérifie qu'ils ont des pixels visibles et des silhouettes différentes.
+Les pictogrammes de dossiers sont **distincts, contrastés et assez grands** pour éviter les détails illisibles ; ils suivent la teinte du thème. Le test d'instrumentation `sevenFolderGlyphsRenderAsDistinctVisibleShapes` dessine réellement les sept vecteurs et vérifie qu'ils ont des pixels visibles et des silhouettes différentes.
+
+## Correctifs d'alignement mobile (novembre 2026)
+
+- Navigation quatre onglets à largeur égale dans un conteneur fixe sans défilement horizontal ; aucun libellé ne doit sortir du bord gauche/droit.
+- En-tête de marque et bannière toujours épinglés ; changement d'onglet ramené en haut immédiatement pour ne pas cacher le titre.
+- État de téléchargement épinglé **uniquement pendant un transfert actif** sur téléphone, masqué à l'arrêt et dans Dossiers/Réglages.
+- Actions de la file : icône et texte alignés au début du bouton pour ne pas les séparer visuellement.
+- Version Windows et moteurs Android inchangés.
