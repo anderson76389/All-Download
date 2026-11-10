@@ -103,9 +103,10 @@ jobs:
           WINDOWS_TAG: ${{ steps.plan.outputs.windows_tag }}
           ANDROID_TAG: ${{ steps.plan.outputs.android_tag }}
         run: |
-          # Never overwrite future releases with version-specific notes.
-          if [ "$WINDOWS_TAG" = "build-171" ]; then
-            gh release edit "$WINDOWS_TAG" --repo "$GITHUB_REPOSITORY" --notes-file .github/release-notes/windows.md
+          # Preserve the new stable Windows tag while displaying its correct build number.
+          if [[ "$WINDOWS_TAG" == build-* ]]; then
+            sed "s/Build 171/Build ${WINDOWS_TAG#build-}/" .github/release-notes/windows.md > "$RUNNER_TEMP/windows-release-notes.md"
+            gh release edit "$WINDOWS_TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$RUNNER_TEMP/windows-release-notes.md"
           fi
           if [ "$ANDROID_TAG" = "android-v0.6.9-beta" ]; then
             gh release edit "$ANDROID_TAG" --repo "$GITHUB_REPOSITORY" --notes-file .github/release-notes/android.md
