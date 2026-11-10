@@ -812,6 +812,52 @@ class AndroidSmokeTest {
         assertTrue(DownloadQueue.snapshot(context).none { it.id == task.id })
     }
 
+    @Test fun manualUpdateIsAvailableAfterDismissingAutomaticBanner() {
+        val activity = instrumentation.startActivitySync(
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        ) as MainActivity
+        instrumentation.waitForIdleSync()
+        val prefs = activity.getSharedPreferences("android_update_banner_v1",
+            android.content.Context.MODE_PRIVATE)
+        val previousDismissed = prefs.getString("dismissed_release", null)
+        val wasEnabled = AndroidUpdates.enabled(activity)
+        try {
+            instrumentation.runOnMainSync {
+                AndroidUpdates.setEnabled(activity, true)
+                val version = "99.0.0-beta"
+                val tag = "android-v$version"
+                val candidate = AndroidUpdates.Release(version, tag, "Test de mise à jour",
+                    "Test du bouton manuel",
+                    "https://github.com/anderson76389/All-Download/releases/tag/$tag",
+                    "https://github.com/anderson76389/All-Download/releases/download/" +
+                        "$tag/All-Download-Android-$version.apk", 2_000_000L)
+                prefs.edit().putString("dismissed_release", tag).commit()
+                val banner = AndroidUpdateBanner(activity)
+                banner.show(candidate)
+                assertEquals("La notification automatique doit rester masquée.",
+                    View.GONE, banner.view.visibility)
+                val manualDialog = AndroidUpdates.showManualUpdate(activity, candidate)
+                assertNotNull("La recherche manuelle doit ignorer « Plus tard ».",
+                    manualDialog)
+                assertTrue("La fenêtre d'installation doit être ouverte dans l'application.",
+                    manualDialog!!.isShowing)
+                manualDialog.dismiss()
+                assertNull("Aucune boîte de dialogue si la version est déjà installée.",
+                    AndroidUpdates.showManualUpdate(activity, null))
+            }
+        } finally {
+            instrumentation.runOnMainSync {
+                prefs.edit().apply {
+                    if (previousDismissed == null) remove("dismissed_release")
+                    else putString("dismissed_release", previousDismissed)
+                }.commit()
+                AndroidUpdates.setEnabled(activity, wasEnabled)
+                activity.finish()
+            }
+        }
+    }
+
     @Test fun androidReleaseChecksDoNotConfuseWindowsAndCompareVersionsProperly() {
         assertTrue(AndroidUpdates.compareVersions("0.10.0-beta", "0.9.99-beta") > 0)
         assertTrue(AndroidUpdates.compareVersions("0.3.1-beta", "0.3.0-beta") > 0)

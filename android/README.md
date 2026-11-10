@@ -1,4 +1,15 @@
-# All-Download Android — bêta 0.6.11
+# All-Download Android — bêta 0.6.12
+
+## Correction des mises à jour intégrées — 0.6.12
+
+- Dans **Paramètres → Appli → Mises à jour Android**, le bouton **Rechercher une mise à jour** affiche directement la fenêtre d'installation dans l'application si une version Android plus récente est disponible. Cela fonctionne aussi après avoir fermé la notification avec « Plus tard ».
+- Un message persistant sur la carte affiche le résultat de la recherche ou une erreur de connexion, au lieu de dépendre uniquement d'un toast éphémère.
+- Un contrôle déjà en cours est signalé explicitement sans annoncer par erreur que l'application est à jour.
+- Le bandeau automatique reste discret et conditionnel : aucune barre « ALL DOWNLOAD » fixe n'est réintroduite.
+- La vérification SHA-256, la compatibilité de signature, la confirmation d'installation Android et les dossiers de téléchargement restent inchangés. Windows n'est pas modifié.
+- La 0.6.11 et la 0.6.10 officielles ont la même empreinte de signature (vérifiée dans les jobs GitHub Actions). Une APK très ancienne signée avec une autre clé peut encore nécessiter une installation manuelle.
+
+---
 
 ## Interface épurée et paramètres unifiés — bêta 0.6.11
 
