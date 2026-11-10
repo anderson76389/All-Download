@@ -335,7 +335,7 @@ class MainActivity : Activity() {
         // below the content instead of spending vertical space above the URL field.
         if (resources.configuration.screenWidthDp >= 600) configureWideScreen()
         else configurePhoneNavigation()
-        pinBrandAndUpdater()
+        attachUpdateBanner()
         arrangeOptionPills()
         arrangeQuickAccess()
         styleQuickModes()
@@ -406,7 +406,7 @@ class MainActivity : Activity() {
             target.animate().alpha(1f).setDuration(180).start()
         }
         // Switching tabs must cancel stale scroll positions immediately: an
-        // animated scroll could expose page titles behind the pinned brand.
+        // animated scroll could leave the previous tab at the wrong offset.
         scroll.scrollTo(0, 0)
         scroll.post { scroll.scrollTo(0, 0) }
     }
@@ -1284,7 +1284,7 @@ class MainActivity : Activity() {
         host.addView(shell, ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
-        // The brand owns the top inset; the dock sits above gesture navigation.
+        // The phone shell owns system insets; the dock sits above gesture navigation.
         // Hide fixed controls while the keyboard is open to leave input room.
         ViewCompat.setOnApplyWindowInsetsListener(shell) { view, insets ->
             val safe = insets.getInsets(WindowInsetsCompat.Type.systemBars() or
@@ -1308,67 +1308,19 @@ class MainActivity : Activity() {
     }
 
     /**
-     * Brand is a locked, unchanging identity across theme, page and rotation.
-     * Reparent its ORIGINAL view outside the scrolling area; never duplicate
-     * the logo or title. The update banner stays directly under the header.
+     * No permanent brand/header chrome: the Android app's identity lives in
+     * its launcher icon, package label and update dialog. Keep only a
+     * dismissible update notice, inline with the page and GONE at rest.
+     * This avoids a dead band at the top on phones and unfolded devices.
      */
-    private fun pinBrandAndUpdater() {
-        val brand = findViewById<LinearLayout>(R.id.brandHeader)
-        (brand.parent as? ViewGroup)?.removeView(brand)
-        // The row is detached now: use its local hierarchy, not Activity.findViewById.
-        brand.findViewById<TextView>(R.id.brandTitle).text = "ALL-DOWNLOAD"
-        brand.findViewById<ImageView>(R.id.brandLogo).apply {
-            setImageResource(R.drawable.all_download_android_logo)
-            scaleType = ImageView.ScaleType.FIT_CENTER
-        }
-        brand.setPadding(dp(12), dp(9), dp(12), dp(9))
-        brand.background = rounded(palette().panel, palette().border, 16)
-
-        val upper = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), dp(8), dp(12), dp(7))
-        }
-        upper.addView(brand, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+    private fun attachUpdateBanner() {
         val banner = AndroidUpdateBanner(this)
         updateBanner = banner
-        upper.addView(banner.view, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            topMargin = dp(7)
+        content.addView(banner.view, 0, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            bottomMargin = dp(10)
         })
-
-        if (resources.configuration.screenWidthDp < 600) {
-            val shell = scroll.parent as? LinearLayout ?: return
-            shell.addView(upper, 0, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        } else {
-            // Keep the same pinned branding on foldables/tablets with a sidebar.
-            val host = scroll.parent as? ViewGroup ?: return
-            host.removeView(scroll)
-            val shell = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setBackgroundColor(palette().background)
-            }
-            shell.addView(upper, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-            shell.addView(scroll, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-            host.addView(shell, ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-            if (Build.VERSION.SDK_INT >= 35) {
-                ViewCompat.setOnApplyWindowInsetsListener(shell) { view, insets ->
-                    val safe = insets.getInsets(WindowInsetsCompat.Type.systemBars() or
-                        WindowInsetsCompat.Type.displayCutout())
-                    view.setPadding(safe.left, safe.top, safe.right, safe.bottom)
-                    insets
-                }
-                ViewCompat.setOnApplyWindowInsetsListener(scroll) { view, insets ->
-                    view.setPadding(0, 0, 0, 0)
-                    insets
-                }
-                ViewCompat.requestApplyInsets(shell)
-            }
-        }
     }
 
     /** Two-column tablet/large foldable layout: left navigation and right content.
