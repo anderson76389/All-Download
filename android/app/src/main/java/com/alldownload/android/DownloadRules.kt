@@ -32,6 +32,18 @@ internal object DownloadRules {
             Regex("""(^|\.)pinterest\.[a-z]{2,4}$""").containsMatchIn(host)
     }
 
+    /** YouTube uses rapidly changing yt-dlp extractors and JS challenges.
+     * Refresh on unmetered connections just as for other social extractors;
+     * do not update for Twitch or for invalid/spoofed YouTube hostnames.
+     */
+    fun needsFreshExtractor(url: String): Boolean {
+        val host = uri(url)?.host?.lowercase() ?: return false
+        val isYoutube = host == "youtube.com" || host.endsWith(".youtube.com") ||
+            host == "youtu.be" || host == "youtube-nocookie.com" ||
+            host.endsWith(".youtube-nocookie.com")
+        return isYoutube || isSocialVideoHost(url)
+    }
+
     fun isTwitchVod(url: String): Boolean {
         val parsed = uri(url) ?: return false
         return parsed.host.lowercase() in setOf("twitch.tv", "www.twitch.tv", "m.twitch.tv") &&
