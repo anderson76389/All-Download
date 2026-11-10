@@ -1,4 +1,7 @@
 # Artefacts générés automatiquement : ne pas publier les intermédiaires
+# Les EXE finaux sont fabriqués par CI, pas conservés dans Git.
+/dist/
+/release-archives/
 /build/
 __pycache__/
 *.py[cod]
