@@ -1,4 +1,15 @@
-# All-Download Android — bêta 0.6.9
+# All-Download Android — bêta 0.6.10
+
+## Interface mobile corrigée — bêta 0.6.10
+
+- Les quatre boutons de navigation partagent réellement l'espace disponible : plus d'onglet Accueil ou Réglages tronqué sur téléphone.
+- Les titres de page sont ramenés au début du défilement instantanément et ne doivent plus passer derrière l'en-tête All-Download épinglé.
+- Le bandeau d'état « Prêt » n'occupe plus inutilement l'écran ; la progression ne se fixe au-dessus de la navigation que durant un téléchargement sur Accueil/File.
+- Les sept catégories de dossiers utilisent des pictogrammes simplifiés et agrandis, avec cartes espacées et texte lisible.
+- Les icônes et intitulés des commandes de la file sont alignés au lieu d'être séparés.
+- Les boutons, moteurs, données, sauvegardes, thème, identité et version Windows restent inchangés.
+
+---
 
 Nouvelle application Android **indépendante de Windows**, dans le dossier `android/`. Les éditions Portable/Classique Windows, `yt_app.py`, `twitch_hls.py` et `build-windows.yml` ne sont pas modifiés.
 
