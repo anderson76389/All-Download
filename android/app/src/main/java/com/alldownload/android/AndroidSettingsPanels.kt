@@ -546,10 +546,30 @@ internal object AndroidSettingsPanels {
                 AndroidUpdates.setEnabled(activity, checked)
             }
         }
-        button(updates, "Rechercher une mise à jour") {
-            updateMessage("Recherche sur les Releases GitHub…")
-            AndroidUpdates.check(activity, true, updateMessage)
+        val updateStatus = label(
+            "Vous pouvez rechercher et installer une mise à jour ici, même après « Plus tard ».",
+            12f, tint = muted).apply {
+            maxLines = 3
         }
+        button(updates, "Rechercher une mise à jour") {
+            updateStatus.text = "Recherche d'une version Android plus récente…"
+            AndroidUpdates.check(activity, force = true,
+                onStatus = { message ->
+                    updateStatus.text = message
+                    updateMessage(message)
+                },
+                onRelease = { release ->
+                    if (release != null) {
+                        updateStatus.text = "Version ${release.version} disponible : installation dans l'application."
+                        AndroidUpdates.showManualUpdate(activity, release)
+                    } else if (updateStatus.text.toString().startsWith("Recherche d'une")) {
+                        updateStatus.text = "Aucune nouvelle version disponible."
+                    }
+                })
+        }
+        updates.addView(updateStatus, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = px(8) })
         updates.addView(label("All-Download Android " + BuildConfig.VERSION_NAME +
             " · les prochaines Releases nécessitent la signature permanente. Une ancienne bêta debug peut demander une dernière réinstallation.",
             11f, tint = muted))
