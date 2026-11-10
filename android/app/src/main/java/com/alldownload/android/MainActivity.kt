@@ -302,7 +302,7 @@ class MainActivity : Activity() {
             }
         }
 
-        findViewById<CheckBox>(R.id.autoUpdateCheck).apply {
+        findViewById<android.widget.Switch>(R.id.autoUpdateCheck).apply {
             isChecked = settings.getBoolean("auto_update", true)
             setOnCheckedChangeListener { _, checked ->
                 settings.edit().putBoolean("auto_update", checked).apply()
