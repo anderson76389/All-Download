@@ -225,6 +225,46 @@ class AndroidSmokeTest {
         }
     }
 
+    @Test fun phoneTabsAndFolderHeadingNeverHideBehindPinnedChrome() {
+        val activity = instrumentation.startActivitySync(
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        ) as MainActivity
+        instrumentation.waitForIdleSync()
+        try {
+            if (activity.resources.configuration.screenWidthDp >= 600) return
+            val tabs = activity.findViewById<LinearLayout>(R.id.navigation)
+            val footer = activity.findViewById<View>(R.id.statusFooterCard)
+            if (!DownloadService.state.busy)
+                assertEquals("Un panneau Prêt permanent masque les options.",
+                    View.GONE, footer.visibility)
+            assertEquals("Quatre onglets fixes, sans défilement horizontal.",
+                4, tabs.childCount)
+            for (index in 0 until tabs.childCount) {
+                val child = tabs.getChildAt(index)
+                assertTrue("Onglet de largeur nulle.", child.width > 0)
+                assertTrue("Onglet tronqué à gauche.", child.left >= 0)
+                assertTrue("Onglet tronqué à droite.", child.right <= tabs.width)
+            }
+            instrumentation.runOnMainSync {
+                activity.findViewById<Button>(R.id.navFiles).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            val brand = activity.findViewById<View>(R.id.brandHeader)
+            val heading = activity.findViewById<View>(R.id.filesPageTitleIcon)
+            val brandLocation = IntArray(2)
+            val headingLocation = IntArray(2)
+            brand.getLocationOnScreen(brandLocation)
+            heading.getLocationOnScreen(headingLocation)
+            assertTrue("Titre Dossiers caché derrière le logo épinglé.",
+                headingLocation[1] >= brandLocation[1] + brand.height)
+            assertEquals("Le panneau d'état ne doit pas recouvrir les dossiers.",
+                View.GONE, footer.visibility)
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
+
     @Test fun glassNavigationKeepsVectorIconsVisibleOnPhoneAndTablet() {
         val activity = instrumentation.startActivitySync(
             Intent(context, MainActivity::class.java)
