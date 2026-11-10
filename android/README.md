@@ -1,5 +1,12 @@
 # All-Download Android — bêta 0.6.10
 
+## Fiabilisation de YouTube — bêta 0.6.10
+
+- Sur une connexion non facturée au volume et hors économie d'énergie, le moteur yt-dlp est actualisé pour les liens YouTube et les réseaux sociaux ; fréquence limitée à une tentative toutes les 12 h et un succès tous les 7 jours.
+- Sans connexion adaptée ou en cas d'échec, le moteur embarqué est conservé. Aucune actualisation forcée en données mobiles.
+- Le test vidéo YouTube télécharge un extrait réel en utilisant un yt-dlp récent ; les erreurs réseau ne sont pas considérées comme une réussite.
+- Les téléchargements Twitch et Windows ne sont pas modifiés.
+
 ## Interface mobile corrigée — bêta 0.6.10
 
 - Les quatre boutons de navigation partagent réellement l'espace disponible : plus d'onglet Accueil ou Réglages tronqué sur téléphone.
