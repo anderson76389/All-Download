@@ -450,7 +450,7 @@ internal object AndroidSettingsPanels {
                 ViewGroup.LayoutParams.MATCH_PARENT, px(52)).apply { topMargin = px(9) })
         }
 
-        val files = card("Téléchargements", "7 catégories rangées automatiquement.")
+        val files = card("Téléchargements", "Formats vidéo et organisation des fichiers.")
         files.addView(label("Téléchargements/All-Download/",
             12f, tint = muted))
         files.addView(label("Dossier public géré par Android.",
@@ -463,7 +463,7 @@ internal object AndroidSettingsPanels {
             "Sans réencodage. Certaines sources ne peuvent pas être remuxées en MP4.",
             "remux_video")
 
-        val audio = card("Audio", "Qualité de conversion MP3.")
+        val audio = card("Audio", "Qualité et conversion des fichiers audio.")
         spinner(audio, "Qualité MP3",
             listOf("0", "128K", "192K", "256K", "320K"),
             listOf("Meilleure qualité disponible", "128 kb/s", "192 kb/s", "256 kb/s", "320 kb/s"),
@@ -472,7 +472,7 @@ internal object AndroidSettingsPanels {
             11f, tint = muted))
 
         val media = card("Métadonnées et miniatures",
-            "Appliquées aux prochains médias.")
+            "Informations et sous-titres des prochains fichiers.")
         toggle(media, "Ajouter titre et artiste", "Métadonnées intégrées si disponibles.",
             "embed_metadata")
         toggle(media, "Enregistrer la miniature", "Image de couverture séparée du média.",
@@ -499,7 +499,7 @@ internal object AndroidSettingsPanels {
             "sponsor_exact")
 
         val network = card("Réseau et connexions",
-            "Connexion et extracteurs.",
+            "Options de connexion et paramètres avancés.",
             networkPanel)
         toggle(network, "Utiliser un proxy",
             "HTTP, HTTPS ou SOCKS. Vérifiez sa disponibilité avant un téléchargement.",
@@ -524,7 +524,7 @@ internal object AndroidSettingsPanels {
             11f, tint = muted))
 
         val app = card("Application et notifications",
-            "Notifications et animations.",
+            "Comportement et confort d’utilisation.",
             applicationPanel)
         toggle(app, "Notification de fin de téléchargement",
             "En cours : notification Android toujours affichée.",
@@ -536,11 +536,10 @@ internal object AndroidSettingsPanels {
         val updates = card("Mises à jour Android",
             "APK Android officiels depuis GitHub.",
             applicationPanel)
-        toggle(updates, "Me prévenir des nouvelles versions",
-            "Vérification à l'ouverture au plus une fois toutes les 30 minutes.",
+        val updateToggle = toggle(updates, "Me prévenir des nouvelles versions",
+            "Une vérification discrète à l’ouverture, au plus toutes les 30 minutes.",
             "update_alerts", true)
-        val updateToggle = updates.getChildAt(updates.childCount - 2) as? CheckBox
-        updateToggle?.apply {
+        updateToggle.apply {
             isChecked = AndroidUpdates.enabled(activity)
             setOnCheckedChangeListener { _, checked ->
                 prefs.edit().putBoolean("update_alerts", checked).apply()
@@ -558,5 +557,13 @@ internal object AndroidSettingsPanels {
             activity.startActivity(Intent(Intent.ACTION_VIEW,
                 Uri.parse("https://github.com/anderson76389/All-Download/releases")))
         }
+
+        // Logical order: network settings then private cookies; appearance,
+        // app, releases, then technical engine settings. Controls are reparented,
+        // not recreated, so previously attached listeners remain active.
+        networkPanel.removeView(cookiesCard)
+        networkPanel.addView(cookiesCard)
+        applicationPanel.removeView(engineCard)
+        applicationPanel.addView(engineCard)
     }
 }
