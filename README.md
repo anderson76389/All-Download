@@ -1,194 +1,134 @@
 <div align="center">
 
-<img src="./logo.jpg" alt="All-Download" width="160">
+<img src="./logo.jpg" alt="Logo All-Download" width="132">
 
-# ⚡ ALL-DOWNLOAD
+# ALL-DOWNLOAD
 
-### Toutes vos vidéos, musiques, GIF et playlists. Un seul logiciel.
+**Téléchargez vos vidéos, musiques, GIF et playlists dans une seule application.**
 
-**Téléchargez, convertissez et organisez vos médias préférés depuis une interface Windows moderne, rapide et entièrement en français.**
+Windows 10/11 et Android 7+ · Interface en français · Thèmes clair, sombre et OLED
 
-Propulsé par **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, **[FFmpeg](https://ffmpeg.org/)** et **[pywebview](https://pywebview.flowrl.com/)**.
-
-<p>
-  <img src="https://img.shields.io/badge/Windows-10%20%2F%2011-0078D4?style=flat-square&logo=windows11&logoColor=white" alt="Windows 10 et 11">
-  <img src="https://img.shields.io/badge/Langue-Fran%C3%A7ais-2563EB?style=flat-square" alt="Français">
-  <img src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.12">
-  <a href="https://github.com/anderson76389/All-Download/actions/workflows/build-windows.yml"><img src="https://github.com/anderson76389/All-Download/actions/workflows/build-windows.yml/badge.svg" alt="Compilation Windows"></a>
-</p>
-
----
-
-### 📥 TÉLÉCHARGER ALL-DOWNLOAD
-
-<a href="https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Portable-Windows.zip"><img src="https://img.shields.io/badge/T%C3%89L%C3%89CHARGER-WINDOWS%20PORTABLE-2563EB?style=for-the-badge&logo=windows11&logoColor=white" alt="Télécharger Windows Portable"></a>
-&nbsp;
-<a href="https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Classique-Windows.zip"><img src="https://img.shields.io/badge/T%C3%89L%C3%89CHARGER-WINDOWS%20CLASSIQUE-374151?style=for-the-badge&logo=windows11&logoColor=white" alt="Télécharger Windows Classique"></a>
-
-**Deux téléchargements directs en ZIP, toujours à jour.**
-
-<sub>Les liens restent identiques et pointent vers la dernière <a href="https://github.com/anderson76389/All-Download/releases/latest">version publiée</a>.</sub>
+[![Windows](https://img.shields.io/badge/Windows-Portable%20%26%20Classique-2563EB?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/anderson76389/All-Download/releases/latest)
+[![Android](https://img.shields.io/badge/Android-APK%20b%C3%AAta-16A34A?style=for-the-badge&logo=android&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.9-beta)
 
 </div>
 
 ---
 
-## ✨ Tout ce qu'il vous faut
+## 📥 Télécharger All-Download
 
-| | Fonctionnalité | Ce que vous pouvez faire |
-|:--:|---|---|
-| 🎬 | **Vidéos haute qualité** | Télécharger en MP4 ou MKV, choisir la résolution (jusqu'à 4K si disponible). |
-| 🎧 | **Audio & musique** | Extraire ou convertir en MP3, M4A et FLAC. |
-| 🎞️ | **GIF** | Récupérer des GIF directs ou convertir des vidéos en GIF. |
-| 📺 | **Playlists & chaînes** | Télécharger plusieurs éléments et sélectionner une plage précise. |
-| 📋 | **File d'attente** | Ajouter plusieurs liens, suivre la progression, annuler et consulter les journaux. |
-| 🎨 | **Interface personnalisable** | Thèmes clair, sombre et OLED, réglages et accès rapide aux dossiers. |
-| 🛠️ | **Outils avancés** | Miniatures, métadonnées, normalisation audio, SponsorBlock, cookies et proxy. |
+| Plateforme | Édition | Téléchargement officiel |
+|:--|:--|:--|
+| 🖥️ **Windows 10/11 (x64)** | **Portable** · Sans installation | **[⬇️ Télécharger le ZIP Portable](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Portable-Windows.zip)** |
+| 🖥️ **Windows 10/11 (x64)** | **Classique** · Avec installateur | **[⬇️ Télécharger le ZIP Classique](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Classique-Windows.zip)** |
+| 📱 **Android 7+** | **APK officielle — 0.6.9-beta** | **[⬇️ Télécharger l’APK Android](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.9-beta/All-Download-Android-0.6.9-beta.apk)** |
 
-> Les formats, résolutions et sites pris en charge dépendent de la disponibilité des sources et des extracteurs yt-dlp. Aucune application ne peut garantir le téléchargement de tous les contenus.
+**[Release Android et notes de version](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.9-beta)** · [Empreinte SHA-256 de l’APK](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.9-beta/All-Download-Android-0.6.9-beta.apk.sha256) · [Dernière Release stable Windows](https://github.com/anderson76389/All-Download/releases/latest)
 
----
+> **Important :** Windows et Android sont deux applications distinctes. Les ZIP Windows ne sont pas des fichiers Android et l’APK ne s’installe pas sur Windows. Les fichiers officiels sont uniquement ceux publiés dans les [Releases du dépôt](https://github.com/anderson76389/All-Download/releases).
 
-## 📺 VOD Twitch — moteur spécialisé
+## ✨ Fonctionnalités
 
-Pour les liens de VOD du type `https://www.twitch.tv/videos/1234567890`, **All-Download utilise [TwitchDownloaderCLI](https://github.com/lay295/TwitchDownloader)** en mode **Vidéo**, tout en conservant exactement la même interface et la même file d'attente (progression, pause, reprise et annulation).
+| Fonction | Windows | Android |
+|:--|:--:|:--:|
+| Vidéo MP4/WebM et extraction audio MP3/M4A/FLAC | ✅ | ✅ |
+| GIF, playlists, chaînes et file d’attente | ✅ | ✅ |
+| Choix de qualité, sous-titres, miniatures et métadonnées | ✅ | ✅ |
+| Dossiers organisés, accès aux médias téléchargés | ✅ | ✅ |
+| Thèmes clair, sombre et OLED | ✅ | ✅ |
+| Twitch : clips et vidéos accessibles | ✅ | ✅ |
+| Twitch VOD : moteur spécialisé TwitchDownloader + secours HLS | ✅ | — |
+| Mises à jour de l’application sans ouvrir le navigateur | Selon l’édition | ✅¹ |
 
-- Le CLI **Windows x64 autonome** est téléchargé **au premier besoin** depuis la dernière release officielle, dans `Donnees/bin/TwitchDownloaderCLI.exe`. L'archive est contrôlée (taille, empreinte SHA-256 quand elle est fournie par GitHub, format PE x64) puis l'exécutable est installé atomiquement. Aucune interface TwitchDownloader séparée ou installation de .NET n'est requise.
-- Les VOD Twitch en mode **Vidéo** sont rangées dans le dossier **TWITCH/**, à côté de VIDÉOS, AUDIOS et AUTRES. Les anciennes VOD stockées dans AUTRES ne sont **ni déplacées ni supprimées**. L’option **Rename** du CLI évite d’écraser un fichier du même nom.
-- All-Download réutilise son propre FFmpeg. Le CLI télécharge les VOD vidéo en **MP4** ; il ne gère pas ici la sortie MKV, les options SponsorBlock, la conversion audio ni les réglages de proxy d'yt-dlp.
-- Si yt-dlp ne peut pas obtenir les métadonnées Twitch, une carte **« VOD Twitch + identifiant »** est ajoutée avec un **menu de qualité**. **1080p natif est sélectionné par défaut ; si aucun flux 1080p natif n’est accessible, seul le 720p natif est essayé**. Aucun réencodage, conversion ni agrandissement : le moteur HLS conserve la vidéo et l’audio d’origine avec FFmpeg `-c copy` (remux MP4). La résolution du flux **source (« chunked »)** est contrôlée par FFprobe avant utilisation : une source de résolution inconnue ou inférieure n’est jamais renommée en « 1080p ». Si ni le 1080p ni le 720p ne sont disponibles, un message d’erreur est affiché au lieu de fabriquer une qualité artificielle. Le menu conserve les choix manuels et le mode **Auto** ; une résolution inférieure choisie explicitement est récupérée en natif, sans conversion. Cette règle ne concerne que les VOD Twitch : YouTube et les autres plateformes ne changent pas.
-- Si TwitchDownloaderCLI **est absent, ne peut pas être téléchargé, ne démarre pas ou refuse une VOD**, All-Download essaie **automatiquement son secours HLS indépendant** : métadonnées publiques Twitch, recherche d’une playlist CDN accessible sans connexion, puis assemblage par le FFmpeg déjà installé. Cette méthode a été validée sur un extrait réel de la VOD `2919531847` (chaîne aminematue) sans cookie OAuth. Elle ne sollicite ni la base privée ni les serveurs de l’extension Chrome Twitch VOD Downloader. Elle peut toutefois échouer pour certaines VOD, dont les flux ne sont plus disponibles.
-- Les vidéos HLS sont enregistrées en **MP4**, avec fichiers temporaires nettoyés, sans écrasement des médias existants, et avec progression, pause/reprise et annulation pilotées par la file d’attente actuelle.
-- Les **clips Twitch**, les modes **Audio/GIF**, YouTube et tous les autres sites restent gérés par **yt-dlp**, sans changement de leur fonctionnement. L’accès HLS dépend des playlists encore accessibles sur le CDN Twitch ; il n’est pas garanti pour toutes les VOD, notamment celles supprimées ou expirées.
-- Le CLI reste prioritaire quand il fonctionne et est téléchargé depuis GitHub au premier besoin. **Si GitHub ou TwitchDownloaderCLI est indisponible**, le secours HLS est utilisable directement, à condition que FFmpeg soit installé et que Twitch fournisse encore un flux accessible. Les flux protégés ou supprimés ne sont pas garantis.
+¹ Sur Android, All-Download télécharge et vérifie l’APK **dans l’application**, puis ouvre **l’installateur officiel Android** : l’autorisation et la confirmation de l’utilisateur restent nécessaires. Il n’y a pas d’installation silencieuse.
 
-**Crédits :** [TwitchDownloader de lay295](https://github.com/lay295/TwitchDownloader), distribué sous [licence MIT](https://github.com/lay295/TwitchDownloader/blob/master/LICENSE.txt). TwitchDownloader n'est pas affilié à Twitch.
+La disponibilité des formats et des plateformes dépend des sites, de leur authentification et de leurs éventuelles restrictions. Les vidéos protégées par DRM ne sont pas prises en charge.
 
 ---
 
-### Compatibilité YouTube : Deno local et facultatif
+## 📱 Android — même identité, interface adaptée
 
-Le moteur yt-dlp officiel embarque déjà les scripts EJS de YouTube. Lorsque l'application analyse ou télécharge une URL YouTube, elle peut installer **`deno.exe` Windows x64** dans `All-Download/Donnees/bin/`, en utilisant la release officielle `denoland/deno` (taille et empreinte SHA-256 GitHub vérifiées, version minimale validée). Deno est transmis explicitement à **yt-dlp pour YouTube uniquement** ; aucun compte, installation système ou PATH n'est nécessaire. Il ne modifie pas le téléchargement Twitch, Pinterest ou d'autres sites. **Si Deno ne peut pas être installé, yt-dlp conserve son comportement actuel** : certaines vidéos YouTube peuvent alors avoir moins de formats disponibles.
+<sub>Code et instructions : [android/README.md](https://github.com/anderson76389/All-Download/blob/feature/android-app/android/README.md) · Icône Android : [android/branding](https://github.com/anderson76389/All-Download/tree/feature/android-app/android/branding)</sub>
 
-## 💻 Deux versions Windows, le même All-Download
+- **Nom et logo fixes** : All-Download reste identifiable à l’écran, sur le lanceur et dans la fenêtre de mise à jour.
+- **En-tête toujours visible**, même pendant le défilement. Navigation en capsule **Liquid Glass** sur téléphone ; barre latérale sur tablette et pliable ouvert.
+- **Accueil, File d’attente, Dossiers, Paramètres**, boutons accessibles, icônes vectorielles et placement adapté à la taille de l’écran.
+- **Moteur natif Android** avec yt-dlp et FFmpeg intégrés. Vidéo, audio, GIF, playlist, chaîne et clips Twitch.
+- **Stockage organisé** dans `Téléchargements/All-Download/`, avec sept catégories. Cookies facultatifs et préférences dans le stockage privé de l’application.
+- **Optimisations** : file persistante, interface actualisée seulement quand nécessaire, chargement progressif et réduction des animations configurable.
 
-| 🧳 **PORTABLE** | 🖥️ **CLASSIQUE** |
-|---|---|
-| **Sans installation**, à emporter partout. | **Installateur Windows**, avec intégration au système. |
-| ① Téléchargez le ZIP Portable.<br>② Extrayez-le où vous voulez.<br>③ Lancez `All_Media_Download.exe`. | ① Téléchargez le ZIP Classique.<br>② Extrayez-le et lancez `All-Download-Setup.exe`.<br>③ Ouvrez l'application depuis le menu Démarrer. |
-| ✅ Exécutable autonome<br>✅ Aucun dossier `_internal`<br>✅ Médias, paramètres, outils et journaux dans le dossier Portable (accessible en écriture) | ✅ Installation sans droits administrateur<br>✅ Raccourci Bureau facultatif<br>✅ Médias, paramètres et outils dans le dossier installé<br>✅ Désinstallation sans suppression des médias personnels |
+### 🔄 Mettre à jour Android depuis l’application
 
-**Important :** la version Classique actuelle utilise le même moteur autonome que la Portable. Elle **ne repose plus sur l'ancien dossier `_internal`** qui pouvait provoquer l'erreur `Python.Runtime.dll` sur certains PC.
+1. Ouvrir **All-Download** : l’application vérifie les nouvelles Releases Android, sans confondre avec Windows.
+2. Une **bannière apparaît en haut**, à la manière de Kovelyx : numéro de version, nouveautés, **Installer**, **Détails** et **Plus tard**.
+3. Appuyer sur **Installer** : l’APK est téléchargée dans le cache privé, avec progression, contrôle SHA-256 et vérification de la signature.
+4. Confirmer l’installation dans **Android**. Le navigateur n’est pas ouvert.
 
-**Configuration requise :** Windows 10/11 **x64 (64 bits)** et WebView2. La compilation utilise Python et un EXE x64 ; **x86 (32 bits) n'est pas pris en charge**. Une connexion Internet est nécessaire pour récupérer les contenus et, au besoin, yt-dlp et FFmpeg au premier lancement. Pour une compatibilité YouTube améliorée, **Deno x64** est récupéré automatiquement au premier téléchargement YouTube et conservé localement dans `Donnees/bin/deno.exe`, sans installation globale ni modification du PATH. En cas d'indisponibilité de Deno, yt-dlp continue avec les capacités disponibles.
+La recherche manuelle et l’activation des alertes se trouvent dans **Paramètres → Appli → Mises à jour Android**. La version **0.6.9-beta** utilise une signature permanente : les futures APK signées avec cette même clé pourront être installées par-dessus. Une ancienne bêta signée avec une autre clé peut nécessiter une désinstallation préalable, susceptible d’effacer les données privées de l’application. **Sauvegardez vos réglages et cookies si nécessaire.**
 
----
-
-## 🚀 Télécharger en quelques clics
-
-1. **🔗 Collez** l'URL d'une vidéo, d'un morceau, d'un GIF ou d'une playlist.
-2. **⚙️ Choisissez** le mode **Vidéo**, **Audio** ou **GIF**, puis la qualité.
-3. **⬇️ Lancez** le téléchargement individuel ou celui de la file d'attente.
-4. **📂 Retrouvez** votre média dans le dossier correspondant.
+**Compatibilité testée en CI :** Android 9, 14 et 15, avec un profil tablette Android 14. Les tests de liens vidéo publics et de certains réseaux sociaux réussissent ; l’accès à toutes les vidéos de chaque service n’est pas garanti.
 
 ---
 
-## 📁 Un rangement automatique et organisé
+## 💻 Windows — Portable ou Classique
+
+| Portable | Classique |
+|:--|:--|
+| Décompressez `All-Download-Portable-Windows.zip` et lancez `All_Media_Download.exe`. | Décompressez `All-Download-Classique-Windows.zip` et lancez `All-Download-Setup.exe`. |
+| Sans installation ; emplacement déplaçable. | Installateur Windows et raccourcis selon les options sélectionnées. |
+| Médias, réglages et outils conservés dans son dossier `All-Download/`. | Médias et données conservés dans le dossier de l’édition Classique. |
+
+**Prérequis :** Windows 10/11 x64, WebView2 et connexion Internet. Le lancement peut récupérer les outils nécessaires dans le dossier local de l’application. Aucun dossier personnel n’est censé être déplacé automatiquement en dehors de `All-Download/`.
+
+### 📂 Organisation Windows
 
 ```text
-📁 All-Download/ (dossier de l'EXE Portable ou dossier d'installation Classique)
+All-Download/
 ├── All_Media_Download.exe
-├── logo.ico et logo.jpg
-├── 🎵 AUDIOS/        Musiques et fichiers audio individuels
-├── 🎬 VIDÉOS/        Vidéos YouTube individuelles
-├── 📺 TWITCH/        VOD Twitch (publiques et HLS accessibles)
-├── 🎞️ GIFS/          GIF téléchargés et GIF convertis
-├── 📺 CHAÎNES/       Sous-dossiers par chaîne YouTube
-├── 📑 PLAYLIST/      Sous-dossiers par playlist YouTube
-├── 📦 AUTRES/        Autres médias et plateformes
-└── 📁 Donnees/       Données personnelles des deux éditions
-    ├── config.json   Réglages du logiciel
-    ├── bin/          yt-dlp, FFmpeg, ffprobe, Deno et TwitchDownloaderCLI (facultatifs)
-    ├── cache/        Cache yt-dlp et fichiers Twitch temporaires
-    ├── webview/         Profil WebView2 local (Portable)
-    ├── webview-classique/  Profil WebView2 local (Classique)
-    ├── startup_log.txt
-    └── crash_log.txt
+├── AUDIOS/
+├── VIDÉOS/
+├── TWITCH/
+├── GIFS/
+├── CHAÎNES/
+├── PLAYLIST/
+├── AUTRES/
+└── Donnees/
+    ├── config.json
+    ├── bin/
+    ├── cache/
+    └── journaux et profils locaux
 ```
 
-**Tout le stockage permanent est local dans les versions Windows :** les sept catégories sont créées à côté de l'EXE ; les réglages, outils, journaux, caches yt-dlp/Twitch et profils WebView2 sont dans `All-Download/Donnees/`. Les anciens profils techniques `%LOCALAPPDATA%\\AllMediaDownload` ne sont plus utilisés par les EXE à jour. **Exception Windows inévitable :** le Portable PyInstaller monofichier extrait temporairement ses composants dans le dossier système `%TEMP%` pendant l'exécution ; cela n'y sauvegarde jamais les médias ni les préférences.
+Les **sept catégories de médias** sont créées automatiquement. `Donnees/` regroupe configuration, outils, fichiers temporaires et journaux. La version Portable monofichier peut utiliser temporairement `%TEMP%` pour son extraction technique, sans y déplacer vos téléchargements.
 
-Les **sept catégories sont créées automatiquement**, sans effacer vos médias existants. Le ZIP **Portable** contient un dossier racine unique `All-Download/` avec l'EXE, les sept catégories, les logos, le code source et les dossiers `Donnees/bin` vides (aucun fichier personnel). Vous pouvez l'extraire dans le dossier parent de votre choix : aucun dossier de catégorie n'est déposé à l'extérieur d'All-Download. Le ZIP **Classique** contient l'installateur, qui crée les catégories dans son dossier d'installation. Sur GitHub, les dossiers vides n'apparaissent pas : c'est normal.
+**Twitch Windows :** les VOD publiques compatibles passent prioritairement par [TwitchDownloaderCLI](https://github.com/lay295/TwitchDownloader), avec un secours HLS indépendant lorsque possible. La qualité native 1080p est privilégiée, sinon 720p natif si disponible : aucune résolution artificiellement agrandie. Les clips Twitch et les autres plateformes restent traités par yt-dlp. YouTube peut utiliser Deno local pour certains formats, sans installation globale.
 
-L'ancien dossier `AUDIO/` est migré vers `AUDIOS/` lorsque c'est possible, sans écraser les fichiers homonymes.
+### ⚙️ Utilisation
 
-| Édition | Emplacement initial des téléchargements |
-|---|---|
-| **Portable x64** | Dans `All-Download/`, directement à côté de l'EXE (dossier obligatoirement modifiable) |
-| **Classique x64** | Directement à côté de l'EXE installé (par défaut `%LOCALAPPDATA%\Programs\All-Download`) |
-
----
-
-### 📂 Un seul dossier All-Download, y compris après les mises à jour
-
-Dans **Paramètres → Téléchargement**, vous pouvez conserver le dossier principal `All-Download/` (recommandé) ou choisir **un sous-dossier situé à l'intérieur d'All-Download**. Les sélections extérieures sont refusées, y compris si vous collez un ancien chemin. **Par défaut** rétablit le dossier de l'EXE. Les sept catégories restent à l'intérieur de l'arborescence All-Download.
-
-**Chaque édition possède sa propre configuration** dans `Donnees/config.json` à côté de son EXE. Au premier démarrage, les anciens réglages d'AppData peuvent être copiés, mais **un ancien emplacement de téléchargement extérieur (y compris personnalisé) est automatiquement désactivé et remplacé par le dossier All-Download**, sans déplacer ni supprimer les anciens médias. Les préférences et les cookies enregistrés sont conservés.
-
-**Aucune destination de secours extérieure :** si All-Download est protégé en écriture (par exemple `Program Files`, dossier ZIP non extrait ou partage non modifiable), l'application explique le problème plutôt que d'écrire silencieusement ailleurs. Déplacez la version Portable dans un dossier modifiable ou installez la version Classique dans un dossier modifiable.
-
-**Mise à jour d'une ancienne Portable :** la nouvelle archive contient déjà `All-Download/`. Pour conserver les anciens téléchargements, remplacez uniquement l'EXE et les logos dans votre dossier actuel, ou transférez les dossiers `Donnees/` et les sept catégories vers le nouveau `All-Download/` après vérification. N'extrayez pas une seconde copie `All-Download/All-Download/` dans votre installation existante. **Aucun ancien média n'est supprimé ni déplacé automatiquement.**
-
-**Sécurité des données Classique :** lors d'une mise à jour ou d'une désinstallation, l'installateur est configuré pour ne jamais supprimer les sept catégories personnelles ni `Donnees/`. La désinstallation enlève l'application, mais ces dossiers personnels peuvent rester dans l'ancien emplacement ; c'est volontaire pour éviter toute perte. Ne les supprimez manuellement qu'après vérification.
+1. **Collez** une URL publique ou un lien que vous êtes autorisé à récupérer.
+2. Choisissez **Vidéo, Audio ou GIF**, puis le format et la qualité.
+3. Lancez directement le téléchargement ou ajoutez-le à la **file d’attente**.
+4. Retrouvez le fichier dans son **dossier de catégorie**.
 
 ---
 
-## 🔒 Versions officielles et mises à jour
+## 🛡️ Vérification et sécurité
 
-Les deux boutons en haut de cette page renvoient vers les fichiers de la **dernière [GitHub Release](https://github.com/anderson76389/All-Download/releases/latest)** :
+- **Android :** une APK signée est accompagnée de son fichier `.apk.sha256`. L’application valide également le nom de paquet, la version et la compatibilité de la signature avant de demander l’installation.
+- **Windows :** les éditions officielles sont disponibles dans la dernière Release stable. Un avertissement SmartScreen peut apparaître en l’absence d’une signature d’éditeur reconnue ; ne désactivez pas les protections de Windows.
+- **Mises à jour :** les téléchargements Android et Windows sont distincts. La suppression d’anciennes Releases ne doit pas supprimer la dernière version Windows ni l’APK Android courante.
 
-- `All-Download-Portable-Windows.zip` : application autonome et prête à ouvrir.
-- `All-Download-Classique-Windows.zip` : installateur Windows `All-Download-Setup.exe`.
-
-Chaque archive comprend les **logos** et une copie des **sources GitHub** dans `Code-source/`. Les sept dossiers vides sont inclus uniquement dans le ZIP Portable ; ils sont créés par l'installateur pour la version Classique.
-
-Les versions sont construites automatiquement et soumises à des tests Python, des tests d'interface et des vérifications du démarrage sur Windows. **Cela ne remplace pas un essai réel de chaque site ou de chaque format.**
+**Dépannage :** [signaler un problème](https://github.com/anderson76389/All-Download/issues) · [documentation Android](https://github.com/anderson76389/All-Download/blob/feature/android-app/android/README.md) · [voir les Releases](https://github.com/anderson76389/All-Download/releases)
 
 <details>
-<summary><strong>🧑‍💻 Développeurs — Code source et compilation</strong></summary>
-
-Le projet comprend notamment `yt_app.py`, `All_Media_Download-Portable.spec`, `installer/All-Download.iss`, `tests/` et les workflows GitHub Actions.
-
-**Lancer depuis Python 3.12 sur Windows :**
+<summary><strong>Développeurs — exécution depuis les sources Windows</strong></summary>
 
 ```powershell
 python -m pip install pywebview==6.2.1
 python yt_app.py
 ```
 
-**Compiler l'EXE autonome :**
-
-```powershell
-python -m pip install pyinstaller==6.22.3 pywebview==6.2.1 pythonnet==3.2.1
-python scripts/patch_webview_startup.py
-python -m PyInstaller --clean --noconfirm All_Media_Download-Portable.spec
-```
-
-Le fichier `dist/All_Media_Download.exe` déjà présent dans le dépôt est une **ancienne compilation**, à ne pas confondre avec les versions proposées dans les Releases.
-
-</details>
-
-<details>
-<summary><strong>🩺 Dépannage, SmartScreen et sécurité</strong></summary>
-
-- **Premier démarrage Windows / WebView2 :** la compilation officielle applique une correction ciblée au cycle de vie WinForms : WebView2 commence son initialisation après l'affichage de la fenêtre. Un test Windows exige un premier chargement HTML réactif **sans relance automatique**, pour chaque édition. Le diagnostic de lancements répétés demeure disponible et peut toujours relever un blocage intermittent sur certaines configurations.
-- **Crash CLR / pythonnet au démarrage :** All-Download tente automatiquement **une seule relance propre** lors de l'erreur connue `Python.Runtime.Loader.Initialize`. Si celle-ci échoue aussi, la boîte d'erreur et le journal restent disponibles.
-- **Problème de démarrage :** ouvrez `Donnees/crash_log.txt` ou `Donnees/startup_log.txt` dans le dossier de l'application et partagez la dernière erreur dans une [issue](https://github.com/anderson76389/All-Download/issues), après avoir masqué les données personnelles. Si le dossier de l'application est protégé, déplacez la version Portable ou réinstallez la version Classique dans un dossier modifiable : les EXE ne stockent plus leurs données en dehors d'All-Download.
-- **Média non disponible :** contrôlez l'URL, les autorisations, les cookies éventuels et la compatibilité yt-dlp.
-- **Conversion impossible :** vérifiez FFmpeg, l'espace disque et le format source.
-- **Avertissement SmartScreen :** les exécutables ne disposent pas encore d'une signature d'éditeur reconnue. Un avertissement de réputation ne constitue pas à lui seul une détection de malware. Ne désactivez pas vos protections et ne contournez pas une détection de menace.
-
-Téléchargez uniquement les contenus pour lesquels vous disposez des droits nécessaires. All-Download ne contourne pas les protections DRM.
+Les sources Windows incluent `yt_app.py`, la configuration PyInstaller et l’installateur. La branche `feature/android-app` contient la version native Android. Les dépendances, les licences et les versions doivent être vérifiées avant toute distribution.
 
 </details>
 
@@ -196,10 +136,8 @@ Téléchargez uniquement les contenus pour lesquels vous disposez des droits né
 
 <div align="center">
 
-**⚡ ALL-DOWNLOAD — Téléchargez. Convertissez. Organisez.**
+**ALL-DOWNLOAD · Télécharger · Convertir · Organiser**
 
-Créé et maintenu par **[anderson76389](https://github.com/anderson76389)**
-
-[📥 Dernière version](https://github.com/anderson76389/All-Download/releases/latest) · [📖 Code source](./yt_app.py) · [🐛 Signaler un problème](https://github.com/anderson76389/All-Download/issues)
+[Releases officielles](https://github.com/anderson76389/All-Download/releases) · [Code source](https://github.com/anderson76389/All-Download) · [Signaler un bug](https://github.com/anderson76389/All-Download/issues)
 
 </div>
