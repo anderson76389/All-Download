@@ -1,0 +1,132 @@
+name: Curate All-Download Releases
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/release-retention.yml"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only list the releases which would be removed"
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: all-download-release-retention
+  cancel-in-progress: false
+
+jobs:
+  curate:
+    name: Preserve Windows and Android downloads; prune obsolete releases
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && 'true' || 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check release retention safely
+        id: plan
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          repository = os.environ["GITHUB_REPOSITORY"]
+          token = os.environ["GH_TOKEN"]
+          all_releases = []
+          for page in range(1, 11):
+              request = urllib.request.Request(
+                  f"https://api.github.com/repos/{repository}/releases?per_page=100&page={page}",
+                  headers={
+                      "Authorization": f"Bearer {token}",
+                      "Accept": "application/vnd.github+json",
+                      "X-GitHub-Api-Version": "2022-11-28",
+                      "User-Agent": "All-Download-release-retention",
+                  },
+              )
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  batch = json.load(response)
+              all_releases.extend(batch)
+              if len(batch) < 100:
+                  break
+
+          releases = [r for r in all_releases if not r.get("draft")]
+          if len(releases) < 8:
+              raise SystemExit("Safety stop: fewer than eight published Releases.")
+          chronological = sorted(releases, key=lambda r:
+              (r.get("published_at") or "", r["id"]))
+          old = chronological[:4]
+          new = chronological[-4:]
+          windows = [r for r in releases if not r.get("prerelease") and
+              {"All-Download-Classique-Windows.zip", "All-Download-Portable-Windows.zip"}
+                  .issubset({a["name"] for a in r.get("assets", [])})]
+          if not windows:
+              raise SystemExit("Safety stop: no stable Windows Release containing both ZIPs.")
+          stable_windows = max(windows, key=lambda r:
+              (r.get("published_at") or "", r["id"]))
+          if not any(r["tag_name"] == "android-v0.6.9-beta" and
+                     any(a["name"] == "All-Download-Android-0.6.9-beta.apk"
+                         for a in r.get("assets", [])) for r in releases):
+              raise SystemExit("Safety stop: missing signed Android 0.6.9-beta Release.")
+          keep = {r["tag_name"] for r in old + new + [stable_windows]}
+          targets = [r["tag_name"] for r in releases if r["tag_name"] not in keep]
+          print(f"Published Releases: {len(releases)}")
+          print(f"Keep oldest 4: {[r['tag_name'] for r in old]}")
+          print(f"Keep newest 4: {[r['tag_name'] for r in new]}")
+          print(f"Also keep latest stable Windows: {stable_windows['tag_name']}")
+          print(f"Keep {len(keep)}; remove {len(targets)} obsolete Releases and tags")
+          print("Deleting:", targets)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write("windows_tag=" + stable_windows["tag_name"] + "\n")
+              output.write("android_tag=android-v0.6.9-beta\n")
+          with open("/tmp/releases-to-prune.json", "w") as f:
+              json.dump(targets, f)
+          PY
+      - name: Rewrite latest Release notes with clear APK and Windows links
+        if: env.DRY_RUN != 'true'
+        env:
+          WINDOWS_TAG: ${{ steps.plan.outputs.windows_tag }}
+          ANDROID_TAG: ${{ steps.plan.outputs.android_tag }}
+        run: |
+          gh release edit "$WINDOWS_TAG" --repo "$GITHUB_REPOSITORY" --notes-file .github/release-notes/windows.md
+          gh release edit "$ANDROID_TAG" --repo "$GITHUB_REPOSITORY" --notes-file .github/release-notes/android.md
+      - name: Remove obsolete published Releases and their tags
+        if: env.DRY_RUN != 'true'
+        run: |
+          python - <<'PY'
+          import json, os, subprocess
+          tags = json.load(open("/tmp/releases-to-prune.json"))
+          for index, tag in enumerate(tags, 1):
+              print(f"[{index}/{len(tags)}] Removing obsolete Release and tag: {tag}", flush=True)
+              subprocess.run(
+                  ["gh", "release", "delete", tag, "--repo",
+                   os.environ["GITHUB_REPOSITORY"], "--cleanup-tag", "--yes"],
+                  check=True,
+              )
+          print("Cleanup completed. Stable Windows and latest Android assets retained.")
+          PY
+      - name: Confirm final Release count
+        if: env.DRY_RUN != 'true'
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          repo = os.environ["GITHUB_REPOSITORY"]
+          req = urllib.request.Request(
+              f"https://api.github.com/repos/{repo}/releases?per_page=100",
+              headers={"Authorization": "Bearer " + os.environ["GH_TOKEN"],
+                       "Accept": "application/vnd.github+json",
+                       "User-Agent": "All-Download-release-retention"})
+          with urllib.request.urlopen(req, timeout=30) as response:
+              releases = [r for r in json.load(response) if not r.get("draft")]
+          tags = {r["tag_name"] for r in releases}
+          assert 2 <= len(tags) <= 9, f"Unexpected Release count: {len(tags)}"
+          assert "android-v0.6.9-beta" in tags, "Latest Android APK was removed"
+          assert os.environ["WINDOWS_TAG"] in tags, "Latest Windows ZIPs were removed"
+          print(f"Confirmed: {len(tags)} published Releases remaining.")
+          PY
+        env:
+          WINDOWS_TAG: ${{ steps.plan.outputs.windows_tag }}
