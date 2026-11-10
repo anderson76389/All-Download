@@ -13,6 +13,7 @@ import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import org.junit.Assert.*
+import org.junit.BeforeClass
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
@@ -28,6 +29,23 @@ import java.util.UUID
  */
 @RunWith(AndroidJUnit4::class)
 class PublicVideoDownloadTest {
+    companion object {
+        /** Match the app's unmetered-network extractor refresh before testing
+         * YouTube. The embedded 2025 yt-dlp cannot solve current challenges.
+         * This is a real engine update; failures are NOT treated as passing.
+         */
+        @JvmStatic
+        @BeforeClass
+        fun prepareCurrentExtractor() {
+            val context = InstrumentationRegistry.getInstrumentation()
+                .targetContext.applicationContext
+            YoutubeDL.getInstance().init(context)
+            YoutubeDL.getInstance().updateYoutubeDL(context)
+            android.util.Log.i("AllDownloadPublicTest",
+                "Actual yt-dlp: " + YoutubeDL.getInstance().version(context))
+        }
+    }
+
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
 
     @Test fun externalMp4DownloadsAndExportsPlayably() {

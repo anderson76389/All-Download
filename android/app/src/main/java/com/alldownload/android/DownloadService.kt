@@ -268,7 +268,9 @@ class DownloadService : Service() {
     }
 
     private fun maybeRefreshSocialEngine(url: String) {
-        if (!DownloadRules.isSocialVideoHost(url)) return
+        // YouTube needs a recent yt-dlp extractor for JS challenges / 403 fixes.
+        // Keep Twitch untouched and never refresh automatically on mobile data.
+        if (!DownloadRules.needsFreshExtractor(url)) return
         // Don't spend mobile data or battery on optional yt-dlp engine updates.
         val power = getSystemService(POWER_SERVICE) as PowerManager
         if (power.isPowerSaveMode) return

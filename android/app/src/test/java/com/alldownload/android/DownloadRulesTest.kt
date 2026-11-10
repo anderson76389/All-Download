@@ -57,6 +57,20 @@ class DownloadRulesTest {
             "https://stealer@www.instagram.com/reel/abc"))
     }
 
+    @Test fun youtubeExtractorRefreshUsesOnlyTrustedDomains() {
+        for (host in listOf("youtube.com", "www.youtube.com", "m.youtube.com",
+            "music.youtube.com", "youtu.be", "youtube-nocookie.com")) {
+            assertTrue(host, DownloadRules.needsFreshExtractor("https://$host/watch?v=test"))
+        }
+        for (host in listOf("youtube.com.evil.example", "notyoutube.com",
+            "twitch.tv", "clips.twitch.tv", "example.com", "youtu.be.fake.test")) {
+            assertFalse(host, DownloadRules.needsFreshExtractor("https://$host/video"))
+        }
+        assertTrue(DownloadRules.needsFreshExtractor("https://www.instagram.com/reel/test"))
+        assertFalse(DownloadRules.needsFreshExtractor("https://attacker@youtube.com/video"))
+        assertFalse(DownloadRules.needsFreshExtractor("javascript:alert(1)"))
+    }
+
     @Test fun foldersDoNotEscapeAllDownloadAndStayClassified() {
         assertEquals("TWITCH", DownloadRules.categoryFor("https://www.twitch.tv/videos/2919531847", 0))
         assertEquals("VIDÉOS", DownloadRules.categoryFor("https://youtu.be/id", 0))
