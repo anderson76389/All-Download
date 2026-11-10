@@ -259,7 +259,8 @@ internal object AndroidSettingsPanels {
             panel.addView(label(title, 16f, true).apply {
                 decorateHeading(this, sectionIcon)
             }, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, px(40)))
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT))
             panel.addView(label(subtitle, 12f, tint = muted).apply {
                 maxLines = 4
                 setPadding(0, px(6), 0, px(10))
