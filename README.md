@@ -9,7 +9,7 @@
 Windows 10/11 et Android 7+ · Interface en français · Thèmes clair, sombre et OLED
 
 [![Windows](https://img.shields.io/badge/Windows-Portable%20%26%20Classique-2563EB?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/anderson76389/All-Download/releases/latest)
-[![Android](https://img.shields.io/badge/Android-APK%20b%C3%AAta-16A34A?style=for-the-badge&logo=android&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.9-beta)
+[![Android](https://img.shields.io/badge/Android-APK%20b%C3%AAta-16A34A?style=for-the-badge&logo=android&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.10-beta)
 
 </div>
 
@@ -21,9 +21,9 @@ Windows 10/11 et Android 7+ · Interface en français · Thèmes clair, sombre e
 |:--|:--|:--|
 | 🖥️ **Windows 10/11 (x64)** | **Portable** · Sans installation | **[⬇️ Télécharger le ZIP Portable](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Portable-Windows.zip)** |
 | 🖥️ **Windows 10/11 (x64)** | **Classique** · Avec installateur | **[⬇️ Télécharger le ZIP Classique](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Classique-Windows.zip)** |
-| 📱 **Android 7+** | **APK officielle — 0.6.9-beta** | **[⬇️ Télécharger l’APK Android](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.9-beta/All-Download-Android-0.6.9-beta.apk)** |
+| 📱 **Android 7+** | **APK officielle — 0.6.10-beta** | **[⬇️ Télécharger l’APK Android](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.10-beta/All-Download-Android-0.6.10-beta.apk)** |
 
-**[Release Android et notes de version](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.9-beta)** · [Empreinte SHA-256 de l’APK](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.9-beta/All-Download-Android-0.6.9-beta.apk.sha256) · [Dernière Release stable Windows](https://github.com/anderson76389/All-Download/releases/latest)
+**[Release Android et notes de version](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.10-beta)** · [Empreinte SHA-256 de l’APK](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.10-beta/All-Download-Android-0.6.10-beta.apk.sha256) · [Dernière Release stable Windows](https://github.com/anderson76389/All-Download/releases/latest)
 
 > **Important :** Windows et Android sont deux applications distinctes. Les ZIP Windows ne sont pas des fichiers Android et l’APK ne s’installe pas sur Windows. Les fichiers officiels sont uniquement ceux publiés dans les [Releases du dépôt](https://github.com/anderson76389/All-Download/releases).
 
@@ -48,6 +48,8 @@ La disponibilité des formats et des plateformes dépend des sites, de leur auth
 
 ## 📱 Android — même identité, interface adaptée
 
+**Version Android 0.6.10 bêta :** navigation mobile non tronquée, libellés et boutons réalignés, sept pictogrammes de dossiers plus lisibles, panneau d'état compact et rafraîchissement de yt-dlp pour YouTube sur réseau non facturé. Les modifications Windows sont inchangées.
+
 <sub>Code et instructions : [android/README.md](https://github.com/anderson76389/All-Download/blob/feature/android-app/android/README.md) · Icône Android : [android/branding](https://github.com/anderson76389/All-Download/tree/feature/android-app/android/branding)</sub>
 
 - **Nom et logo fixes** : All-Download reste identifiable à l’écran, sur le lanceur et dans la fenêtre de mise à jour.
@@ -64,7 +66,7 @@ La disponibilité des formats et des plateformes dépend des sites, de leur auth
 3. Appuyer sur **Installer** : l’APK est téléchargée dans le cache privé, avec progression, contrôle SHA-256 et vérification de la signature.
 4. Confirmer l’installation dans **Android**. Le navigateur n’est pas ouvert.
 
-La recherche manuelle et l’activation des alertes se trouvent dans **Paramètres → Appli → Mises à jour Android**. La version **0.6.9-beta** utilise une signature permanente : les futures APK signées avec cette même clé pourront être installées par-dessus. Une ancienne bêta signée avec une autre clé peut nécessiter une désinstallation préalable, susceptible d’effacer les données privées de l’application. **Sauvegardez vos réglages et cookies si nécessaire.**
+La recherche manuelle et l’activation des alertes se trouvent dans **Paramètres → Appli → Mises à jour Android**. La version **0.6.10-beta** utilise une signature permanente : les futures APK signées avec cette même clé pourront être installées par-dessus. Une ancienne bêta signée avec une autre clé peut nécessiter une désinstallation préalable, susceptible d’effacer les données privées de l’application. **Sauvegardez vos réglages et cookies si nécessaire.**
 
 **Compatibilité testée en CI :** Android 9, 14 et 15, avec un profil tablette Android 14. Les tests de liens vidéo publics et de certains réseaux sociaux réussissent ; l’accès à toutes les vidéos de chaque service n’est pas garanti.
 
