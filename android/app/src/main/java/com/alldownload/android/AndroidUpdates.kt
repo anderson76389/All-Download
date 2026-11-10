@@ -155,7 +155,10 @@ internal object AndroidUpdates {
             return
         }
         if (!checking.compareAndSet(false, true)) {
-            onRelease?.invoke(cachedCandidate(activity))
+            // An explicit tap must never silently use an empty or stale cache and
+            // pretend that the device is already up to date.
+            if (force) onStatus?.invoke("Recherche déjà en cours. Réessayez dans un instant.")
+            else onRelease?.invoke(cachedCandidate(activity))
             return
         }
         prefs.edit().putLong("last_attempt", now).apply()
@@ -251,6 +254,15 @@ internal object AndroidUpdates {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putBoolean("enabled", value).apply()
     }
+
+    /**
+     * Explicit user action in Settings: always offer the install dialog for a
+     * newer trusted release, even if its automatic banner was dismissed.
+     * Never rely on the auto-notification preference or last_shown here.
+     */
+    internal fun showManualUpdate(activity: Activity, release: Release?): Dialog? =
+        release?.takeIf { compareVersions(it.version, BuildConfig.VERSION_NAME) > 0 }
+            ?.let { showDialog(activity, it) }
 
     fun showDialog(activity: Activity, release: Release): Dialog {
         val theme = activity.getSharedPreferences("app_settings_v1",
