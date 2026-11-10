@@ -6,6 +6,16 @@
 
 Toutes les icônes sont des **VectorDrawable natifs originaux** au format `24 × 24`, avec des formes pleines ou des contours nets monochromes et une couleur appliquée par le thème. Pas d'emoji, de police spéciale, de chargement réseau ou de filtres GPU. Le même glyphe est réutilisé partout où la fonction est identique.
 
+## Paramètres Android 0.6.11 : règles de cohérence
+
+- Aucun bandeau « ALL-DOWNLOAD » persistant : l'icône et le nom restent dans le lanceur, le splash et les dialogues système.
+- Chaque carte de Paramètres possède une icône vectorielle **38 dp** sur une tuile arrondie à fond violet discret ; le dessin central est de **20 dp**.
+- Titre de groupe **16 sp**, option **14 sp**, description **12 sp** ; mêmes marges internes et espacements sur les trois onglets.
+- Les préférences activables utilisent un **Switch natif à droite** ; l'étiquette et sa description sont alignées à gauche et tout le rang reste cliquable.
+- Les sélecteurs gardent un chevron de **18 dp** et une hauteur d'au moins **50 dp** ; les boutons font au moins **52 dp**.
+- L'onglet actif conserve le violet ; les champs s'adaptent au thème clair, sombre et OLED sans couleur fixe illisible.
+- Les cookies sont rangés dans Réseau ; les réglages d'apparence, de notifications, de mise à jour et du moteur dans Appli.
+
 ## Navigation Liquid Glass
 
 | Section | Vecteur Android | Symbole | Libellé |

@@ -1,4 +1,14 @@
-# All-Download Android — bêta 0.6.10
+# All-Download Android — bêta 0.6.11
+
+## Interface épurée et paramètres unifiés — bêta 0.6.11
+
+- **Plus de bandeau ALL-DOWNLOAD permanent au-dessus de l'accueil** : supprimé du XML et du code de l'activité, sur téléphone, tablette et pliable. Le nom et le logo de l'application restent inchangés sur le lanceur et dans les écrans système.
+- La **bannière de nouvelle mise à jour** n'apparaît que si une nouvelle APK Android est disponible ; elle est intégrée au contenu, défilable, et ne réserve aucun espace au repos. Son bouton Installer, sa validation SHA-256 et la signature Android sont conservés.
+- Paramètres regroupés dans **Médias / Appli / Réseau** : les cartes d'origine et les nouvelles cartes ont désormais les mêmes tuiles d'icônes vectorielles, typographies, espacements et couleurs clair/sombre/OLED.
+- Les interrupteurs sont **alignés à droite**, avec titre et description à gauche, et gardent leurs préférences actuelles. Les sélecteurs et boutons sont homogènes ; cookies sous Réseau, apparence, mises à jour et moteur sous Appli.
+- Aucun téléchargement, cookie, moteur, fichier média, signature ou fonctionnalité Windows n'est modifié. La refonte est limitée à Android.
+
+---
 
 ## Fiabilisation de YouTube — bêta 0.6.10
 
@@ -10,7 +20,7 @@
 ## Interface mobile corrigée — bêta 0.6.10
 
 - Les quatre boutons de navigation partagent réellement l'espace disponible : plus d'onglet Accueil ou Réglages tronqué sur téléphone.
-- Les titres de page sont ramenés au début du défilement instantanément et ne doivent plus passer derrière l'en-tête All-Download épinglé.
+- Les titres de page sont ramenés au début du défilement instantanément ; aucun ancien en-tête ne les masque.
 - Le bandeau d'état « Prêt » n'occupe plus inutilement l'écran ; la progression ne se fixe au-dessus de la navigation que durant un téléchargement sur Accueil/File.
 - Les sept catégories de dossiers utilisent des pictogrammes simplifiés et agrandis, avec cartes espacées et texte lisible.
 - Les icônes et intitulés des commandes de la file sont alignés au lieu d'être séparés.
@@ -23,12 +33,12 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 ## Identité verrouillée et mises à jour intégrées — bêta 0.6.9
 
 - **Nom permanent « All-Download »** sur le lanceur Android, sans nom de test et sans modification liée au thème.
-- **Logo Android d'origine conservé** dans la barre supérieure, le lanceur, le splash et le dialogue de mise à jour ; cadrage entier, sans recadrage.
-- **En-tête fixe** sur téléphone, pliable et tablette : le logo et le titre restent en haut, même en défilant ou en changeant de page.
-- **Bannière de mise à jour native, dans l'esprit Kovelyx** : apparition en haut lorsqu'une nouvelle Release Android existe, numéro de version, notes détaillées, bouton Installer, progression et « Plus tard ». Réapparition à la version suivante.
+- **Logo Android d'origine conservé** dans le lanceur, le splash et les fenêtres de mise à jour ; cadrage entier, sans recadrage.
+- **Aucun en-tête permanent dans l'application depuis la 0.6.11** : le haut de l'écran est réservé à la page et, seulement si nécessaire, à un avis de mise à jour.
+- **Bannière de mise à jour native, dans l'esprit Kovelyx** : visible dans le contenu uniquement lorsqu'une nouvelle Release Android existe, numéro de version, notes détaillées, Installer, progression et « Plus tard ».
 - Téléchargement dans le cache privé de l'application, contrôle du SHA-256 et de la signature, puis installation par le **programme d'installation Android**, sans navigateur. Android doit toujours demander la confirmation de l'utilisateur, sauf gestion privilégiée hors de cette application.
 - Vérifications automatiques au retour dans l'application, avec cache HTTP et limite de fréquence pour préserver la batterie ; aucun scrutage permanent.
-- Test de non-régression pour le bandeau fixe, les quatre pages et la fermeture de la bannière jusqu'à une nouvelle version.
+- Tests de non-régression pour l'absence de bandeau permanent, les quatre pages, les paramètres et la fermeture de la bannière jusqu'à une nouvelle version.
 - Windows, yt-dlp, FFmpeg et Twitch sont inchangés.
 
 ## Raccourcis visibles et textes cohérents — bêta 0.6.9
@@ -44,7 +54,7 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 - Sur téléphone : bouton « Coller » élargi à **88 dp**, raccourcis rapides d'au moins **48 dp**, action « Ajouter » comme sur Windows et en-têtes avec icône et deux lignes possibles.
 - Sur les écrans étroits ou avec une police système agrandie : onglets « Médias / Appli / Réseau » en disposition **icône au-dessus du texte**. Le contraste de l'onglet actif est mis à jour dans les deux orientations d'icône.
 - Sur tablette et pliable ouvert : barre latérale conservée, avec libellés raccourcis quand la largeur ne permet pas les noms complets.
-- Descriptions des cases à cocher alignées sur le début du texte, listes déroulantes sur une ligne, menu déroulant aux couleurs du thème. Le fond bleu foncé fixe des sélecteurs a été retiré en clair et OLED.
+- Depuis la 0.6.11 : interrupteurs natifs à droite du libellé et de sa description, sélecteurs sur une ligne avec chevron et couleurs adaptées au thème.
 - Libellés plus courts et explicites, accessibilité complète conservée via les descriptions vocales Android. Une nouvelle suite de tests vérifie les tailles, titres, icônes et alignements réels.
 - Aucune modification des versions Windows, ni des moteurs de téléchargement. La publication APK exige la signature permanente déjà configurée.
 
@@ -71,7 +81,7 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 
 - Fin des emojis et des glyphes texte comme pictogrammes. Icônes vectorielles cohérentes pour la navigation, les raccourcis, les fichiers et les téléchargements.
 - Barre Liquid Glass inchangée dans son principe, mais icônes Accueil / File / Dossiers / Réglages redessinées, textes centrés et uniformes.
-- Logo All-Download préservé avec affichage complet sans recadrage ; titres et badge BÊTA adaptés aux petits écrans.
+- Logo All-Download préservé dans le lanceur et le splash ; plus de badge ou de carte de marque en haut des pages depuis la 0.6.11.
 - Icônes natives pour Télécharger, Dans la file, Coller, Reprendre, Pause, dossiers et actions de file.
 - Cartes de fichiers plus régulières, textes longs tronqués sur une ligne et réglages plus lisibles.
 - Tests dédiés au chargement des ressources vectorielles et au placement des boutons. Aucun fichier Windows modifié.

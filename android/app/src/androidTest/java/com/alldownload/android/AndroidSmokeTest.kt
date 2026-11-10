@@ -250,14 +250,14 @@ class AndroidSmokeTest {
                 activity.findViewById<Button>(R.id.navFiles).performClick()
             }
             instrumentation.waitForIdleSync()
-            val brand = activity.findViewById<View>(R.id.brandHeader)
+            val content = activity.findViewById<View>(R.id.mainContent)
             val heading = activity.findViewById<View>(R.id.filesPageTitleIcon)
-            val brandLocation = IntArray(2)
+            val contentLocation = IntArray(2)
             val headingLocation = IntArray(2)
-            brand.getLocationOnScreen(brandLocation)
+            content.getLocationOnScreen(contentLocation)
             heading.getLocationOnScreen(headingLocation)
-            assertTrue("Titre Dossiers caché derrière le logo épinglé.",
-                headingLocation[1] >= brandLocation[1] + brand.height)
+            assertTrue("Le titre Dossiers doit être visible dans le contenu, sans en-tête fixe.",
+                headingLocation[1] >= contentLocation[1])
             assertEquals("Le panneau d'état ne doit pas recouvrir les dossiers.",
                 View.GONE, footer.visibility)
         } finally {
@@ -338,9 +338,8 @@ class AndroidSmokeTest {
                 if (button.isShown)
                     assertTrue("Visible button has no touch width: $id", button.width > 0)
             }
-            val brand = activity.findViewById<ImageView>(R.id.brandLogo)
-            assertEquals("Brand logo must never be cropped on Android",
-                ImageView.ScaleType.FIT_CENTER, brand.scaleType)
+            assertNotNull("Le logo All-Download reste dans les ressources du lanceur.",
+                activity.getDrawable(R.drawable.all_download_android_logo))
             for (res in listOf(R.drawable.ic_video, R.drawable.ic_audio,
                     R.drawable.ic_gif, R.drawable.ic_playlist, R.drawable.ic_stream,
                     R.drawable.ic_file, R.drawable.ic_download)) {
@@ -494,12 +493,19 @@ class AndroidSmokeTest {
             }
             val group = activity.findViewById<LinearLayout>(R.id.settingsDownloadPanel)
             val firstCard = group.getChildAt(0) as LinearLayout
-            val checkboxIndex = (0 until firstCard.childCount).first {
-                firstCard.getChildAt(it) is android.widget.CheckBox
-            }
-            val explanation = firstCard.getChildAt(checkboxIndex + 1) as TextView
-            assertTrue("Description non alignée avec le texte de la case",
-                dp(explanation.paddingLeft) >= 38)
+            val toggleRow = (0 until firstCard.childCount)
+                .map { firstCard.getChildAt(it) }
+                .filterIsInstance<LinearLayout>()
+                .first { row -> (0 until row.childCount).any {
+                    row.getChildAt(it) is android.widget.Switch
+                } }
+            val captions = toggleRow.getChildAt(0) as LinearLayout
+            val toggle = toggleRow.getChildAt(1) as android.widget.Switch
+            assertEquals("Titre et description doivent partager le même alignement.",
+                (captions.getChildAt(0) as TextView).left,
+                (captions.getChildAt(1) as TextView).left)
+            assertTrue("L'interrupteur doit être à droite, sans chevaucher le texte.",
+                toggle.left >= captions.right)
         } finally {
             instrumentation.runOnMainSync { activity.finish() }
         }
@@ -608,34 +614,33 @@ class AndroidSmokeTest {
         }
     }
 
-    @Test fun brandAndKovelyxStyleBannerStayPinnedAcrossAllPages() {
+    @Test fun removedBrandHeaderKeepsOptionalUpdateBannerAcrossPages() {
         val activity = instrumentation.startActivitySync(
             Intent(context, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
         ) as MainActivity
         instrumentation.waitForIdleSync()
         try {
-            val header = activity.findViewById<LinearLayout>(R.id.brandHeader)
-            val scroller = activity.findViewById<View>(R.id.scroll)
-            val chrome = header.parent as LinearLayout
-            assertSame("Brand must be outside the page scroll view",
-                chrome.parent, scroller.parent)
-            assertEquals("The pinned brand must have one in-app update banner",
-                2, chrome.childCount)
-            assertEquals("ALL-DOWNLOAD",
-                activity.findViewById<TextView>(R.id.brandTitle).text.toString())
-            assertEquals(android.widget.ImageView.ScaleType.FIT_CENTER,
-                activity.findViewById<ImageView>(R.id.brandLogo).scaleType)
+            val content = activity.findViewById<LinearLayout>(R.id.mainContent)
+            val scroll = activity.findViewById<View>(R.id.scroll)
+            val notice = content.getChildAt(0)
+            assertNotNull("Un avis de mise à jour conditionnel doit rester disponible.", notice)
+            assertTrue("L'avis doit défiler avec la page et non être une barre épinglée.",
+                notice.parent === content && content.parent === scroll)
+            assertTrue("Le premier bloc doit être un avis et pas l'ancien logo.",
+                notice is LinearLayout)
             for (id in intArrayOf(R.id.navHome, R.id.navQueue,
                     R.id.navFiles, R.id.navSettings)) {
                 instrumentation.runOnMainSync {
                     activity.findViewById<Button>(id).performClick()
                 }
                 instrumentation.waitForIdleSync()
-                assertTrue("Brand disappeared on navigation: $id", header.isShown)
-                assertSame("Brand was accidentally moved into scroll",
-                    chrome.parent, scroller.parent)
+                assertSame("L'avis de mise à jour ne doit pas être recréé en navigation.",
+                    notice, content.getChildAt(0))
             }
+            assertEquals("La marque reste le nom de l'application et non un bandeau.",
+                "All-Download",
+                context.packageManager.getApplicationLabel(context.applicationInfo).toString())
         } finally {
             instrumentation.runOnMainSync { activity.finish() }
         }
@@ -696,10 +701,8 @@ class AndroidSmokeTest {
                 context.packageManager.getApplicationLabel(context.applicationInfo).toString())
             assertNotNull("Icône Android absente.",
                 context.packageManager.getApplicationIcon(context.packageName))
-            assertNotNull("Logo Windows absent de l'interface Android.",
-                activity.findViewById<ImageView>(R.id.brandLogo).drawable)
-            assertEquals("ALL-DOWNLOAD",
-                activity.findViewById<TextView>(R.id.brandTitle).text.toString())
+            assertNotNull("Le logo Android doit rester présent dans les ressources.",
+                activity.getDrawable(R.drawable.all_download_android_logo))
             assertNotNull(activity.findViewById<LinearLayout>(R.id.homeQueuePreview))
             assertNotNull(activity.findViewById<Button>(R.id.pasteUrlButton))
             assertNotNull(activity.findViewById<Button>(R.id.quickGifButton))
