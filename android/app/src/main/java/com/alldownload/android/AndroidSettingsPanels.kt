@@ -6,6 +6,9 @@ import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
+import android.view.Gravity
+import android.widget.Switch
 import android.net.Uri
 import android.text.Editable
 import android.text.TextWatcher
@@ -40,6 +43,10 @@ internal object AndroidSettingsPanels {
         val borderColor = if (light) Color.rgb(226, 232, 240) else Color.rgb(51, 53, 66)
         val color = if (light) Color.rgb(15, 23, 42) else Color.rgb(243, 244, 246)
         val muted = if (light) Color.rgb(100, 116, 139) else Color.rgb(161, 161, 170)
+        val fieldColor = if (light) Color.rgb(246, 247, 251)
+                         else if (oled) Color.rgb(22, 22, 24) else Color.rgb(35, 36, 46)
+        val tileColor = if (light) Color.rgb(245, 239, 255)
+                        else if (oled) Color.rgb(38, 27, 49) else Color.rgb(49, 37, 70)
         val dp = activity.resources.displayMetrics.density
         fun px(value: Int) = (value * dp + .5f).toInt()
 
@@ -65,12 +72,99 @@ internal object AndroidSettingsPanels {
             id = R.id.settingsNetworkPanel
             orientation = LinearLayout.VERTICAL
         }
-        // Preserve the original functional controls and listeners while reparenting.
-        for (id in listOf(R.id.settingsAppearanceCard, R.id.settingsEngineCard,
-                R.id.settingsCookiesCard)) {
-            val child = activity.findViewById<View>(id)
-            (child.parent as? ViewGroup)?.removeView(child)
-            applicationPanel.addView(child)
+        // Apply one consistent vector tile, type scale and card spacing to
+        // the XML settings as well as the newer Kotlin controls.
+        fun surface(fill: Int, radius: Int = 15): GradientDrawable =
+            GradientDrawable().apply {
+                setColor(fill)
+                cornerRadius = px(radius).toFloat()
+                setStroke(px(1), borderColor)
+            }
+
+        fun sectionGlyph(iconId: Int): LayerDrawable? {
+            val icon = activity.getDrawable(iconId)?.mutate() ?: return null
+            icon.setTint(purple)
+            val backdrop = GradientDrawable().apply {
+                setColor(tileColor)
+                cornerRadius = px(11).toFloat()
+            }
+            return LayerDrawable(arrayOf(backdrop, icon)).apply {
+                setLayerInset(1, px(9), px(9), px(9), px(9))
+                setBounds(0, 0, px(38), px(38))
+            }
+        }
+
+        fun decorateHeading(title: TextView, iconId: Int) {
+            title.textSize = 16f
+            title.setTextColor(color)
+            title.setTypeface(title.typeface, Typeface.BOLD)
+            title.gravity = Gravity.CENTER_VERTICAL
+            title.minHeight = px(40)
+            title.includeFontPadding = false
+            title.maxLines = 2
+            title.ellipsize = android.text.TextUtils.TruncateAt.END
+            title.setCompoundDrawablesRelative(sectionGlyph(iconId), null, null, null)
+            title.compoundDrawablePadding = px(11)
+        }
+
+        fun decorateLegacyCard(id: Int, iconId: Int): LinearLayout {
+            val panel = activity.findViewById<LinearLayout>(id)
+            (panel.parent as? ViewGroup)?.removeView(panel)
+            panel.setPadding(px(15), px(13), px(15), px(16))
+            panel.background = surface(panelColor, 17)
+            panel.elevation = 0f
+            panel.layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = px(10) }
+            decorateHeading(panel.getChildAt(0) as TextView, iconId)
+            (panel.getChildAt(1) as? TextView)?.apply {
+                textSize = 12f
+                setTextColor(muted)
+                setPadding(0, px(6), 0, px(10))
+                maxLines = 4
+            }
+            return panel
+        }
+
+        val appearanceCard = decorateLegacyCard(R.id.settingsAppearanceCard,
+            R.drawable.ic_sliders).also(applicationPanel::addView)
+        val engineCard = decorateLegacyCard(R.id.settingsEngineCard,
+            R.drawable.ic_download).also(applicationPanel::addView)
+        val cookiesCard = decorateLegacyCard(R.id.settingsCookiesCard,
+            R.drawable.ic_security).also(networkPanel::addView)
+        appearanceCard.findViewById<Spinner>(R.id.themeSpinner).apply {
+            minimumHeight = px(50)
+            background = surface(fieldColor, 12)
+        }
+        engineCard.findViewById<Switch>(R.id.autoUpdateCheck).apply {
+            textSize = 13f
+            setTextColor(color)
+            minimumHeight = px(54)
+            gravity = Gravity.CENTER_VERTICAL
+            showText = false
+            thumbTintList = ColorStateList(arrayOf(
+                intArrayOf(android.R.attr.state_checked), intArrayOf()),
+                intArrayOf(Color.WHITE, if (light) Color.rgb(220, 223, 231) else Color.rgb(190, 190, 198)))
+            trackTintList = ColorStateList(arrayOf(
+                intArrayOf(android.R.attr.state_checked), intArrayOf()),
+                intArrayOf(purple, borderColor))
+        }
+        listOf(R.id.importCookiesButton, R.id.removeCookiesButton).forEachIndexed {
+                index, buttonId ->
+            cookiesCard.findViewById<Button>(buttonId).apply {
+                textSize = 13f
+                gravity = Gravity.CENTER_VERTICAL or Gravity.START
+                setPadding(px(13), 0, px(12), 0)
+                compoundDrawablePadding = px(9)
+                setTextColor(color)
+                isAllCaps = false
+                background = surface(fieldColor, 12)
+                minimumHeight = px(52)
+                layoutParams = (layoutParams as LinearLayout.LayoutParams).apply {
+                    height = px(52)
+                    topMargin = px(if (index == 0) 10 else 8)
+                }
+            }
         }
         val tabs = LinearLayout(activity).apply {
             id = R.id.settingsTabs
@@ -118,8 +212,9 @@ internal object AndroidSettingsPanels {
             addView(applicationPanel)
             addView(networkPanel)
         }
-        settingsPage.addView(tabs, 1)
-        settingsPage.addView(host, 2)
+        // Title and subtitle precede the categories on both phone and tablet.
+        settingsPage.addView(tabs, 2)
+        settingsPage.addView(host, 3)
         fun selectTab(index: Int) {
             for (section in sections.indices) {
                 sections[section].visibility = if (index == section)
@@ -146,17 +241,11 @@ internal object AndroidSettingsPanels {
                  group: LinearLayout = downloadPanel): LinearLayout {
             val panel = LinearLayout(activity).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(px(15), px(14), px(15), px(16))
-                background = GradientDrawable().apply {
-                    setColor(panelColor)
-                    cornerRadius = px(17).toFloat()
-                    setStroke(px(1), borderColor)
-                }
+                setPadding(px(15), px(13), px(15), px(16))
+                background = surface(panelColor, 17)
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                    topMargin = px(10)
-                }
+                    ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = px(10) }
             }
             val sectionIcon = when (title) {
                 "Téléchargements" -> R.drawable.ic_download
@@ -169,19 +258,13 @@ internal object AndroidSettingsPanels {
                 else -> R.drawable.ic_sliders
             }
             panel.addView(label(title, 16f, true).apply {
-                val image = activity.getDrawable(sectionIcon)?.mutate()?.apply {
-                    setTint(purple)
-                    setBounds(0, 0, px(19), px(19))
-                }
-                setCompoundDrawablesRelative(image, null, null, null)
-                compoundDrawablePadding = px(9)
-                includeFontPadding = false
-            })
-            panel.addView(label(subtitle, 11f, tint = muted).apply {
+                decorateHeading(this, sectionIcon)
+            }, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, px(40)))
+            panel.addView(label(subtitle, 12f, tint = muted).apply {
                 maxLines = 4
-                setPadding(0, px(5), 0, px(10))
+                setPadding(0, px(6), 0, px(10))
             })
-            // Insert before the footer text explaining the beta version.
             group.addView(panel)
             return panel
         }
