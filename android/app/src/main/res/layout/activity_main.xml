@@ -568,7 +568,7 @@
                     android:tag="muted"
                     android:text="yt-dlp et FFmpeg intégrés, sans dépendance Windows"
                     android:textColor="#A1A1AA"/>
-                <CheckBox
+                <Switch
                     android:id="@+id/autoUpdateCheck"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
