@@ -3,6 +3,12 @@ name: Build All-Download (Windows)
 on:
   push:
     branches: [main]
+    # Documentation and Release maintenance must not waste a Windows build.
+    paths-ignore:
+      - "README.md"
+      - ".github/release-notes/**"
+      - ".github/workflows/release-retention.yml"
+      - ".github/workflows/build-windows.yml"
   workflow_dispatch:
 
 # Une seule publication a la fois : les boutons pointent toujours

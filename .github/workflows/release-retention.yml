@@ -5,6 +5,11 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/release-retention.yml"
+  workflow_run:
+    workflows:
+      - Build All-Download (Windows)
+      - Publish All-Download Android beta
+    types: [completed]
   workflow_dispatch:
     inputs:
       dry_run:
@@ -23,6 +28,7 @@ concurrency:
 jobs:
   curate:
     name: Preserve Windows and Android downloads; prune obsolete releases
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -68,10 +74,15 @@ jobs:
               raise SystemExit("Safety stop: no stable Windows Release containing both ZIPs.")
           stable_windows = max(windows, key=lambda r:
               (r.get("published_at") or "", r["id"]))
-          if not any(r["tag_name"] == "android-v0.6.9-beta" and
-                     any(a["name"] == "All-Download-Android-0.6.9-beta.apk"
-                         for a in r.get("assets", [])) for r in releases):
-              raise SystemExit("Safety stop: missing signed Android 0.6.9-beta Release.")
+          android = [r for r in releases
+              if r["tag_name"].startswith("android-v") and any(
+                  a["name"] == "All-Download-Android-" +
+                      r["tag_name"].removeprefix("android-v") + ".apk"
+                  for a in r.get("assets", []))]
+          if not android:
+              raise SystemExit("Safety stop: no Android Release containing a signed APK.")
+          latest_android = max(android, key=lambda r:
+              (r.get("published_at") or "", r["id"]))
           keep = {r["tag_name"] for r in old + new + [stable_windows]}
           targets = [r["tag_name"] for r in releases if r["tag_name"] not in keep]
           print(f"Published Releases: {len(releases)}")
@@ -82,7 +93,7 @@ jobs:
           print("Deleting:", targets)
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               output.write("windows_tag=" + stable_windows["tag_name"] + "\n")
-              output.write("android_tag=android-v0.6.9-beta\n")
+              output.write("android_tag=" + latest_android["tag_name"] + "\n")
           with open("/tmp/releases-to-prune.json", "w") as f:
               json.dump(targets, f)
           PY
@@ -92,8 +103,13 @@ jobs:
           WINDOWS_TAG: ${{ steps.plan.outputs.windows_tag }}
           ANDROID_TAG: ${{ steps.plan.outputs.android_tag }}
         run: |
-          gh release edit "$WINDOWS_TAG" --repo "$GITHUB_REPOSITORY" --notes-file .github/release-notes/windows.md
-          gh release edit "$ANDROID_TAG" --repo "$GITHUB_REPOSITORY" --notes-file .github/release-notes/android.md
+          # Never overwrite future releases with version-specific notes.
+          if [ "$WINDOWS_TAG" = "build-171" ]; then
+            gh release edit "$WINDOWS_TAG" --repo "$GITHUB_REPOSITORY" --notes-file .github/release-notes/windows.md
+          fi
+          if [ "$ANDROID_TAG" = "android-v0.6.9-beta" ]; then
+            gh release edit "$ANDROID_TAG" --repo "$GITHUB_REPOSITORY" --notes-file .github/release-notes/android.md
+          fi
       - name: Remove obsolete published Releases and their tags
         if: env.DRY_RUN != 'true'
         run: |
@@ -124,9 +140,10 @@ jobs:
               releases = [r for r in json.load(response) if not r.get("draft")]
           tags = {r["tag_name"] for r in releases}
           assert 2 <= len(tags) <= 9, f"Unexpected Release count: {len(tags)}"
-          assert "android-v0.6.9-beta" in tags, "Latest Android APK was removed"
+          assert os.environ["ANDROID_TAG"] in tags, "Latest Android APK was removed"
           assert os.environ["WINDOWS_TAG"] in tags, "Latest Windows ZIPs were removed"
           print(f"Confirmed: {len(tags)} published Releases remaining.")
           PY
         env:
           WINDOWS_TAG: ${{ steps.plan.outputs.windows_tag }}
+          ANDROID_TAG: ${{ steps.plan.outputs.android_tag }}
