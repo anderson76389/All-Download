@@ -101,6 +101,7 @@ class MainActivity : Activity() {
     private var updateBanner: AndroidUpdateBanner? = null
 
     private var selectedTab = 0
+    private var phoneKeyboardVisible = false
     private var settingsPanelsCreated = false
     private var lastQueueRevision = -1L
     private var lastHomeQueueRevision = -1L
@@ -124,6 +125,7 @@ class MainActivity : Activity() {
                     removeCookiesButton.isEnabled = !state.busy &&
                         CookieStore.existing(this@MainActivity) != null
                     cancelButton.visibility = if (state.busy) View.VISIBLE else View.GONE
+                    updatePhoneStatusDock()
                 }
                 if (lastDrawnState?.progress != state.progress)
                     progressBar.progress = state.progress
@@ -382,10 +384,8 @@ class MainActivity : Activity() {
         settingsPage.visibility = if (tab == 3) View.VISIBLE else View.GONE
         if (tab == 3) ensureSettingsPanels()
         styleNavigation()
-        // The fixed progress dock belongs to the download screens.
-        val statusDock = findViewById<View>(R.id.statusFooterCard)
-        if (statusDock.parent != homePage)
-            statusDock.visibility = if (tab < 2) View.VISIBLE else View.GONE
+        // Show the compact progress dock only during an active transfer.
+        updatePhoneStatusDock()
         if (tab == 0) renderHomeQueue()
         if (tab == 1) {
             lastQueueRevision = -1L
@@ -405,7 +405,10 @@ class MainActivity : Activity() {
             target.alpha = 0f
             target.animate().alpha(1f).setDuration(180).start()
         }
-        scroll.post { scroll.smoothScrollTo(0, 0) }
+        // Switching tabs must cancel stale scroll positions immediately: an
+        // animated scroll could expose page titles behind the pinned brand.
+        scroll.scrollTo(0, 0)
+        scroll.post { scroll.scrollTo(0, 0) }
     }
 
     private fun submitUrl(action: String) {
@@ -793,22 +796,23 @@ class MainActivity : Activity() {
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            minimumHeight = dp(64)
-            setPadding(dp(13), dp(10), dp(12), dp(10))
-            background = rounded(colors.panel, colors.border, 16)
+            minimumHeight = dp(76)
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            background = rounded(colors.panel, colors.border, 17)
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(8) }
+                ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(9) }
             addView(ImageView(this@MainActivity).apply {
                 setImageResource(iconRes)
                 imageTintList = ColorStateList.valueOf(colors.accent)
-                setPadding(dp(10), dp(10), dp(10), dp(10))
-                background = rounded(colors.input, colors.border, 12)
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                setPadding(dp(9), dp(9), dp(9), dp(9))
+                background = rounded(colors.input, colors.border, 13)
                 contentDescription = null
-            }, LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(12) })
+            }, LinearLayout.LayoutParams(dp(50), dp(50)).apply { marginEnd = dp(13) })
             val detail = LinearLayout(this@MainActivity).apply {
                 orientation = LinearLayout.VERTICAL
-                addView(text(title, 14, colors.foreground, true).apply {
+                addView(text(title, 15, colors.foreground, true).apply {
                     maxLines = 1
                     ellipsize = android.text.TextUtils.TruncateAt.END
                 })
@@ -1089,6 +1093,16 @@ class MainActivity : Activity() {
         ).forEach { (id, icon, tint) ->
             val button = findViewById<Button>(id)
             setButtonIcon(button, icon, tint, if (id == R.id.pasteUrlButton) 16 else 18)
+            // Wide queue buttons use a leading icon and aligned label rather
+            // than an icon stuck at the far left of a separately centred text.
+            if (id == R.id.resumeQueueButton || id == R.id.pauseQueueButton ||
+                id == R.id.clearFinishedButton || id == R.id.clearFailedButton ||
+                id == R.id.clearWaitingButton) {
+                button.gravity = Gravity.CENTER_VERTICAL or Gravity.START
+                button.compoundDrawablePadding = dp(9)
+                button.setPadding(dp(15), 0, dp(7), 0)
+                button.textSize = 13f
+            }
         }
     }
 
@@ -1202,49 +1216,65 @@ class MainActivity : Activity() {
      * control bar remains accessible at the bottom. No duplicate action buttons.
      * The original navigation View is moved; all click listeners remain attached.
      */
+    private fun updatePhoneStatusDock() {
+        if (resources.configuration.screenWidthDp >= 600) return
+        val footer = findViewById<View>(R.id.statusFooterCard)
+        if (footer.parent == homePage) return
+        footer.visibility = if (!phoneKeyboardVisible && selectedTab < 2 &&
+            DownloadService.state.busy) View.VISIBLE else View.GONE
+    }
+
     private fun configurePhoneNavigation() {
         val menu = findViewById<LinearLayout>(R.id.navigation)
-        val bar = menu.parent as? android.widget.HorizontalScrollView ?: return
+        val oldScrollBar = menu.parent as? android.widget.HorizontalScrollView ?: return
         val host = scroll.parent as? ViewGroup ?: return
         val footer = homePage.findViewById<LinearLayout>(R.id.statusFooterCard)
-        // Reuse live controls. Never duplicate download actions or queue state.
-        content.removeView(bar)
+
+        // HorizontalScrollView measures its child at unconstrained width.
+        // That pushed the first/last tabs off screen on narrow phones.
+        // Replace the holder, not the four original buttons/listeners.
+        oldScrollBar.removeView(menu)
+        content.removeView(oldScrollBar)
         host.removeView(scroll)
         val shell = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            clipChildren = false
             setBackgroundColor(palette().background)
         }
         shell.addView(scroll, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+
         (footer.parent as? ViewGroup)?.removeView(footer)
         footer.background = glassSurface()
-        footer.setPadding(dp(14), dp(8), dp(14), dp(9))
+        footer.setPadding(dp(13), dp(7), dp(13), dp(7))
+        footer.findViewById<TextView>(R.id.statusFooterTitleIcon).textSize = 12f
+        footer.findViewById<TextView>(R.id.statusText).textSize = 12f
+        progressBar.layoutParams = progressBar.layoutParams.apply { height = dp(3) }
         shell.addView(footer, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             marginStart = dp(12)
             marginEnd = dp(12)
-            bottomMargin = dp(8)
+            bottomMargin = dp(6)
         })
-        // HorizontalScrollView is a FrameLayout: use matching direct-child params.
-        menu.layoutParams = android.widget.FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+
+        val navDock = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(5), dp(5), dp(5), dp(5))
+            background = glassSurface()
+            elevation = dp(4).toFloat()
+        }
+        menu.orientation = LinearLayout.HORIZONTAL
         menu.setBackgroundColor(Color.TRANSPARENT)
         tabs.forEach { button ->
-            button.layoutParams = LinearLayout.LayoutParams(0, dp(60), 1f).apply {
-                marginStart = dp(2)
-                marginEnd = dp(2)
+            button.layoutParams = LinearLayout.LayoutParams(0, dp(64), 1f).apply {
+                marginStart = dp(1)
+                marginEnd = dp(1)
             }
         }
-        bar.backgroundTintList = null
-        bar.background = glassSurface()
-        bar.elevation = dp(5).toFloat()
-        bar.clipToOutline = true
-        bar.setPadding(dp(6), dp(6), dp(6), dp(6))
-        bar.isHorizontalScrollBarEnabled = false
-        bar.isFillViewport = true
-        shell.addView(bar, LinearLayout.LayoutParams(
+        navDock.addView(menu, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, dp(64)))
+        shell.addView(navDock, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             marginStart = dp(12)
@@ -1253,28 +1283,27 @@ class MainActivity : Activity() {
         })
         host.addView(shell, ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        // Reserve the real gesture inset and hide fixed controls while typing.
+
+        // The brand owns the top inset; the dock sits above gesture navigation.
+        // Hide fixed controls while the keyboard is open to leave input room.
         ViewCompat.setOnApplyWindowInsetsListener(shell) { view, insets ->
             val safe = insets.getInsets(WindowInsetsCompat.Type.systemBars() or
                 WindowInsetsCompat.Type.displayCutout())
-            val typing = insets.isVisible(WindowInsetsCompat.Type.ime())
-            bar.visibility = if (typing) View.GONE else View.VISIBLE
-            footer.visibility = if (typing || selectedTab >= 2) View.GONE else View.VISIBLE
+            phoneKeyboardVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
+            navDock.visibility = if (phoneKeyboardVisible) View.GONE else View.VISIBLE
+            updatePhoneStatusDock()
             if (Build.VERSION.SDK_INT >= 35)
                 view.setPadding(safe.left, safe.top, safe.right,
-                    if (typing) 0 else safe.bottom)
+                    if (phoneKeyboardVisible) 0 else safe.bottom)
             insets
         }
-        if (Build.VERSION.SDK_INT >= 35) {
-            ViewCompat.setOnApplyWindowInsetsListener(scroll) { view, insets ->
-                val safe = insets.getInsets(WindowInsetsCompat.Type.systemBars() or
-                    WindowInsetsCompat.Type.displayCutout())
-                // The fixed brand row owns the top system inset.
-                view.setPadding(0, 0, 0, 0)
-                insets
-            }
+        ViewCompat.setOnApplyWindowInsetsListener(scroll) { view, insets ->
+            // Insets are handled exactly once by the containing phone shell.
+            view.setPadding(0, 0, 0, 0)
+            insets
         }
         ViewCompat.requestApplyInsets(shell)
+        updatePhoneStatusDock()
         styleNavigation()
     }
 
