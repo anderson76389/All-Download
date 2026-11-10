@@ -17,58 +17,6 @@
         android:paddingRight="16dp"
         android:paddingBottom="32dp">
 
-        <LinearLayout
-            android:id="@+id/brandHeader"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-            <ImageView
-                android:id="@+id/brandLogo"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:contentDescription="Logo All-Download"
-                android:scaleType="fitCenter"
-                android:src="@drawable/all_download_android_logo" />
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="10dp"
-                android:layout_weight="1"
-                android:orientation="vertical">
-                <TextView
-                    android:id="@+id/brandTitle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="ALL-DOWNLOAD"
-                    android:textColor="#F3F4F6"
-                    android:textSize="18sp"
-                    android:singleLine="true"
-                    android:ellipsize="end"
-                    android:textStyle="bold" />
-                <TextView
-                    android:id="@+id/brandSubtitle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="Tous vos médias, simplement."
-                    android:textColor="#A1A1AA"
-                    android:textSize="11sp"
-                    android:singleLine="true"
-                    android:ellipsize="end" />
-            </LinearLayout>
-            <TextView
-                android:id="@+id/betaLabel"
-                android:tag="accent"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:padding="7dp"
-                android:text="BÊTA"
-                android:textColor="#C4B5FD"
-                android:textSize="10sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
         <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -556,6 +504,14 @@
                 android:textColor="#F3F4F6"
                 android:textSize="21sp"
                 android:textStyle="bold"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Personnalisez vos téléchargements et l’application."
+                android:textColor="#A1A1AA"
+                android:tag="muted"
+                android:textSize="12sp"/>
             <LinearLayout
                 android:id="@+id/settingsAppearanceCard"
                 android:layout_width="match_parent"
@@ -578,7 +534,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="9dp"
                     android:tag="muted"
-                    android:text="Sombre, clair ou OLED."
+                    android:text="Choisissez un thème adapté à votre écran."
                     android:textColor="#A1A1AA"/>
                 <Spinner
                     android:id="@+id/themeSpinner"
@@ -600,7 +556,7 @@
                 android:id="@+id/settingsEngineTitleIcon"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Moteur de téléchargement"
+                    android:text="Moteur yt-dlp et FFmpeg"
                     android:textColor="#F3F4F6"
                     android:textSize="16sp"
                     android:textStyle="bold"/>
@@ -619,12 +575,12 @@
                     android:layout_marginTop="12dp"
                     android:buttonTint="#7C3AED"
                     android:checked="true"
-                    android:text="Actualiser yt-dlp pour les réseaux sociaux"/>
+                    android:text="Actualiser yt-dlp pour YouTube et les réseaux sociaux"/>
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:tag="muted"
-                    android:text="Mise à jour hebdomadaire si disponible."
+                    android:text="Actualisation sur Wi-Fi non limité, au plus une fois par semaine."
                     android:textColor="#A1A1AA"
                     android:textSize="12sp"/>
             </LinearLayout>
@@ -641,7 +597,7 @@
                 android:id="@+id/settingsCookiesTitleIcon"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Connexion facultative"
+                    android:text="Cookies (facultatifs)"
                     android:textColor="#F3F4F6"
                     android:textSize="16sp"
                     android:textStyle="bold"/>
@@ -651,7 +607,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="9dp"
                     android:tag="muted"
-                    android:text="Sans cookies, téléchargements publics seulement"
+                    android:text="Sans cookies, seuls les médias publics accessibles sont pris en charge."
                     android:textColor="#A1A1AA"/>
                 <Button
                     android:id="@+id/importCookiesButton"
@@ -670,18 +626,10 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:tag="muted"
-                    android:text="Session stockée en privé sur cet appareil."
+                    android:text="Vos cookies restent dans le stockage privé de l’application."
                     android:textColor="#A1A1AA"
                     android:textSize="12sp"/>
             </LinearLayout>
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="22dp"
-                android:tag="muted"
-                android:text="ALL-DOWNLOAD · Android"
-                android:textColor="#A1A1AA"
-                android:textSize="12sp"/>
         </LinearLayout>
     </LinearLayout>
 </ScrollView>
