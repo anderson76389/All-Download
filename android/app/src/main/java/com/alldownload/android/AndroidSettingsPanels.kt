@@ -271,17 +271,13 @@ internal object AndroidSettingsPanels {
 
         fun spinner(panel: LinearLayout, title: String, keys: List<String>,
                     descriptions: List<String>, preference: String, initial: String) {
-            panel.addView(label(title, 13f, true).apply {
-                setPadding(0, px(12), 0, px(5))
+            panel.addView(label(title, 13.5f, true).apply {
+                setPadding(0, px(14), 0, px(7))
             })
             val view = Spinner(activity).apply {
-                minimumHeight = px(48)
+                minimumHeight = px(50)
                 contentDescription = title
-                background = GradientDrawable().apply {
-                    setColor(if (light) Color.rgb(241, 245, 249) else Color.rgb(29, 29, 29))
-                    cornerRadius = px(10).toFloat()
-                    setStroke(px(1), borderColor)
-                }
+                background = surface(fieldColor, 12)
             }
             val adapter = object : ArrayAdapter<String>(
                 activity, android.R.layout.simple_spinner_dropdown_item, descriptions) {
@@ -294,6 +290,12 @@ internal object AndroidSettingsPanels {
                         textView.gravity = android.view.Gravity.CENTER_VERTICAL
                         textView.setSingleLine(true)
                         textView.ellipsize = android.text.TextUtils.TruncateAt.END
+                        val arrow = activity.getDrawable(R.drawable.ic_chevron)?.mutate()?.apply {
+                            setTint(muted)
+                            setBounds(0, 0, px(18), px(18))
+                        }
+                        textView.setCompoundDrawablesRelative(null, null, arrow, null)
+                        textView.compoundDrawablePadding = px(7)
                         textView.setPadding(px(13), 0, px(12), 0)
                     }
                     return textView
@@ -321,7 +323,7 @@ internal object AndroidSettingsPanels {
                 }
             }
             panel.addView(view, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, px(48)))
+                ViewGroup.LayoutParams.MATCH_PARENT, px(50)))
         }
 
         fun number(panel: LinearLayout, title: String, values: List<Int>,
@@ -342,43 +344,64 @@ internal object AndroidSettingsPanels {
         }
 
         fun toggle(panel: LinearLayout, text: String, detail: String,
-                   key: String, default: Boolean = false) {
-            val check = CheckBox(activity).apply {
-                this.text = text
-                textSize = 14f
-                setTextColor(color)
-                buttonTintList = ColorStateList.valueOf(purple)
+                   key: String, default: Boolean = false): Switch {
+            val row = LinearLayout(activity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                minimumHeight = px(64)
+                setPadding(0, px(9), 0, px(8))
+            }
+            val captions = LinearLayout(activity).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(label(text, 14f, true).apply {
+                    maxLines = 2
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                })
+                addView(label(detail, 12f, tint = muted).apply {
+                    maxLines = 4
+                    setPadding(0, px(3), 0, 0)
+                })
+            }
+            row.addView(captions, LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = px(12) })
+            val control = Switch(activity).apply {
+                contentDescription = text
+                showText = false
                 isChecked = prefs.getBoolean(key, default)
-                minHeight = px(48)
+                minimumWidth = px(52)
+                minimumHeight = px(48)
+                thumbTintList = ColorStateList(arrayOf(
+                    intArrayOf(android.R.attr.state_checked), intArrayOf()),
+                    intArrayOf(Color.WHITE, if (light) Color.rgb(221, 224, 232)
+                        else Color.rgb(190, 190, 198)))
+                trackTintList = ColorStateList(arrayOf(
+                    intArrayOf(android.R.attr.state_checked), intArrayOf()),
+                    intArrayOf(purple, borderColor))
                 setOnCheckedChangeListener { _, checked ->
                     prefs.edit().putBoolean(key, checked).apply()
                 }
             }
-            panel.addView(check, LinearLayout.LayoutParams(
+            row.addView(control, LinearLayout.LayoutParams(px(56), px(48)))
+            row.setOnClickListener { control.isChecked = !control.isChecked }
+            panel.addView(row, LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-            panel.addView(label(detail, 11f, tint = muted).apply {
-                setPadding(px(40), 0, px(8), px(10))
-            })
+            return control
         }
 
         fun entry(panel: LinearLayout, title: String, key: String,
                   hint: String, private: Boolean = false) {
-            panel.addView(label(title, 13f, true).apply {
-                setPadding(0, px(12), 0, px(5))
+            panel.addView(label(title, 13.5f, true).apply {
+                setPadding(0, px(14), 0, px(7))
             })
             val input = EditText(activity).apply {
                 setSingleLine(true)
-                textSize = 13f
+                textSize = 14f
                 setTextColor(color)
                 setHintTextColor(muted)
                 this.hint = hint
                 setText(prefs.getString(key, "").orEmpty())
                 setPadding(px(12), 0, px(12), 0)
-                background = GradientDrawable().apply {
-                    setColor(if (light) Color.rgb(241, 245, 249) else Color.rgb(29, 29, 29))
-                    cornerRadius = px(10).toFloat()
-                    setStroke(px(1), borderColor)
-                }
+                background = surface(fieldColor, 12)
                 addTextChangedListener(object : TextWatcher {
                     override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
                     override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -388,39 +411,43 @@ internal object AndroidSettingsPanels {
                 })
             }
             panel.addView(input, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, px(48)))
+                ViewGroup.LayoutParams.MATCH_PARENT, px(50)))
             if (private) panel.addView(label(
                 "Stocké uniquement dans les préférences privées Android. Ne partagez pas de mots de passe.",
                 11f, tint = muted))
         }
 
         fun button(panel: LinearLayout, title: String, onClick: () -> Unit) {
+            val primary = title.startsWith("Rechercher")
+            val iconRes = if (primary) R.drawable.ic_update else R.drawable.ic_network
+            val textColor = if (primary) Color.WHITE else color
             val b = Button(activity).apply {
                 text = title
-                textSize = 13f
+                textSize = 13.5f
                 setSingleLine(true)
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 contentDescription = title
                 isAllCaps = false
-                setTextColor(Color.WHITE)
-                val iconRes = if (title.contains("mise à jour", ignoreCase = true))
-                    R.drawable.ic_update else R.drawable.nav_queue
+                setTextColor(textColor)
                 val image = activity.getDrawable(iconRes)?.mutate()?.apply {
-                    setTint(Color.WHITE)
-                    setBounds(0, 0, px(18), px(18))
+                    setTint(textColor)
+                    setBounds(0, 0, px(19), px(19))
                 }
                 setCompoundDrawablesRelative(image, null, null, null)
-                compoundDrawablePadding = px(8)
-                gravity = android.view.Gravity.CENTER
-                tag = "primary"
-                background = GradientDrawable().apply {
-                    setColor(purple)
-                    cornerRadius = px(12).toFloat()
-                }
+                compoundDrawablePadding = px(10)
+                gravity = Gravity.CENTER_VERTICAL or Gravity.START
+                setPadding(px(15), 0, px(12), 0)
+                background = if (primary)
+                    GradientDrawable().apply {
+                        setColor(purple)
+                        cornerRadius = px(12).toFloat()
+                    } else surface(fieldColor, 12)
+                minHeight = px(52)
+                stateListAnimator = null
                 setOnClickListener { onClick() }
             }
             panel.addView(b, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, px(51)).apply { topMargin = px(9) })
+                ViewGroup.LayoutParams.MATCH_PARENT, px(52)).apply { topMargin = px(9) })
         }
 
         val files = card("Téléchargements", "7 catégories rangées automatiquement.")
