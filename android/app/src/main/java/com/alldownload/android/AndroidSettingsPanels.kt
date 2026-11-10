@@ -17,7 +17,6 @@ import android.view.ViewGroup
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
-import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Spinner
@@ -127,11 +126,11 @@ internal object AndroidSettingsPanels {
         }
 
         val appearanceCard = decorateLegacyCard(R.id.settingsAppearanceCard,
-            R.drawable.ic_sliders).also(applicationPanel::addView)
+            R.drawable.ic_sliders).also { applicationPanel.addView(it) }
         val engineCard = decorateLegacyCard(R.id.settingsEngineCard,
-            R.drawable.ic_download).also(applicationPanel::addView)
+            R.drawable.ic_download).also { applicationPanel.addView(it) }
         val cookiesCard = decorateLegacyCard(R.id.settingsCookiesCard,
-            R.drawable.ic_security).also(networkPanel::addView)
+            R.drawable.ic_security).also { networkPanel.addView(it) }
         appearanceCard.findViewById<Spinner>(R.id.themeSpinner).apply {
             minimumHeight = px(50)
             background = surface(fieldColor, 12)
@@ -186,12 +185,12 @@ internal object AndroidSettingsPanels {
                 textSize = if (stackedTabs) 11.5f else 12f
                 val image = activity.getDrawable(tabIcons[index])?.mutate()?.apply {
                     setTint(color)
-                    setBounds(0, 0, px(17), px(17))
+                    setBounds(0, 0, px(19), px(19))
                 }
                 setCompoundDrawablesRelative(
                     if (stackedTabs) null else image,
                     if (stackedTabs) image else null, null, null)
-                compoundDrawablePadding = px(if (stackedTabs) 2 else 5)
+                compoundDrawablePadding = px(if (stackedTabs) 4 else 7)
                 gravity = android.view.Gravity.CENTER
                 setSingleLine(true)
                 ellipsize = android.text.TextUtils.TruncateAt.END
