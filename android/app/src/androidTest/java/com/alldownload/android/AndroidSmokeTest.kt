@@ -1389,7 +1389,13 @@ class AndroidSmokeTest {
             instrumentation.runOnMainSync { activity.findViewById<Button>(R.id.navHome).performClick() }
             instrumentation.waitForIdleSync()
             // Let the page transition finish before measuring the touch target.
-            android.os.SystemClock.sleep(250)
+            val focusDeadline = android.os.SystemClock.elapsedRealtime() + 5000
+            var focused = false
+            while (!focused && android.os.SystemClock.elapsedRealtime() < focusDeadline) {
+                instrumentation.runOnMainSync { focused = activity.hasWindowFocus() }
+                if (!focused) android.os.SystemClock.sleep(50)
+            }
+            assertTrue("La fenêtre de l’application doit avoir le focus pour lire le presse-papiers.", focused)
             val paste = activity.findViewById<Button>(R.id.pasteUrlButton)
             val bounds = android.graphics.Rect()
             val screenPoint = IntArray(2)
@@ -1409,8 +1415,19 @@ class AndroidSmokeTest {
                 assertTrue("L'appui tactile doit être injecté par Android.",
                     instrumentation.uiAutomation.injectInputEvent(event, true))
                 event.recycle()
+                if (action == android.view.MotionEvent.ACTION_DOWN)
+                    android.os.SystemClock.sleep(80)
             }
-            instrumentation.waitForIdleSync()
+            // Input injection and waitForIdleSync do not guarantee the app has
+            // received the queued input event. Observe the production result.
+            val pasteDeadline = android.os.SystemClock.elapsedRealtime() + 5000
+            var pasted = ""
+            while (pasted != job.url && android.os.SystemClock.elapsedRealtime() < pasteDeadline) {
+                instrumentation.runOnMainSync {
+                    pasted = activity.findViewById<EditText>(R.id.urlInput).text.toString()
+                }
+                if (pasted != job.url) android.os.SystemClock.sleep(50)
+            }
             assertEquals("Copier puis Coller doit fournir le lien exact.", job.url,
                 activity.findViewById<EditText>(R.id.urlInput).text.toString())
             instrumentation.runOnMainSync { activity.findViewById<Button>(R.id.navQueue).performClick() }
