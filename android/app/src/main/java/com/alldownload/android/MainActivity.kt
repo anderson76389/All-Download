@@ -345,6 +345,7 @@ class MainActivity : Activity() {
         attachUpdateBanner()
         arrangeOptionPills()
         arrangeQuickAccess()
+        configureResponsiveActions()
         styleQuickModes()
     }
 
@@ -435,7 +436,7 @@ class MainActivity : Activity() {
                 "Autorise le stockage puis relance le téléchargement.", Toast.LENGTH_LONG).show()
             return
         }
-        if (Build.VERSION.SDK_INT >= 33 &&
+        if (action == DownloadService.ACTION_START && Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
                 PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 103)
@@ -444,6 +445,20 @@ class MainActivity : Activity() {
         (getSystemService(Context.INPUT_METHOD_SERVICE) as?
             android.view.inputmethod.InputMethodManager)
             ?.hideSoftInputFromWindow(urlInput.windowToken, 0)
+        if (action == DownloadService.ACTION_ADD_QUEUE) {
+            // Adding is a local queue edit. Waiting for onStartCommand could make
+            // the immediate preview miss the new task until the next 8s refresh.
+            try {
+                DownloadQueue.enqueue(this, url, modeSpinner.selectedItemPosition,
+                    qualitySpinner.selectedItemPosition)
+                lastHomeQueueRevision = -1L
+                renderHomeQueue()
+                Toast.makeText(this, "Ajouté à la file d’attente.", Toast.LENGTH_SHORT).show()
+            } catch (error: Exception) {
+                urlInput.error = error.localizedMessage ?: "Impossible d'ajouter le lien."
+            }
+            return
+        }
         val service = Intent(this, DownloadService::class.java).apply {
             this.action = action
             putExtra(DownloadService.EXTRA_URL, url)
@@ -453,12 +468,6 @@ class MainActivity : Activity() {
         if (action == DownloadService.ACTION_START && Build.VERSION.SDK_INT >= 26)
             startForegroundService(service)
         else startService(service)
-        // Windows' Add button keeps the central queue visible on the same page.
-        // The dedicated queue tab remains available for complete management.
-        if (action == DownloadService.ACTION_ADD_QUEUE) {
-            lastHomeQueueRevision = -1L
-            renderHomeQueue()
-        }
     }
 
     /** Mini Windows-style file view on the home page, capped to three cheap cards. */
@@ -691,6 +700,7 @@ class MainActivity : Activity() {
                 clipboard.setPrimaryClip(ClipData.newPlainText("Lien All-Download", job.url))
                 Toast.makeText(this, "Lien copié.", Toast.LENGTH_SHORT).show()
             }
+            adaptActionRow(actions)
             footer.addView(actions)
             card.addView(View(this).apply {
                 setBackgroundColor(colors.border)
@@ -1241,6 +1251,57 @@ class MainActivity : Activity() {
     }
 
     /** Compact Windows option pair on tablets/foldables; stacked, readable on phones. */
+    /** Reflow the original buttons using their available width, including on foldables.
+     * Keep the same instances and listeners; enlarged system text needs taller rows.
+     */
+    private fun adaptActionRow(row: LinearLayout) {
+        fun reflow() {
+            if (row.width <= 0) return
+            val stacked = row.width - row.paddingLeft - row.paddingRight < dp(300) ||
+                resources.configuration.fontScale > 1.2f
+            val height = dp((52 * resources.configuration.fontScale.coerceAtLeast(1f))
+                .toInt().coerceAtMost(104))
+            val signature = "actions:$stacked:$height"
+            if (row.tag == signature) return
+            row.tag = signature
+            row.orientation = if (stacked) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+            for (index in 0 until row.childCount) {
+                val button = row.getChildAt(index) as? Button ?: continue
+                button.setSingleLine(false)
+                button.maxLines = 2
+                button.minWidth = 0
+                button.minimumWidth = 0
+                button.layoutParams = LinearLayout.LayoutParams(
+                    if (stacked) ViewGroup.LayoutParams.MATCH_PARENT else 0,
+                    height, if (stacked) 0f else 1f).apply {
+                    if (index > 0) {
+                        if (stacked) topMargin = dp(12) else marginStart = dp(12)
+                    }
+                }
+            }
+        }
+        row.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> reflow() }
+        row.post { reflow() }
+    }
+
+    private fun configureResponsiveActions() {
+        listOf(R.id.startButton, R.id.resumeQueueButton, R.id.clearFailedButton)
+            .forEach { id -> adaptActionRow(findViewById<Button>(id).parent as LinearLayout) }
+        // These labels can span two lines on a compact phone or with enlarged text.
+        listOf(R.id.queueCleanupToggle, R.id.clearFinishedButton,
+            R.id.openFullQueueButton).forEach { id ->
+            findViewById<Button>(id).apply {
+                setSingleLine(false)
+                maxLines = 2
+                minimumHeight = dp(52)
+                layoutParams = layoutParams.apply {
+                    height = ViewGroup.LayoutParams.WRAP_CONTENT
+                }
+                setPadding(paddingLeft, dp(10), paddingRight, dp(10))
+            }
+        }
+    }
+
     private fun arrangeOptionPills() {
         val options = findViewById<LinearLayout>(R.id.downloadOptions)
         val mode = findViewById<LinearLayout>(R.id.downloadModeGroup)

@@ -65,11 +65,12 @@ class PublicVideoDownloadTest {
             "bestvideo[height<=720]+bestaudio/best[height<=?720]")
     }
 
-    @Test fun youtubeCanDownloadShortVideoSection() {
-        // Vidéo de test créée pour l'extracteur yt-dlp (l'original BaW_jenozKc a été retiré).
-        downloadShortExtractedVideo("YouTube",
-            "https://www.youtube.com/watch?v=DTi8wZ1a1TA",
-            "bestvideo[height<=720]+bestaudio/best[height<=720]")
+    @Test fun youtubeDownloadsThroughAppAndExportsPlayably() {
+        // Short extractor fixture, downloaded through the REAL app service.
+        // Remote FFmpeg --download-sections is not used by the application and
+        // can receive 403 independently of yt-dlp's ordinary HTTP downloader.
+        downloadUsingAppAndVerify("https://www.youtube.com/watch?v=DTi8wZ1a1TA",
+            "VIDÉOS", "video/mp4")
     }
 
     @Test fun twitchClipCanDownloadShortVideoSection() {
@@ -162,6 +163,11 @@ class PublicVideoDownloadTest {
             assertTrue("$url : service non démarré.", started)
             val state = DownloadService.state
             assertFalse("$url : service bloqué. ${state.message}", state.busy)
+            if (url.startsWith("https://www.youtube.com/") &&
+                state.message.contains("not a bot", ignoreCase = true)) {
+                org.junit.Assume.assumeTrue(
+                    "YouTube a bloqué l'IP CI (anti-bot) pendant le téléchargement réel de l'application.", false)
+            }
             assertTrue("$url : erreur de téléchargement : ${state.message}",
                 state.message.contains("fichier(s)"))
             if (Build.VERSION.SDK_INT >= 29) {
