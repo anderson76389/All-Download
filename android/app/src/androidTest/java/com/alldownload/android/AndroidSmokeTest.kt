@@ -1384,13 +1384,23 @@ class AndroidSmokeTest {
             val card = activity.findViewById<LinearLayout>(R.id.queueList).getChildAt(0) as LinearLayout
             val footer = card.getChildAt(card.childCount - 1) as LinearLayout
             val actions = footer.getChildAt(1) as LinearLayout
-            instrumentation.runOnMainSync {
-                (actions.getChildAt(1) as Button).performClick()
-                val clipboard = activity.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
-                    as android.content.ClipboardManager
-                assertEquals(job.url, clipboard.primaryClip?.getItemAt(0)?.text.toString())
-                (footer.getChildAt(0) as Button).performClick()
+            instrumentation.runOnMainSync { (actions.getChildAt(1) as Button).performClick() }
+            // Android's clipboard overlay can briefly own focus. Reading from a
+            // background window returns null, even after a successful copy.
+            val clipboardDeadline = android.os.SystemClock.elapsedRealtime() + 10_000
+            var copied: String? = null
+            while (android.os.SystemClock.elapsedRealtime() < clipboardDeadline && copied != job.url) {
+                instrumentation.runOnMainSync {
+                    if (activity.hasWindowFocus()) {
+                        val clipboard = activity.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                            as android.content.ClipboardManager
+                        copied = clipboard.primaryClip?.getItemAt(0)?.text?.toString()
+                    }
+                }
+                if (copied != job.url) android.os.SystemClock.sleep(100)
             }
+            assertEquals("Copier doit fournir le lien exact une fois la fenêtre active.", job.url, copied)
+            instrumentation.runOnMainSync { (footer.getChildAt(0) as Button).performClick() }
             instrumentation.waitForIdleSync()
             assertEquals("Réessayer doit remettre la tâche en attente.", DownloadQueue.WAITING,
                 DownloadQueue.snapshot(context).first { it.id == job.id }.status)
