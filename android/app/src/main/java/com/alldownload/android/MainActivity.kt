@@ -445,6 +445,20 @@ class MainActivity : Activity() {
         (getSystemService(Context.INPUT_METHOD_SERVICE) as?
             android.view.inputmethod.InputMethodManager)
             ?.hideSoftInputFromWindow(urlInput.windowToken, 0)
+        if (action == DownloadService.ACTION_ADD_QUEUE) {
+            // Adding is a local queue edit. Waiting for onStartCommand could make
+            // the immediate preview miss the new task until the next 8s refresh.
+            try {
+                DownloadQueue.enqueue(this, url, modeSpinner.selectedItemPosition,
+                    qualitySpinner.selectedItemPosition)
+                lastHomeQueueRevision = -1L
+                renderHomeQueue()
+                Toast.makeText(this, "Ajouté à la file d’attente.", Toast.LENGTH_SHORT).show()
+            } catch (error: Exception) {
+                urlInput.error = error.localizedMessage ?: "Impossible d'ajouter le lien."
+            }
+            return
+        }
         val service = Intent(this, DownloadService::class.java).apply {
             this.action = action
             putExtra(DownloadService.EXTRA_URL, url)
@@ -454,12 +468,6 @@ class MainActivity : Activity() {
         if (action == DownloadService.ACTION_START && Build.VERSION.SDK_INT >= 26)
             startForegroundService(service)
         else startService(service)
-        // Windows' Add button keeps the central queue visible on the same page.
-        // The dedicated queue tab remains available for complete management.
-        if (action == DownloadService.ACTION_ADD_QUEUE) {
-            lastHomeQueueRevision = -1L
-            renderHomeQueue()
-        }
     }
 
     /** Mini Windows-style file view on the home page, capped to three cheap cards. */

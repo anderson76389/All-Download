@@ -1341,6 +1341,20 @@ class AndroidSmokeTest {
                 input.error = null
                 activity.findViewById<Button>(R.id.queueButton).performClick()
                 assertNotNull("Ajouter doit aussi valider le lien.", input.error)
+                val validUrl = "https://example.org/immediate-add-${UUID.randomUUID()}.mp4"
+                input.setText(validUrl)
+                activity.findViewById<Button>(R.id.queueButton).performClick()
+                val added = DownloadQueue.snapshot(context).singleOrNull { it.url == validUrl }
+                assertNotNull("Ajouter doit enregistrer la tâche immédiatement.", added)
+                val preview = activity.findViewById<LinearLayout>(R.id.homeQueuePreview)
+                fun containsUrl(view: View): Boolean = when (view) {
+                    is TextView -> view.text.toString().contains(validUrl)
+                    is android.view.ViewGroup -> (0 until view.childCount)
+                        .any { containsUrl(view.getChildAt(it)) }
+                    else -> false
+                }
+                assertTrue("L’aperçu doit afficher immédiatement le nouveau lien.", containsUrl(preview))
+                DownloadQueue.remove(context, added!!.id)
             }
             val row = activity.findViewById<Button>(R.id.startButton).parent as LinearLayout
             instrumentation.runOnMainSync {
