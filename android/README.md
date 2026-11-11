@@ -1,4 +1,15 @@
-# All-Download Android — bêta 0.6.12
+# All-Download Android — bêta 0.6.13
+
+## File d'attente : sections séparées et boutons lisibles — 0.6.13
+
+- Section File d'attente reconstruite sur Android en **trois cartes distinctes** : récapitulatif, contrôles (Reprendre/Pause) et nettoyage (Terminés/Erreurs/En attente). Les éléments de téléchargement sont une quatrième zone avec son titre et ses cartes.
+- Espacements verticaux **14 à 20 dp** entre groupes, marges internes d'au moins **15 dp**, boutons de **52 dp** et espace de **12 dp** entre boutons adjacents. Le bas des cartes ne touche plus le bloc suivant.
+- Chaque téléchargement affiche clairement le statut, le type de média, le pourcentage, l'adresse et le message éventuel, avec des écarts adaptés.
+- Actions de téléchargement en **boutons visibles de largeur égale** au lieu d'une ligne à défilement horizontal. « Réessayer » dispose de sa propre ligne si nécessaire.
+- Les clics, les identifiants et la file persistante sont inchangés. Conserve les thèmes clair/sombre/OLED, la barre de navigation Liquid Glass et la suppression du bandeau haut.
+- Tests instrumentés de non-chevauchement et d'espacement sur Android téléphone et tablette. Aucun fichier Windows modifié.
+
+---
 
 ## Correction des mises à jour intégrées — 0.6.12
 

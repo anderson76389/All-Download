@@ -520,7 +520,8 @@ class MainActivity : Activity() {
             queueList.addView(LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                setPadding(dp(12), dp(26), dp(12), dp(24))
+                setPadding(dp(18), dp(30), dp(18), dp(30))
+                background = rounded(colors.panel, colors.border, 18)
                 addView(ImageView(this@MainActivity).apply {
                     setImageResource(R.drawable.ic_playlist)
                     imageTintList = ColorStateList.valueOf(colors.accent)
@@ -542,12 +543,12 @@ class MainActivity : Activity() {
         for (job in jobs.asReversed().take(queueVisible)) {
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(dp(14), dp(13), dp(14), dp(12))
+                setPadding(dp(16), dp(16), dp(16), dp(15))
                 background = rounded(colors.panel, colors.border, 18)
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                        bottomMargin = dp(11)
+                        bottomMargin = dp(14)
                     }
             }
             val label = when (job.status) {
@@ -584,17 +585,26 @@ class MainActivity : Activity() {
                 marginEnd = dp(12)
             })
             val details = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-            details.addView(text("$label · $media · ${job.progress} %", 12,
+            val statusRow = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            statusRow.addView(text("$label · $media", 12,
                 if (job.status == DownloadQueue.ERROR) Color.rgb(239, 68, 68)
                 else if (job.status == DownloadQueue.DONE) Color.rgb(34, 197, 94)
                 else colors.accent, true).apply {
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
-            })
-            details.addView(text(job.url, 12, colors.foreground, false).apply {
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            statusRow.addView(text("${job.progress} %", 12, colors.muted, true),
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(8) })
+            details.addView(statusRow)
+            details.addView(text(job.url, 13, colors.foreground, false).apply {
                 maxLines = 2
                 ellipsize = android.text.TextUtils.TruncateAt.END
-                setPadding(0, dp(6), 0, 0)
+                setPadding(0, dp(7), 0, 0)
             })
             row.addView(details, LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
@@ -603,6 +613,10 @@ class MainActivity : Activity() {
                 card.addView(text(job.message, 12, colors.muted, false).apply {
                     maxLines = 3
                     ellipsize = android.text.TextUtils.TruncateAt.END
+                }, LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                    topMargin = dp(12)
                 })
             }
             if (job.progress > 0) {
@@ -616,42 +630,59 @@ class MainActivity : Activity() {
                     }
                 })
             }
-            val actions = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.END
+            // Distinct button footer: no horizontal scrolling or clipped labels.
+            // The same queue actions and listeners are preserved on every device.
+            val footer = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
             }
             if (job.status in listOf(DownloadQueue.PAUSED,
                     DownloadQueue.ERROR, DownloadQueue.CANCELLED)) {
-                actions.addView(smallAction("Réessayer", R.drawable.ic_retry) {
+                footer.addView(smallAction("Réessayer", R.drawable.ic_retry) {
                     DownloadQueue.retry(this, job.id)
                     lastQueueRevision = -1L
                     renderQueue()
+                }.apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(48)).apply {
+                        bottomMargin = dp(10)
+                    }
+                })
+            }
+            val actions = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            fun appendAction(label: String, icon: Int, onClick: () -> Unit) {
+                val action = smallAction(label, icon, onClick)
+                actions.addView(action, LinearLayout.LayoutParams(0, dp(48), 1f).apply {
+                    if (actions.childCount > 0) marginStart = dp(10)
                 })
             }
             if (job.status != DownloadQueue.RUNNING) {
-                actions.addView(smallAction("Supprimer", R.drawable.ic_trash) {
+                appendAction("Supprimer", R.drawable.ic_trash) {
                     if (DownloadQueue.remove(this, job.id)) {
                         lastQueueRevision = -1L
                         renderQueue()
                     }
-                })
+                }
             }
-            actions.addView(smallAction("Copier", R.drawable.ic_copy) {
+            appendAction("Copier", R.drawable.ic_copy) {
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE)
                     as ClipboardManager
                 clipboard.setPrimaryClip(ClipData.newPlainText("Lien All-Download", job.url))
                 Toast.makeText(this, "Lien copié.", Toast.LENGTH_SHORT).show()
-            })
-            // Three actions may exceed 320dp; scroll only the action strip, not the card.
-            val actionScroll = android.widget.HorizontalScrollView(this).apply {
-                isHorizontalScrollBarEnabled = false
-                isFillViewport = true
             }
-            actionScroll.addView(actions, android.widget.FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-            card.addView(actionScroll, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                topMargin = dp(8)
+            footer.addView(actions)
+            card.addView(View(this).apply {
+                setBackgroundColor(colors.border)
+            }, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(1)).apply {
+                topMargin = dp(15)
+            })
+            card.addView(footer, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(12)
             })
             queueList.addView(card)
         }
@@ -974,6 +1005,9 @@ class MainActivity : Activity() {
             R.id.optionsTitleIcon to R.drawable.ic_sliders,
             R.id.homeQueueTitleIcon to R.drawable.nav_queue,
             R.id.queuePageTitleIcon to R.drawable.nav_queue,
+            R.id.queueControlsTitleIcon to R.drawable.ic_play,
+            R.id.queueCleanupTitleIcon to R.drawable.ic_trash,
+            R.id.queueItemsTitleIcon to R.drawable.ic_playlist,
             R.id.filesPageTitleIcon to R.drawable.nav_folders,
             R.id.settingsPageTitleIcon to R.drawable.nav_settings,
             R.id.quickAccessTitleIcon to R.drawable.ic_playlist,

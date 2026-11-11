@@ -758,6 +758,114 @@ class AndroidSmokeTest {
         }
     }
 
+    @Test fun queueSectionsHaveDistinctCardsAndReadableActionSpacing() {
+        val activity = instrumentation.startActivitySync(
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        ) as MainActivity
+        instrumentation.waitForIdleSync()
+        try {
+            instrumentation.runOnMainSync {
+                activity.findViewById<Button>(R.id.navQueue).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            val density = activity.resources.displayMetrics.density
+            fun minimum(dp: Int) = (dp * density + .5f).toInt()
+            val parent = activity.findViewById<LinearLayout>(R.id.queuePage)
+            val sections = listOf(
+                R.id.queueHeaderCard, R.id.queueControlsCard, R.id.queueCleanupCard,
+                R.id.queueItemsHeader, R.id.queueList)
+                .map { activity.findViewById<View>(it) }
+            assertEquals("Les cinq blocs de File doivent rester dans leur ordre.",
+                sections, (0 until parent.childCount).map { parent.getChildAt(it) })
+            for ((index, section) in sections.withIndex()) {
+                assertTrue("Bloc de file sans largeur.", section.width > 0)
+                assertTrue("Bloc de file sorti de son conteneur.",
+                    section.left >= 0 && section.right <= parent.width)
+                if (index < sections.lastIndex) {
+                    val next = sections[index + 1]
+                    assertTrue("Blocs de File collés ou chevauchés : $index",
+                        next.top - section.bottom >= minimum(12))
+                }
+            }
+            for (id in listOf(R.id.queueHeaderCard, R.id.queueControlsCard,
+                    R.id.queueCleanupCard)) {
+                val card = activity.findViewById<View>(id)
+                assertNotNull("Le bloc doit être une carte distincte.", card.background)
+                assertTrue("Espace intérieur manquant : $id",
+                    card.paddingLeft >= minimum(14))
+            }
+            for (id in listOf(R.id.resumeQueueButton, R.id.pauseQueueButton,
+                    R.id.clearFinishedButton, R.id.clearFailedButton,
+                    R.id.clearWaitingButton)) {
+                val button = activity.findViewById<Button>(id)
+                assertTrue("Cible tactile trop basse : $id", button.height >= minimum(48))
+                assertTrue("Bouton masqué à droite : $id",
+                    button.left >= 0 && button.right <= (button.parent as View).width)
+            }
+            val run = activity.findViewById<Button>(R.id.resumeQueueButton)
+            val pause = activity.findViewById<Button>(R.id.pauseQueueButton)
+            assertTrue("Les contrôles se chevauchent.", run.right < pause.left)
+            val failed = activity.findViewById<Button>(R.id.clearFailedButton)
+            val waiting = activity.findViewById<Button>(R.id.clearWaitingButton)
+            assertTrue("Les actions de nettoyage se chevauchent.", failed.right < waiting.left)
+            for (id in listOf(R.id.queueControlsTitleIcon,
+                    R.id.queueCleanupTitleIcon, R.id.queueItemsTitleIcon)) {
+                val title = activity.findViewById<TextView>(id)
+                assertNotNull("Icône de section absente.", title.compoundDrawablesRelative[0])
+                assertTrue("Titre de section vide.", title.text.isNotBlank())
+            }
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
+
+    @Test fun queueItemButtonsFitWithoutHorizontalScrolling() {
+        val job = DownloadQueue.enqueue(context,
+            "https://example.org/queue-layout-${UUID.randomUUID()}.mp4", 0, 0)
+        DownloadQueue.update(context, job.id, status = DownloadQueue.ERROR,
+            progress = 43, message = "Échec réseau simulé pour vérifier la présentation.")
+        val activity = instrumentation.startActivitySync(
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        ) as MainActivity
+        instrumentation.waitForIdleSync()
+        try {
+            instrumentation.runOnMainSync {
+                activity.findViewById<Button>(R.id.navQueue).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            val queue = activity.findViewById<LinearLayout>(R.id.queueList)
+            val card = queue.getChildAt(0) as LinearLayout
+            assertNotNull("La carte de téléchargement doit être encadrée.", card.background)
+            // Header / optional message / progress / divider / action footer.
+            val footer = card.getChildAt(card.childCount - 1) as LinearLayout
+            assertEquals(LinearLayout.VERTICAL, footer.orientation)
+            assertEquals("La reprise est séparée de la suppression.", 2, footer.childCount)
+            val retry = footer.getChildAt(0) as Button
+            assertEquals("Réessayer", retry.text.toString())
+            val actions = footer.getChildAt(1) as LinearLayout
+            assertEquals(2, actions.childCount)
+            val delete = actions.getChildAt(0) as Button
+            val copy = actions.getChildAt(1) as Button
+            assertEquals("Supprimer", delete.text.toString())
+            assertEquals("Copier", copy.text.toString())
+            val density = activity.resources.displayMetrics.density
+            assertTrue(retry.height >= (48f * density).toInt())
+            assertTrue(delete.width > 0 && copy.width > 0)
+            assertTrue("Boutons d'une carte collés.", copy.left - delete.right >=
+                (8f * density).toInt())
+            assertTrue("Dernière action hors écran.", copy.right <= actions.width)
+            assertFalse("La file ne doit plus utiliser de barre d'actions horizontale.",
+                (0 until card.childCount).any {
+                    card.getChildAt(it) is android.widget.HorizontalScrollView
+                })
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+            DownloadQueue.remove(context, job.id)
+        }
+    }
+
     @Test fun queueCleanupNeverDeletesRunningTasks() {
         val base = "https://example.org/alldownload-queue-" + UUID.randomUUID()
         val waiting = DownloadQueue.enqueue(context, "$base-waiting.mp4", 0, 0)
