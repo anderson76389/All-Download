@@ -1464,10 +1464,15 @@ class AndroidSmokeTest {
                 android.os.SystemClock.sleep(250)
                 val bitmap = instrumentation.uiAutomation.takeScreenshot()
                 assertNotNull("Capture indisponible : $name", bitmap)
-                File(output, "$name.png").outputStream().use {
+                val file = File(output, "ui-audit-${activity.resources.configuration.fontScale}-$name.png")
+                file.outputStream().use {
                     bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
                 }
                 bitmap.recycle()
+                // AGP may uninstall the target APK after the suite; public exports
+                // remain available for the runner to collect as visual evidence.
+                MediaExporter.export(context, file, "AUTRES") { false }
+                file.delete()
             }
         } finally { instrumentation.runOnMainSync { activity.finish() } }
     }
@@ -1490,12 +1495,19 @@ class AndroidSmokeTest {
                 Triple("Segments à supprimer", "sponsor_remove", "none"),
                 Triple("Navigateur annoncé (User-Agent)", "user_agent", "android_firefox"))
             for ((title, key, expected) in choices) {
+                instrumentation.runOnMainSync {
+                    activity.findViewById<Button>(if (key == "user_agent")
+                        R.id.settingsTabNetwork else R.id.settingsTabDownload).performClick()
+                }
+                instrumentation.waitForIdleSync()
                 val spinner = all.filterIsInstance<Spinner>()
                     .single { it.contentDescription?.toString() == title }
                 instrumentation.runOnMainSync { spinner.setSelection(spinner.count - 1) }
                 instrumentation.waitForIdleSync()
                 assertEquals("Sélection non appliquée : $title", expected, prefs.getString(key, null))
             }
+            instrumentation.runOnMainSync { activity.findViewById<Button>(R.id.settingsTabNetwork).performClick() }
+            instrumentation.waitForIdleSync()
             for ((title, key, expected) in listOf(
                     Triple("Tentatives en cas d’erreur", "network_retries", 15),
                     Triple("Téléchargements de fragments simultanés", "fragments", 8),
