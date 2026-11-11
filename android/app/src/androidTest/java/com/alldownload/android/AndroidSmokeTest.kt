@@ -1392,13 +1392,15 @@ class AndroidSmokeTest {
             android.os.SystemClock.sleep(250)
             val paste = activity.findViewById<Button>(R.id.pasteUrlButton)
             val bounds = android.graphics.Rect()
+            val screenPoint = IntArray(2)
             instrumentation.runOnMainSync {
                 assertTrue("Coller doit être visible avant l'appui réel.", paste.getGlobalVisibleRect(bounds))
+                paste.getLocationOnScreen(screenPoint)
             }
             // A real touch activates the app window and exercises the production
             // Paste handler under Android's foreground clipboard restrictions.
-            val x = bounds.exactCenterX()
-            val y = bounds.exactCenterY()
+            val x = screenPoint[0] + paste.width / 2f
+            val y = screenPoint[1] + paste.height / 2f
             val now = android.os.SystemClock.uptimeMillis()
             for (action in listOf(android.view.MotionEvent.ACTION_DOWN, android.view.MotionEvent.ACTION_UP)) {
                 val event = android.view.MotionEvent.obtain(now, android.os.SystemClock.uptimeMillis(),
