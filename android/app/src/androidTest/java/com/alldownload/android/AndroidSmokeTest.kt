@@ -773,8 +773,8 @@ class AndroidSmokeTest {
             fun minimum(dp: Int) = (dp * density + .5f).toInt()
             val parent = activity.findViewById<LinearLayout>(R.id.queuePage)
             val sections = listOf(
-                R.id.queueHeaderCard, R.id.queueControlsCard, R.id.queueCleanupCard,
-                R.id.queueItemsHeader, R.id.queueList)
+                R.id.queueHeaderCard, R.id.queueControlsCard, R.id.queueItemsHeader,
+                R.id.queueList, R.id.queueCleanupCard)
                 .map { activity.findViewById<View>(it) }
             assertEquals("Les cinq blocs de File doivent rester dans leur ordre.",
                 sections, (0 until parent.childCount).map { parent.getChildAt(it) })
@@ -795,6 +795,18 @@ class AndroidSmokeTest {
                 assertTrue("Espace intérieur manquant : $id",
                     card.paddingLeft >= minimum(14))
             }
+            val cleanup = activity.findViewById<LinearLayout>(R.id.queueCleanupActions)
+            assertEquals("Le nettoyage ne doit pas encombrer la liste au départ.",
+                View.GONE, cleanup.visibility)
+            val toggle = activity.findViewById<Button>(R.id.queueCleanupToggle)
+            assertTrue("Le bouton de nettoyage doit être accessible.",
+                toggle.isClickable && toggle.height >= minimum(48))
+            instrumentation.runOnMainSync { toggle.performClick() }
+            instrumentation.waitForIdleSync()
+            assertEquals("Les outils doivent s'ouvrir sur demande.",
+                View.VISIBLE, cleanup.visibility)
+            assertTrue("Le bouton d'ouverture doit devenir un bouton de fermeture.",
+                toggle.text.toString().contains("Masquer"))
             for (id in listOf(R.id.resumeQueueButton, R.id.pauseQueueButton,
                     R.id.clearFinishedButton, R.id.clearFailedButton,
                     R.id.clearWaitingButton)) {
@@ -809,6 +821,9 @@ class AndroidSmokeTest {
             val failed = activity.findViewById<Button>(R.id.clearFailedButton)
             val waiting = activity.findViewById<Button>(R.id.clearWaitingButton)
             assertTrue("Les actions de nettoyage se chevauchent.", failed.right < waiting.left)
+            instrumentation.runOnMainSync { toggle.performClick() }
+            instrumentation.waitForIdleSync()
+            assertEquals(View.GONE, cleanup.visibility)
             for (id in listOf(R.id.queueControlsTitleIcon,
                     R.id.queueCleanupTitleIcon, R.id.queueItemsTitleIcon)) {
                 val title = activity.findViewById<TextView>(id)
