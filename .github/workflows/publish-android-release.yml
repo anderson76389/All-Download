@@ -151,7 +151,11 @@ jobs:
 
           - Android 7+ ; architecture ARM 32/64 bits et x86 32/64 bits.
           - Mise à jour depuis l’application : téléchargement APK privé avec progression, contrôle SHA-256 et vérification du paquet, puis ouverture de l’installateur Android sans navigateur.
-          - Interface Windows adaptée à Android : logo et nom All-Download verrouillés dans un en-tête épinglé sur tous les écrans, barre d'URL, file centrale, formats, commandes et progression conservés.
+          - Identité All-Download conservée dans le lanceur, le splash et les mises à jour ; aucun bandeau de marque permanent dans les pages.
+          - Écrans compacts : actions réorganisées en colonne si nécessaire, boutons de 52 dp minimum, marges régulières et libellés longs lisibles.
+          - File : ajout immédiatement visible et parcours Copier → Coller, Réessayer et Supprimer contrôlés sur téléphone et tablette.
+          - Réglages : contrôle des préférences enregistrées et limite cohérente des champs avancés.
+          - YouTube : vérification de disponibilité des formats avant sélection, avec conservation de la qualité demandée.
           - Barre de contrôle Liquid Glass : quatre icônes vectorielles, capsule violette translucide sur téléphone et navigation latérale sur tablette ou pliable ouvert.
           - Navigation sécurisée : zones tactiles lisibles, respect des barres système Android, adaptation automatique au clavier, sans capture d'écran ni flou GPU coûteux.
           - Logo Android original violet dédié (média, téléchargement et AD) : icône, splash et fenêtre de mise à jour, source conservée dans android/branding/.
@@ -175,7 +179,7 @@ jobs:
           - Explorateur intégré des sept dossiers et ouverture des médias par MediaStore/FileProvider.
           - Téléchargements vidéo MP4/WebM/HLS, clips Twitch, audio MP3/M4A/FLAC, GIF, playlists et chaînes.
           - Moteur yt-dlp et FFmpeg intégrés, mise à jour yt-dlp facultative pour les réseaux sociaux.
-          - Tests d'émulateur Android 9, Android 14 et tablette Android 14 : affichage, 3 onglets de réglages, file longue, suppression des temporaires, export, popup et téléchargements.
+          - Validation automatique sur Android 9, 14, 15 et tablette Android 14, avec contrôles de placement supplémentaires à 140 % de taille de texte. Les tests réseau ignorés pour restriction externe ne comptent pas comme des téléchargements réussis.
           - Tests sociaux Android 14 : Reels Instagram, X, vidéos Pinterest, TikTok, Reels Facebook, Reddit HLS direct, Bluesky et Dailymotion validés sur des liens publics.
           - Reddit (publication classique) et certaines vidéos Facebook exigent un accès ou un extracteur compatible ; Vimeo non confirmé. YouTube anti-bot, VOD Twitch protégées et DRM non garantis.
           - Import facultatif de cookies Netscape de votre propre compte autorisé ; stockage privé local, effacement possible dans l'application.
