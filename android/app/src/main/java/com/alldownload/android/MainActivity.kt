@@ -436,7 +436,7 @@ class MainActivity : Activity() {
                 "Autorise le stockage puis relance le téléchargement.", Toast.LENGTH_LONG).show()
             return
         }
-        if (Build.VERSION.SDK_INT >= 33 &&
+        if (action == DownloadService.ACTION_START && Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
                 PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 103)
