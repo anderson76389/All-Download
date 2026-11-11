@@ -1389,6 +1389,24 @@ class AndroidSmokeTest {
             instrumentation.runOnMainSync { activity.findViewById<Button>(R.id.navHome).performClick() }
             instrumentation.waitForIdleSync()
             // Let the page transition finish before measuring the touch target.
+            // Copy opens a SystemUI clipboard overlay on Android 13+. A real
+            // user returns to the input before pasting; perform that foreground
+            // touch before requiring clipboard-read focus.
+            val inputTarget = activity.findViewById<EditText>(R.id.urlInput)
+            val inputPoint = IntArray(2)
+            instrumentation.runOnMainSync { inputTarget.getLocationOnScreen(inputPoint) }
+            val focusTouchTime = android.os.SystemClock.uptimeMillis()
+            for (action in listOf(android.view.MotionEvent.ACTION_DOWN, android.view.MotionEvent.ACTION_UP)) {
+                val event = android.view.MotionEvent.obtain(focusTouchTime,
+                    android.os.SystemClock.uptimeMillis(), action,
+                    inputPoint[0] + inputTarget.width / 2f,
+                    inputPoint[1] + inputTarget.height / 2f, 0)
+                event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+                assertTrue(instrumentation.uiAutomation.injectInputEvent(event, true))
+                event.recycle()
+                if (action == android.view.MotionEvent.ACTION_DOWN)
+                    android.os.SystemClock.sleep(80)
+            }
             val focusDeadline = android.os.SystemClock.elapsedRealtime() + 5000
             var focused = false
             while (!focused && android.os.SystemClock.elapsedRealtime() < focusDeadline) {
