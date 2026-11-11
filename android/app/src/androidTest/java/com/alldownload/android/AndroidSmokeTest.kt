@@ -1315,4 +1315,153 @@ class AndroidSmokeTest {
         }
         return null
     }
+    @Test fun compactActionRowsWrapWithoutClippingAndKeepTheirActions() {
+        val job = DownloadQueue.enqueue(context,
+            "https://example.org/compact-${UUID.randomUUID()}.mp4", 0, 0)
+        DownloadQueue.update(context, job.id, DownloadQueue.ERROR)
+        val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)) as MainActivity
+        instrumentation.waitForIdleSync()
+        try {
+            val density = activity.resources.displayMetrics.density
+            fun dp(n: Int) = (n * density + .5f).toInt()
+            instrumentation.runOnMainSync {
+                val input = activity.findViewById<EditText>(R.id.urlInput)
+                input.setText("not a URL")
+                activity.findViewById<Button>(R.id.startButton).performClick()
+                assertNotNull("Télécharger doit valider le lien.", input.error)
+                input.error = null
+                activity.findViewById<Button>(R.id.queueButton).performClick()
+                assertNotNull("Ajouter doit aussi valider le lien.", input.error)
+            }
+            val row = activity.findViewById<Button>(R.id.startButton).parent as LinearLayout
+            instrumentation.runOnMainSync {
+                row.layoutParams = row.layoutParams.apply { width = dp(240) }
+                row.requestLayout()
+            }
+            instrumentation.waitForIdleSync()
+            // Wait for the layout-listener reflow as well as the resulting traversal.
+            instrumentation.runOnMainSync { row.requestLayout() }
+            instrumentation.waitForIdleSync()
+            assertEquals(LinearLayout.VERTICAL, row.orientation)
+            val first = row.getChildAt(0) as Button
+            val second = row.getChildAt(1) as Button
+            assertTrue("Actions trop proches.", second.top - first.bottom >= dp(10))
+            for (button in listOf(first, second)) {
+                assertTrue(button.height >= dp(48))
+                assertTrue(button.hasOnClickListeners())
+                assertTrue(button.right <= row.width)
+                for (line in 0 until button.layout.lineCount)
+                    assertEquals("Action tronquée : ${button.text}", 0,
+                        button.layout.getEllipsisCount(line))
+            }
+            instrumentation.runOnMainSync {
+                activity.findViewById<Button>(R.id.navQueue).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            val card = activity.findViewById<LinearLayout>(R.id.queueList).getChildAt(0) as LinearLayout
+            val footer = card.getChildAt(card.childCount - 1) as LinearLayout
+            val actions = footer.getChildAt(1) as LinearLayout
+            instrumentation.runOnMainSync {
+                (actions.getChildAt(1) as Button).performClick()
+                val clipboard = activity.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                    as android.content.ClipboardManager
+                assertEquals(job.url, clipboard.primaryClip?.getItemAt(0)?.text.toString())
+                (footer.getChildAt(0) as Button).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            assertEquals("Réessayer doit remettre la tâche en attente.", DownloadQueue.WAITING,
+                DownloadQueue.snapshot(context).first { it.id == job.id }.status)
+            val updated = activity.findViewById<LinearLayout>(R.id.queueList).getChildAt(0) as LinearLayout
+            val newFooter = updated.getChildAt(updated.childCount - 1) as LinearLayout
+            val newActions = newFooter.getChildAt(0) as LinearLayout
+            instrumentation.runOnMainSync { (newActions.getChildAt(0) as Button).performClick() }
+            assertFalse("Supprimer doit retirer la bonne tâche.",
+                DownloadQueue.snapshot(context).any { it.id == job.id })
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+            DownloadQueue.remove(context, job.id)
+        }
+    }
+
+    @Test fun settingsSwitchRowsPersistEachValueAndCanBeRestored() {
+        val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)) as MainActivity
+        val prefs = DownloadOptions.get(context)
+        val keys = mapOf(
+            "Remuxer dans le conteneur choisi" to "remux_video",
+            "Ajouter titre et artiste" to "embed_metadata",
+            "Enregistrer la miniature" to "write_thumbnail",
+            "Intégrer la couverture" to "embed_thumbnail",
+            "Enregistrer les sous-titres" to "write_subtitles",
+            "Sous-titres automatiques" to "auto_subtitles",
+            "Activer SponsorBlock" to "sponsor_enable",
+            "Marquer les sections en chapitres" to "sponsor_mark",
+            "Découpe précise" to "sponsor_exact",
+            "Utiliser un proxy" to "proxy_enabled",
+            "Notification de fin de téléchargement" to "notify_finished",
+            "Réduire les animations" to "reduce_motion")
+        val saved = keys.values.associateWith { key ->
+            if (prefs.contains(key)) prefs.getBoolean(key, false) else null
+        }
+        try {
+            instrumentation.runOnMainSync {
+                activity.findViewById<Button>(R.id.navSettings).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            fun controls(view: View): List<android.widget.Switch> = when (view) {
+                is android.widget.Switch -> listOf(view)
+                is android.view.ViewGroup -> (0 until view.childCount)
+                    .flatMap { controls(view.getChildAt(it)) }
+                else -> emptyList()
+            }
+            val switches = controls(activity.findViewById(R.id.settingsPage))
+            for ((caption, key) in keys) {
+                val control = switches.single { it.contentDescription.toString() == caption }
+                val before = control.isChecked
+                instrumentation.runOnMainSync { (control.parent as View).performClick() }
+                assertEquals("Le clic de ligne doit changer $caption", !before, control.isChecked)
+                assertEquals("Le réglage $key doit être enregistré.", !before,
+                    prefs.getBoolean(key, before))
+                instrumentation.runOnMainSync { control.performClick() }
+                assertEquals("Le clic direct doit restaurer $caption", before,
+                    prefs.getBoolean(key, !before))
+            }
+        } finally {
+            val editor = prefs.edit()
+            saved.forEach { (key, value) ->
+                if (value == null) editor.remove(key) else editor.putBoolean(key, value)
+            }
+            editor.commit()
+            instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
+
+    @Test fun captureMobilePagesForVisualReview() {
+        val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)) as MainActivity
+        val output = File(context.getExternalFilesDir(null), "ui-audit").apply { mkdirs() }
+        try {
+            val pages = listOf(R.id.navHome to "home", R.id.navQueue to "queue",
+                R.id.navFiles to "folders", R.id.navSettings to "settings-media",
+                R.id.settingsTabApplication to "settings-app", R.id.settingsTabNetwork to "settings-network")
+            for ((id, name) in pages) {
+                instrumentation.runOnMainSync { activity.findViewById<Button>(id).performClick() }
+                instrumentation.waitForIdleSync()
+                if (name == "settings-media") {
+                    instrumentation.runOnMainSync { activity.findViewById<Button>(R.id.settingsTabDownload).performClick() }
+                    instrumentation.waitForIdleSync()
+                }
+                // Finish the brief page transition before taking evidence.
+                android.os.SystemClock.sleep(250)
+                val bitmap = instrumentation.uiAutomation.takeScreenshot()
+                assertNotNull("Capture indisponible : $name", bitmap)
+                File(output, "$name.png").outputStream().use {
+                    bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+                }
+                bitmap.recycle()
+            }
+        } finally { instrumentation.runOnMainSync { activity.finish() } }
+    }
+
 }

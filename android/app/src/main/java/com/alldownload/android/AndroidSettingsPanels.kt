@@ -109,12 +109,12 @@ internal object AndroidSettingsPanels {
         fun decorateLegacyCard(id: Int, iconId: Int): LinearLayout {
             val panel = activity.findViewById<LinearLayout>(id)
             (panel.parent as? ViewGroup)?.removeView(panel)
-            panel.setPadding(px(15), px(13), px(15), px(16))
+            panel.setPadding(px(16), px(16), px(16), px(16))
             panel.background = surface(panelColor, 17)
             panel.elevation = 0f
             panel.layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = px(10) }
+                ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = px(16) }
             decorateHeading(panel.getChildAt(0) as TextView, iconId)
             (panel.getChildAt(1) as? TextView)?.apply {
                 textSize = 12f
@@ -240,11 +240,11 @@ internal object AndroidSettingsPanels {
                  group: LinearLayout = downloadPanel): LinearLayout {
             val panel = LinearLayout(activity).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(px(15), px(13), px(15), px(16))
+                setPadding(px(16), px(16), px(16), px(16))
                 background = surface(panelColor, 17)
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = px(10) }
+                    ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = px(16) }
             }
             val sectionIcon = when (title) {
                 "Téléchargements" -> R.drawable.ic_download
@@ -354,12 +354,9 @@ internal object AndroidSettingsPanels {
             val captions = LinearLayout(activity).apply {
                 orientation = LinearLayout.VERTICAL
                 addView(label(text, 14f, true).apply {
-                    maxLines = 2
-                    ellipsize = android.text.TextUtils.TruncateAt.END
                 })
                 addView(label(detail, 12f, tint = muted).apply {
-                    maxLines = 4
-                    setPadding(0, px(3), 0, 0)
+                    setPadding(0, px(4), 0, 0)
                 })
             }
             row.addView(captions, LinearLayout.LayoutParams(0,
@@ -398,6 +395,7 @@ internal object AndroidSettingsPanels {
                 textSize = 14f
                 setTextColor(color)
                 setHintTextColor(muted)
+                filters = arrayOf(android.text.InputFilter.LengthFilter(500))
                 this.hint = hint
                 setText(prefs.getString(key, "").orEmpty())
                 setPadding(px(12), 0, px(12), 0)
@@ -424,8 +422,8 @@ internal object AndroidSettingsPanels {
             val b = Button(activity).apply {
                 text = title
                 textSize = 13.5f
-                setSingleLine(true)
-                ellipsize = android.text.TextUtils.TruncateAt.END
+                setSingleLine(false)
+                maxLines = 2
                 contentDescription = title
                 isAllCaps = false
                 setTextColor(textColor)
@@ -436,7 +434,7 @@ internal object AndroidSettingsPanels {
                 setCompoundDrawablesRelative(image, null, null, null)
                 compoundDrawablePadding = px(10)
                 gravity = Gravity.CENTER_VERTICAL or Gravity.START
-                setPadding(px(15), 0, px(12), 0)
+                setPadding(px(15), px(10), px(12), px(10))
                 background = if (primary)
                     GradientDrawable().apply {
                         setColor(purple)
@@ -447,7 +445,7 @@ internal object AndroidSettingsPanels {
                 setOnClickListener { onClick() }
             }
             panel.addView(b, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, px(52)).apply { topMargin = px(9) })
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = px(12) })
         }
 
         val files = card("Téléchargements", "Formats vidéo et organisation des fichiers.")

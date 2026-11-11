@@ -1,4 +1,12 @@
-# All-Download Android — bêta 0.6.14
+# All-Download Android — bêta 0.6.15
+
+## Finitions mobile et actions vérifiées — 0.6.15
+
+- Les paires de boutons passent sur deux lignes lorsque leur conteneur est étroit ou que le texte système est agrandi. Les mêmes actions restent accessibles, avec des cibles d’au moins 52 dp.
+- Les cartes d’accueil et de réglages partagent des marges intérieures de 16 dp. Les intitulés de nettoyage et les boutons des réglages peuvent revenir sur deux lignes.
+- Les descriptions des interrupteurs restent lisibles et les champs avancés sont limités à 500 caractères, comme le moteur, pour éviter d’afficher une valeur trop longue qui ne serait pas enregistrée.
+- Tests instrumentés des actions Télécharger/Ajouter (validation), Copier/Réessayer/Supprimer, des douze interrupteurs et de leurs préférences. Captures des six pages et catégories de réglages sur les émulateurs pour contrôle visuel.
+
 
 ## File d'attente : hiérarchie simplifiée — 0.6.14
 

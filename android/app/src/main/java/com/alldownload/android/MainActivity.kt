@@ -345,6 +345,7 @@ class MainActivity : Activity() {
         attachUpdateBanner()
         arrangeOptionPills()
         arrangeQuickAccess()
+        configureResponsiveActions()
         styleQuickModes()
     }
 
@@ -691,6 +692,7 @@ class MainActivity : Activity() {
                 clipboard.setPrimaryClip(ClipData.newPlainText("Lien All-Download", job.url))
                 Toast.makeText(this, "Lien copié.", Toast.LENGTH_SHORT).show()
             }
+            adaptActionRow(actions)
             footer.addView(actions)
             card.addView(View(this).apply {
                 setBackgroundColor(colors.border)
@@ -1241,6 +1243,57 @@ class MainActivity : Activity() {
     }
 
     /** Compact Windows option pair on tablets/foldables; stacked, readable on phones. */
+    /** Reflow the original buttons using their available width, including on foldables.
+     * Keep the same instances and listeners; enlarged system text needs taller rows.
+     */
+    private fun adaptActionRow(row: LinearLayout) {
+        fun reflow() {
+            if (row.width <= 0) return
+            val stacked = row.width - row.paddingLeft - row.paddingRight < dp(300) ||
+                resources.configuration.fontScale > 1.2f
+            val height = dp((52 * resources.configuration.fontScale.coerceAtLeast(1f))
+                .toInt().coerceAtMost(104))
+            val signature = "actions:$stacked:$height"
+            if (row.tag == signature) return
+            row.tag = signature
+            row.orientation = if (stacked) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+            for (index in 0 until row.childCount) {
+                val button = row.getChildAt(index) as? Button ?: continue
+                button.setSingleLine(false)
+                button.maxLines = 2
+                button.minWidth = 0
+                button.minimumWidth = 0
+                button.layoutParams = LinearLayout.LayoutParams(
+                    if (stacked) ViewGroup.LayoutParams.MATCH_PARENT else 0,
+                    height, if (stacked) 0f else 1f).apply {
+                    if (index > 0) {
+                        if (stacked) topMargin = dp(12) else marginStart = dp(12)
+                    }
+                }
+            }
+        }
+        row.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> reflow() }
+        row.post { reflow() }
+    }
+
+    private fun configureResponsiveActions() {
+        listOf(R.id.startButton, R.id.resumeQueueButton, R.id.clearFailedButton)
+            .forEach { id -> adaptActionRow(findViewById<Button>(id).parent as LinearLayout) }
+        // These labels can span two lines on a compact phone or with enlarged text.
+        listOf(R.id.queueCleanupToggle, R.id.clearFinishedButton,
+            R.id.openFullQueueButton).forEach { id ->
+            findViewById<Button>(id).apply {
+                setSingleLine(false)
+                maxLines = 2
+                minimumHeight = dp(52)
+                layoutParams = layoutParams.apply {
+                    height = ViewGroup.LayoutParams.WRAP_CONTENT
+                }
+                setPadding(paddingLeft, dp(10), paddingRight, dp(10))
+            }
+        }
+    }
+
     private fun arrangeOptionPills() {
         val options = findViewById<LinearLayout>(R.id.downloadOptions)
         val mode = findViewById<LinearLayout>(R.id.downloadModeGroup)
