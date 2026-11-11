@@ -1388,18 +1388,24 @@ class AndroidSmokeTest {
             instrumentation.runOnMainSync { (actions.getChildAt(1) as Button).performClick() }
             instrumentation.runOnMainSync { activity.findViewById<Button>(R.id.navHome).performClick() }
             instrumentation.waitForIdleSync()
+            // Let the page transition finish before measuring the touch target.
+            android.os.SystemClock.sleep(250)
             val paste = activity.findViewById<Button>(R.id.pasteUrlButton)
-            val point = IntArray(2)
-            instrumentation.runOnMainSync { paste.getLocationOnScreen(point) }
+            val bounds = android.graphics.Rect()
+            instrumentation.runOnMainSync {
+                assertTrue("Coller doit être visible avant l'appui réel.", paste.getGlobalVisibleRect(bounds))
+            }
             // A real touch activates the app window and exercises the production
             // Paste handler under Android's foreground clipboard restrictions.
-            val x = point[0] + paste.width / 2f
-            val y = point[1] + paste.height / 2f
+            val x = bounds.exactCenterX()
+            val y = bounds.exactCenterY()
             val now = android.os.SystemClock.uptimeMillis()
             for (action in listOf(android.view.MotionEvent.ACTION_DOWN, android.view.MotionEvent.ACTION_UP)) {
                 val event = android.view.MotionEvent.obtain(now, android.os.SystemClock.uptimeMillis(),
                     action, x, y, 0)
-                instrumentation.sendPointerSync(event)
+                event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+                assertTrue("L'appui tactile doit être injecté par Android.",
+                    instrumentation.uiAutomation.injectInputEvent(event, true))
                 event.recycle()
             }
             instrumentation.waitForIdleSync()
