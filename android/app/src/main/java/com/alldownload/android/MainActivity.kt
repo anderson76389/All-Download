@@ -106,6 +106,7 @@ class MainActivity : Activity() {
     private var lastHomeQueueRevision = -1L
     private lateinit var homeQueuePreview: LinearLayout
     private var queueVisible = 24
+    private var queueCleanupExpanded = false
     private var lastDrawnState: DownloadService.UiState? = null
     private val fileExecutor = Executors.newSingleThreadExecutor()
     private var fileRequestId = 0
@@ -253,6 +254,13 @@ class MainActivity : Activity() {
             startService(Intent(this, DownloadService::class.java)
                 .setAction(DownloadService.ACTION_RUN_QUEUE))
         }
+        queueCleanupExpanded =
+            savedInstanceState?.getBoolean("queueCleanupExpanded", false) ?: false
+        findViewById<Button>(R.id.queueCleanupToggle).setOnClickListener {
+            queueCleanupExpanded = !queueCleanupExpanded
+            updateQueueCleanupVisibility()
+        }
+        updateQueueCleanupVisibility()
         clearFinishedButton.setOnClickListener {
             DownloadQueue.clearFinished(this)
             lastQueueRevision = -1L
@@ -504,6 +512,17 @@ class MainActivity : Activity() {
         }
     }
 
+    /** Keep destructive/bulk queue actions available without crowding the main list. */
+    private fun updateQueueCleanupVisibility() {
+        findViewById<View>(R.id.queueCleanupActions).visibility =
+            if (queueCleanupExpanded) View.VISIBLE else View.GONE
+        findViewById<Button>(R.id.queueCleanupToggle).apply {
+            text = if (queueCleanupExpanded) "Masquer les options de nettoyage"
+                else "Afficher les options de nettoyage"
+            contentDescription = text
+        }
+    }
+
     private fun renderQueue() {
         val jobs = DownloadQueue.snapshot(this)
         val revision = DownloadQueue.revision()
@@ -548,7 +567,7 @@ class MainActivity : Activity() {
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                        bottomMargin = dp(14)
+                        bottomMargin = dp(20)
                     }
             }
             val label = when (job.status) {
@@ -1118,6 +1137,7 @@ class MainActivity : Activity() {
             Triple(R.id.pauseQueueButton, R.drawable.ic_pause, foreground),
             Triple(R.id.cancelButton, R.drawable.ic_stop, foreground),
             Triple(R.id.openFullQueueButton, R.drawable.nav_queue, foreground),
+            Triple(R.id.queueCleanupToggle, R.drawable.ic_sliders, foreground),
             Triple(R.id.clearFinishedButton, R.drawable.ic_done, foreground),
             Triple(R.id.clearFailedButton, R.drawable.ic_error, foreground),
             Triple(R.id.clearWaitingButton, R.drawable.ic_waiting, foreground),
@@ -1130,7 +1150,8 @@ class MainActivity : Activity() {
             // than an icon stuck at the far left of a separately centred text.
             if (id == R.id.resumeQueueButton || id == R.id.pauseQueueButton ||
                 id == R.id.clearFinishedButton || id == R.id.clearFailedButton ||
-                id == R.id.clearWaitingButton) {
+                id == R.id.clearWaitingButton ||
+                id == R.id.queueCleanupToggle) {
                 button.gravity = Gravity.CENTER_VERTICAL or Gravity.START
                 button.compoundDrawablePadding = dp(9)
                 button.setPadding(dp(15), 0, dp(7), 0)
@@ -1468,6 +1489,7 @@ class MainActivity : Activity() {
         outState.putInt("mode", modeSpinner.selectedItemPosition)
         outState.putInt("quality", qualitySpinner.selectedItemPosition)
         outState.putInt("tab", selectedTab)
+        outState.putBoolean("queueCleanupExpanded", queueCleanupExpanded)
         super.onSaveInstanceState(outState)
     }
 

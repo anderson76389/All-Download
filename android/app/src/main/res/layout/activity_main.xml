@@ -380,7 +380,7 @@
             android:id="@+id/queuePage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="18dp"
             android:orientation="vertical"
             android:visibility="gone">
 
@@ -389,7 +389,7 @@
                 android:id="@+id/queueHeaderCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="14dp"
+                android:layout_marginBottom="24dp"
                 android:background="@drawable/panel_background"
                 android:orientation="vertical"
                 android:padding="17dp"
@@ -418,7 +418,7 @@
                 android:id="@+id/queueControlsCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="14dp"
+                android:layout_marginBottom="26dp"
                 android:background="@drawable/panel_background"
                 android:orientation="vertical"
                 android:padding="15dp"
@@ -431,18 +431,10 @@
                     android:textColor="#F3F4F6"
                     android:textSize="16sp"
                     android:textStyle="bold"/>
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:tag="muted"
-                    android:text="Reprendre ou mettre en pause les transferts."
-                    android:textColor="#A1A1AA"
-                    android:textSize="12sp"/>
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="15dp"
+                    android:layout_marginTop="16dp"
                     android:orientation="horizontal">
                     <Button
                         android:id="@+id/resumeQueueButton"
@@ -466,12 +458,36 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Cleaning actions are never visually mixed with start/pause. -->
+            <!-- Items are a distinct section; each job gets its own spaced card. -->
+            <LinearLayout
+                android:id="@+id/queueItemsHeader"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="18dp"
+                android:orientation="vertical"
+                android:paddingStart="3dp"
+                android:paddingEnd="3dp">
+                <TextView
+                    android:id="@+id/queueItemsTitleIcon"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Téléchargements"
+                    android:textColor="#F3F4F6"
+                    android:textSize="16sp"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+            <LinearLayout
+                android:id="@+id/queueList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"/>
+            <!-- Infrequently used bulk cleanup goes after the list, collapsed by default. -->
             <LinearLayout
                 android:id="@+id/queueCleanupCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="20dp"
+                android:layout_marginTop="26dp"
+                android:layout_marginBottom="18dp"
                 android:background="@drawable/panel_background"
                 android:orientation="vertical"
                 android:padding="15dp"
@@ -480,7 +496,7 @@
                     android:id="@+id/queueCleanupTitleIcon"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Nettoyer la file"
+                    android:text="Gestion de la file"
                     android:textColor="#F3F4F6"
                     android:textSize="16sp"
                     android:textStyle="bold"/>
@@ -489,9 +505,25 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:tag="muted"
-                    android:text="Retirer des éléments de la liste, sans effacer les fichiers."
+                    android:text="Nettoyez la liste seulement lorsque c’est nécessaire."
                     android:textColor="#A1A1AA"
                     android:textSize="12sp"/>
+                <Button
+                    android:id="@+id/queueCleanupToggle"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="15dp"
+                    android:text="Afficher les options de nettoyage"
+                    android:contentDescription="Afficher les options de nettoyage"
+                    android:textAllCaps="false"
+                    android:textSize="13sp"/>
+                <LinearLayout
+                    android:id="@+id/queueCleanupActions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
                 <Button
                     android:id="@+id/clearFinishedButton"
                     android:layout_width="match_parent"
@@ -524,39 +556,9 @@
                         android:contentDescription="Retirer les téléchargements en attente de la file"
                         android:textAllCaps="false"/>
                 </LinearLayout>
+                </LinearLayout>
             </LinearLayout>
 
-            <!-- Items are a distinct section; each job gets its own spaced card. -->
-            <LinearLayout
-                android:id="@+id/queueItemsHeader"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                android:orientation="vertical"
-                android:paddingStart="3dp"
-                android:paddingEnd="3dp">
-                <TextView
-                    android:id="@+id/queueItemsTitleIcon"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Téléchargements"
-                    android:textColor="#F3F4F6"
-                    android:textSize="16sp"
-                    android:textStyle="bold"/>
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="5dp"
-                    android:tag="muted"
-                    android:text="Un téléchargement par carte."
-                    android:textColor="#A1A1AA"
-                    android:textSize="12sp"/>
-            </LinearLayout>
-            <LinearLayout
-                android:id="@+id/queueList"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"/>
         </LinearLayout>
 
         <LinearLayout

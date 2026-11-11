@@ -1,4 +1,15 @@
-# All-Download Android — bêta 0.6.13
+# All-Download Android — bêta 0.6.14
+
+## File d'attente : hiérarchie simplifiée — 0.6.14
+
+- Les téléchargements remontent immédiatement après **Reprendre / Pause** ; les options de nettoyage sont déplacées en bas, pour que les commandes de suppression ne parasitent plus la liste.
+- Nettoyage **replié par défaut** : un bouton de 52 dp permet d'afficher ou de masquer les actions Effacer les terminés / Erreurs / En attente. L'état est conservé lors d'une rotation.
+- Marges verticales plus nettes entre le résumé (24 dp), les commandes (26 dp), le titre des téléchargements (18 dp) et le nettoyage (26 dp), cartes de tâches espacées de 20 dp.
+- Suppression des sous-titres redondants sur la file pour une interface plus sobre ; noms et pictogrammes cohérents avec Android et la palette claire/sombre/OLED.
+- Les actions réelles de Pause, Reprendre, Copier, Réessayer, Supprimer et nettoyage sont inchangées ; aucune modification Windows ni yt-dlp/FFmpeg.
+- Tests Android instrumentés pour vérifier l'ordre des sections, l'ouverture/fermeture du nettoyage et les cibles tactiles.
+
+---
 
 ## File d'attente : sections séparées et boutons lisibles — 0.6.13
 
