@@ -331,7 +331,15 @@ class AndroidSmokeTest {
                 val button = activity.findViewById<Button>(id)
                 assertNotNull("Missing vector icon for $id", button.compoundDrawablesRelative[0])
                 assertTrue("Empty button label $id", button.text.isNotBlank())
-                assertEquals("Multiline / clipped button $id", 1, button.maxLines)
+                assertTrue("Action sans limite de lignes cohérente : $id", button.maxLines in 1..2)
+                if (button.isShown) {
+                    val layout = button.layout
+                    assertTrue("Texte coupé verticalement : $id",
+                        layout.height <= button.height - button.compoundPaddingTop -
+                            button.compoundPaddingBottom)
+                    for (line in 0 until layout.lineCount)
+                        assertEquals("Libellé tronqué : $id", 0, layout.getEllipsisCount(line))
+                }
                 assertFalse("Legacy text glyph used as icon for $id",
                     button.text.any { it in "▶♫↓＋Ⅱ🎬🎵📁" })
                 // Hidden pages are intentionally GONE and are not measured until opened.
@@ -1417,7 +1425,7 @@ class AndroidSmokeTest {
             }
             val switches = controls(activity.findViewById(R.id.settingsPage))
             for ((caption, key) in keys) {
-                val control = switches.single { it.contentDescription.toString() == caption }
+                val control = switches.single { it.contentDescription?.toString() == caption }
                 val before = control.isChecked
                 instrumentation.runOnMainSync { (control.parent as View).performClick() }
                 assertEquals("Le clic de ligne doit changer $caption", !before, control.isChecked)
@@ -1483,7 +1491,7 @@ class AndroidSmokeTest {
                 Triple("Navigateur annoncé (User-Agent)", "user_agent", "android_firefox"))
             for ((title, key, expected) in choices) {
                 val spinner = all.filterIsInstance<Spinner>()
-                    .single { it.contentDescription.toString() == title }
+                    .single { it.contentDescription?.toString() == title }
                 instrumentation.runOnMainSync { spinner.setSelection(spinner.count - 1) }
                 instrumentation.waitForIdleSync()
                 assertEquals("Sélection non appliquée : $title", expected, prefs.getString(key, null))
@@ -1493,7 +1501,7 @@ class AndroidSmokeTest {
                     Triple("Téléchargements de fragments simultanés", "fragments", 8),
                     Triple("Délai réseau (secondes)", "network_timeout", 60))) {
                 val spinner = all.filterIsInstance<Spinner>()
-                    .single { it.contentDescription.toString() == title }
+                    .single { it.contentDescription?.toString() == title }
                 instrumentation.runOnMainSync { spinner.setSelection(spinner.count - 1) }
                 instrumentation.waitForIdleSync()
                 assertEquals(expected, prefs.getInt(key, -1))
@@ -1501,7 +1509,7 @@ class AndroidSmokeTest {
             for ((title, key) in listOf("Adresse du proxy" to "proxy_url",
                     "Arguments d'extracteur avancés" to "extractor_args")) {
                 val input = all.filterIsInstance<EditText>()
-                    .single { it.contentDescription.toString() == title }
+                    .single { it.contentDescription?.toString() == title }
                 instrumentation.runOnMainSync { input.setText("x".repeat(600)) }
                 assertEquals("Le champ doit respecter la limite du moteur.", 500, input.length())
                 assertEquals("Valeur affichée différente de la valeur sauvée.", input.text.toString(),
