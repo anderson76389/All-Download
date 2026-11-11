@@ -306,6 +306,9 @@ class DownloadService : Service() {
 
     private fun buildRequest(url: String, mode: Int, quality: Int, work: File): YoutubeDLRequest {
         val request = YoutubeDLRequest(url)
+        // YouTube may advertise media URLs that return 403. Probe candidates
+        // before selection while retaining the requested quality and container.
+        if (DownloadRules.isYoutubeHost(url)) request.addOption("--check-formats")
         request.addOption("--no-mtime")
         request.addOption("--newline")
         request.addOption("--progress-delta", 1)

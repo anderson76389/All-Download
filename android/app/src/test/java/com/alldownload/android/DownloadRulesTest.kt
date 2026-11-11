@@ -60,10 +60,12 @@ class DownloadRulesTest {
     @Test fun youtubeExtractorRefreshUsesOnlyTrustedDomains() {
         for (host in listOf("youtube.com", "www.youtube.com", "m.youtube.com",
             "music.youtube.com", "youtu.be", "youtube-nocookie.com")) {
+            assertTrue(host, DownloadRules.isYoutubeHost("https://$host/watch?v=test"))
             assertTrue(host, DownloadRules.needsFreshExtractor("https://$host/watch?v=test"))
         }
         for (host in listOf("youtube.com.evil.example", "notyoutube.com",
             "twitch.tv", "clips.twitch.tv", "example.com", "youtu.be.fake.test")) {
+            assertFalse(host, DownloadRules.isYoutubeHost("https://$host/video"))
             assertFalse(host, DownloadRules.needsFreshExtractor("https://$host/video"))
         }
         assertTrue(DownloadRules.needsFreshExtractor("https://www.instagram.com/reel/test"))

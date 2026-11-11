@@ -36,13 +36,15 @@ internal object DownloadRules {
      * Refresh on unmetered connections just as for other social extractors;
      * do not update for Twitch or for invalid/spoofed YouTube hostnames.
      */
-    fun needsFreshExtractor(url: String): Boolean {
+    fun isYoutubeHost(url: String): Boolean {
         val host = uri(url)?.host?.lowercase() ?: return false
-        val isYoutube = host == "youtube.com" || host.endsWith(".youtube.com") ||
+        return host == "youtube.com" || host.endsWith(".youtube.com") ||
             host == "youtu.be" || host == "youtube-nocookie.com" ||
             host.endsWith(".youtube-nocookie.com")
-        return isYoutube || isSocialVideoHost(url)
     }
+
+    fun needsFreshExtractor(url: String): Boolean =
+        isYoutubeHost(url) || isSocialVideoHost(url)
 
     fun isTwitchVod(url: String): Boolean {
         val parsed = uri(url) ?: return false
