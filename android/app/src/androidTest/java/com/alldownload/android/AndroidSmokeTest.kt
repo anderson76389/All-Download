@@ -1464,4 +1464,62 @@ class AndroidSmokeTest {
         } finally { instrumentation.runOnMainSync { activity.finish() } }
     }
 
+    @Test fun settingsSelectorsAndAdvancedFieldsPersistDisplayedValues() {
+        val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)) as MainActivity
+        val prefs = DownloadOptions.get(context)
+        val saved = prefs.all
+        try {
+            instrumentation.runOnMainSync { activity.findViewById<Button>(R.id.navSettings).performClick() }
+            instrumentation.waitForIdleSync()
+            fun views(view: View): List<View> = listOf(view) +
+                if (view is android.view.ViewGroup) (0 until view.childCount)
+                    .flatMap { views(view.getChildAt(it)) } else emptyList()
+            val all = views(activity.findViewById(R.id.settingsPage))
+            val choices = listOf(
+                Triple("Format vidéo", "video_format", "MKV"),
+                Triple("Qualité MP3", "audio_quality", "320K"),
+                Triple("Segments à supprimer", "sponsor_remove", "none"),
+                Triple("Navigateur annoncé (User-Agent)", "user_agent", "android_firefox"))
+            for ((title, key, expected) in choices) {
+                val spinner = all.filterIsInstance<Spinner>()
+                    .single { it.contentDescription.toString() == title }
+                instrumentation.runOnMainSync { spinner.setSelection(spinner.count - 1) }
+                instrumentation.waitForIdleSync()
+                assertEquals("Sélection non appliquée : $title", expected, prefs.getString(key, null))
+            }
+            for ((title, key, expected) in listOf(
+                    Triple("Tentatives en cas d’erreur", "network_retries", 15),
+                    Triple("Téléchargements de fragments simultanés", "fragments", 8),
+                    Triple("Délai réseau (secondes)", "network_timeout", 60))) {
+                val spinner = all.filterIsInstance<Spinner>()
+                    .single { it.contentDescription.toString() == title }
+                instrumentation.runOnMainSync { spinner.setSelection(spinner.count - 1) }
+                instrumentation.waitForIdleSync()
+                assertEquals(expected, prefs.getInt(key, -1))
+            }
+            for ((title, key) in listOf("Adresse du proxy" to "proxy_url",
+                    "Arguments d'extracteur avancés" to "extractor_args")) {
+                val input = all.filterIsInstance<EditText>()
+                    .single { it.contentDescription.toString() == title }
+                instrumentation.runOnMainSync { input.setText("x".repeat(600)) }
+                assertEquals("Le champ doit respecter la limite du moteur.", 500, input.length())
+                assertEquals("Valeur affichée différente de la valeur sauvée.", input.text.toString(),
+                    prefs.getString(key, null))
+            }
+        } finally {
+            val editor = prefs.edit().clear()
+            saved.forEach { (key, value) -> when (value) {
+                is Boolean -> editor.putBoolean(key, value)
+                is Int -> editor.putInt(key, value)
+                is Long -> editor.putLong(key, value)
+                is Float -> editor.putFloat(key, value)
+                is String -> editor.putString(key, value)
+                is Set<*> -> editor.putStringSet(key, value.filterIsInstance<String>().toSet())
+            } }
+            editor.commit()
+            instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
+
 }

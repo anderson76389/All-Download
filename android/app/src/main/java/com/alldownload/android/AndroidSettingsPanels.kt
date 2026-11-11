@@ -353,8 +353,7 @@ internal object AndroidSettingsPanels {
             }
             val captions = LinearLayout(activity).apply {
                 orientation = LinearLayout.VERTICAL
-                addView(label(text, 14f, true).apply {
-                })
+                addView(label(text, 14f, true))
                 addView(label(detail, 12f, tint = muted).apply {
                     setPadding(0, px(4), 0, 0)
                 })
@@ -396,6 +395,7 @@ internal object AndroidSettingsPanels {
                 setTextColor(color)
                 setHintTextColor(muted)
                 filters = arrayOf(android.text.InputFilter.LengthFilter(500))
+                contentDescription = title
                 this.hint = hint
                 setText(prefs.getString(key, "").orEmpty())
                 setPadding(px(12), 0, px(12), 0)
