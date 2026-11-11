@@ -1386,21 +1386,30 @@ class AndroidSmokeTest {
             val footer = card.getChildAt(card.childCount - 1) as LinearLayout
             val actions = footer.getChildAt(1) as LinearLayout
             instrumentation.runOnMainSync { (actions.getChildAt(1) as Button).performClick() }
-            // Read after the clipboard service has settled. An app-owned popup
-            // can own input focus while Activity.hasWindowFocus() remains false;
-            // ClipboardManager itself enforces the foreground UID restriction.
-            val clipboardDeadline = android.os.SystemClock.elapsedRealtime() + 10_000
-            var copied: String? = null
-            while (android.os.SystemClock.elapsedRealtime() < clipboardDeadline && copied != job.url) {
-                instrumentation.runOnMainSync {
-                    val clipboard = activity.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
-                        as android.content.ClipboardManager
-                    copied = clipboard.primaryClip?.getItemAt(0)?.text?.toString()
-                }
-                if (copied != job.url) android.os.SystemClock.sleep(100)
+            instrumentation.runOnMainSync { activity.findViewById<Button>(R.id.navHome).performClick() }
+            instrumentation.waitForIdleSync()
+            val paste = activity.findViewById<Button>(R.id.pasteUrlButton)
+            val point = IntArray(2)
+            instrumentation.runOnMainSync { paste.getLocationOnScreen(point) }
+            // A real touch activates the app window and exercises the production
+            // Paste handler under Android's foreground clipboard restrictions.
+            val x = point[0] + paste.width / 2f
+            val y = point[1] + paste.height / 2f
+            val now = android.os.SystemClock.uptimeMillis()
+            for (action in listOf(android.view.MotionEvent.ACTION_DOWN, android.view.MotionEvent.ACTION_UP)) {
+                val event = android.view.MotionEvent.obtain(now, android.os.SystemClock.uptimeMillis(),
+                    action, x, y, 0)
+                instrumentation.sendPointerSync(event)
+                event.recycle()
             }
-            assertEquals("Copier doit fournir le lien exact une fois la fenêtre active.", job.url, copied)
-            instrumentation.runOnMainSync { (footer.getChildAt(0) as Button).performClick() }
+            instrumentation.waitForIdleSync()
+            assertEquals("Copier puis Coller doit fournir le lien exact.", job.url,
+                activity.findViewById<EditText>(R.id.urlInput).text.toString())
+            instrumentation.runOnMainSync { activity.findViewById<Button>(R.id.navQueue).performClick() }
+            instrumentation.waitForIdleSync()
+            val retryCard = activity.findViewById<LinearLayout>(R.id.queueList).getChildAt(0) as LinearLayout
+            val retryFooter = retryCard.getChildAt(retryCard.childCount - 1) as LinearLayout
+            instrumentation.runOnMainSync { (retryFooter.getChildAt(0) as Button).performClick() }
             instrumentation.waitForIdleSync()
             assertEquals("Réessayer doit remettre la tâche en attente.", DownloadQueue.WAITING,
                 DownloadQueue.snapshot(context).first { it.id == job.id }.status)
