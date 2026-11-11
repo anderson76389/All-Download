@@ -427,6 +427,8 @@ class MainActivity : Activity() {
             urlInput.error = "Colle un lien HTTP(S) valide."
             return
         }
+        // Clear the previous validation popup as soon as a valid link is submitted.
+        urlInput.error = null
         if (Build.VERSION.SDK_INT <= 28 &&
             checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
                 PackageManager.PERMISSION_GRANTED) {

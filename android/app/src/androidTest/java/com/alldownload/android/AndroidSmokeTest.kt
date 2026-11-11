@@ -1346,6 +1346,7 @@ class AndroidSmokeTest {
                 activity.findViewById<Button>(R.id.queueButton).performClick()
                 val added = DownloadQueue.snapshot(context).singleOrNull { it.url == validUrl }
                 assertNotNull("Ajouter doit enregistrer la tâche immédiatement.", added)
+                assertNull("Une URL corrigée ne doit plus garder la fenêtre d'erreur.", input.error)
                 val preview = activity.findViewById<LinearLayout>(R.id.homeQueuePreview)
                 fun containsUrl(view: View): Boolean = when (view) {
                     is TextView -> view.text.toString().contains(validUrl)
@@ -1385,17 +1386,16 @@ class AndroidSmokeTest {
             val footer = card.getChildAt(card.childCount - 1) as LinearLayout
             val actions = footer.getChildAt(1) as LinearLayout
             instrumentation.runOnMainSync { (actions.getChildAt(1) as Button).performClick() }
-            // Android's clipboard overlay can briefly own focus. Reading from a
-            // background window returns null, even after a successful copy.
+            // Read after the clipboard service has settled. An app-owned popup
+            // can own input focus while Activity.hasWindowFocus() remains false;
+            // ClipboardManager itself enforces the foreground UID restriction.
             val clipboardDeadline = android.os.SystemClock.elapsedRealtime() + 10_000
             var copied: String? = null
             while (android.os.SystemClock.elapsedRealtime() < clipboardDeadline && copied != job.url) {
                 instrumentation.runOnMainSync {
-                    if (activity.hasWindowFocus()) {
-                        val clipboard = activity.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
-                            as android.content.ClipboardManager
-                        copied = clipboard.primaryClip?.getItemAt(0)?.text?.toString()
-                    }
+                    val clipboard = activity.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                        as android.content.ClipboardManager
+                    copied = clipboard.primaryClip?.getItemAt(0)?.text?.toString()
                 }
                 if (copied != job.url) android.os.SystemClock.sleep(100)
             }
