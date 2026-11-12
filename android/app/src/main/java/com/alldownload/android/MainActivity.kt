@@ -1070,6 +1070,8 @@ class MainActivity : Activity() {
                 }
                 setCompoundDrawablesRelative(icon, null, null, null)
                 compoundDrawablePadding = dp(9)
+                gravity = Gravity.CENTER_VERTICAL or Gravity.START
+                minHeight = dp(26)
                 includeFontPadding = false
                 maxLines = 2
                 ellipsize = android.text.TextUtils.TruncateAt.END
@@ -1143,15 +1145,14 @@ class MainActivity : Activity() {
             setBounds(0, 0, dp(size), dp(size))
         }
         button.setCompoundDrawablesRelative(icon, null, null, null)
-        button.compoundDrawablePadding = dp(5)
-        button.gravity = Gravity.CENTER
+        button.compoundDrawablePadding = dp(7)
         button.includeFontPadding = false
         button.isAllCaps = false
         button.setSingleLine(true)
         button.ellipsize = android.text.TextUtils.TruncateAt.END
         button.minWidth = 0
         button.minimumWidth = 0
-        button.setPadding(dp(6), 0, dp(6), 0)
+        MobileIconLabel.centered(button, dp(7))
     }
 
     private fun styleActionIcons() {
@@ -1173,15 +1174,14 @@ class MainActivity : Activity() {
         ).forEach { (id, icon, tint) ->
             val button = findViewById<Button>(id)
             setButtonIcon(button, icon, tint, if (id == R.id.pasteUrlButton) 16 else 18)
-            // Wide queue buttons use a leading icon and aligned label rather
-            // than an icon stuck at the far left of a separately centred text.
+            // These full-width actions intentionally use consistent leading
+            // icon/text alignment, unlike the centred compact shortcuts.
             if (id == R.id.resumeQueueButton || id == R.id.pauseQueueButton ||
                 id == R.id.clearFinishedButton || id == R.id.clearFailedButton ||
-                id == R.id.clearWaitingButton ||
-                id == R.id.queueCleanupToggle) {
-                button.gravity = Gravity.CENTER_VERTICAL or Gravity.START
+                id == R.id.clearWaitingButton || id == R.id.queueCleanupToggle ||
+                id == R.id.importCookiesButton || id == R.id.removeCookiesButton) {
+                MobileIconLabel.leading(button, dp(15), dp(9))
                 button.compoundDrawablePadding = dp(9)
-                button.setPadding(dp(15), 0, dp(7), 0)
                 button.textSize = 13f
             }
         }
