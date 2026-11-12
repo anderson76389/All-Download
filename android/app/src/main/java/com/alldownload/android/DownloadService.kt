@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.pm.ServiceInfo
 import android.app.ActivityManager
 import android.Manifest
 import android.content.Context
@@ -88,6 +89,7 @@ class DownloadService : Service() {
     @Volatile private var cancelled = false
     @Volatile private var paused = false
     @Volatile private var active = false
+    @Volatile private var timedOut = false
     private var lastNotification = 0L
     private var lastQueueSave = 0L
     private var lastStatusUpdate = 0L
@@ -100,6 +102,8 @@ class DownloadService : Service() {
     override fun onCreate() {
         super.onCreate()
         DownloadQueue.recoverInterrupted(this)
+        // Keep tracked resumable parts and discard only old, unreferenced scratch.
+        DownloadQueue.cleanupOrphanWorkspaces(this)
         if (Build.VERSION.SDK_INT >= 26) {
             getSystemService(NotificationManager::class.java).createNotificationChannel(
                 NotificationChannel(CHANNEL, "Téléchargements All-Download",
@@ -191,6 +195,7 @@ class DownloadService : Service() {
         active = true
         paused = false
         cancelled = false
+        timedOut = false
         lastNotification = 0L
         lastQueueSave = 0L
         lastStatusUpdate = 0L
@@ -214,7 +219,7 @@ class DownloadService : Service() {
             }
             state = UiState(false, if (paused || cancelled) 0 else 100,
                 when {
-                    paused -> "File mise en pause. Reprise possible."
+                    paused -> if (timedOut) "Limite Android atteinte. Ouvrez All-Download puis reprenez." else "File mise en pause. Reprise possible."
                     cancelled -> "Téléchargement annulé. File conservée."
                     else -> lastResult
                 })
@@ -315,7 +320,7 @@ class DownloadService : Service() {
             return when {
                 paused -> {
                     DownloadQueue.update(this, task.id, DownloadQueue.PAUSED,
-                        message = "En pause : reprendre pour continuer.")
+                        message = if (timedOut) "Limite Android 15 : reprise depuis la file." else "En pause : reprendre pour continuer.")
                     "Téléchargement en pause."
                 }
                 cancelled -> {
@@ -380,6 +385,10 @@ class DownloadService : Service() {
         request.addOption("--newline")
         request.addOption("--progress-delta", 1)
         request.addOption("--continue")
+        // Retry transient network failures without changing source quality choices.
+        request.addOption("--socket-timeout", 20)
+        request.addOption("--retries", 5)
+        request.addOption("--fragment-retries", 5)
         request.addOption("--no-overwrites")
         request.addOption("--output", File(work, "%(title).150B [%(id)s].%(ext)s").absolutePath)
         CookieStore.existing(this)?.let { request.addOption("--cookies", it.absolutePath) }
@@ -438,6 +447,26 @@ class DownloadService : Service() {
             builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Fermer", quit)
         }
         return builder.build()
+    }
+
+    /** Android 15 enforces a six-hour rolling dataSync foreground-service limit. */
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        if (fgsType and ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC != 0) {
+            timedOut = true
+            paused = true
+            state = UiState(false, state.progress,
+                "Durée maximale Android atteinte. Ouvrez All-Download pour reprendre.")
+            try {
+                DownloadQueue.pauseRunning(this,
+                    "Limite Android 15 atteinte : reprise possible depuis la file.")
+            } catch (error: Exception) {
+                Log.e("AllDownloadVideo", "Sauvegarde du transfert expiré impossible", error)
+            }
+            // Stop in the system's grace period. onDestroy interrupts yt-dlp.
+            stopSelf()
+        } else {
+            super.onTimeout(startId, fgsType)
+        }
     }
 
     override fun onDestroy() {
