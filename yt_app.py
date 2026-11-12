@@ -13,6 +13,7 @@ import subprocess
 import threading
 import traceback
 import faulthandler
+import atexit
 import logging
 from logging.handlers import RotatingFileHandler
 from datetime import datetime
@@ -146,6 +147,16 @@ try:
     faulthandler.enable(file=_CRASH_STREAM, all_threads=True)
 except (OSError, RuntimeError):
     _CRASH_STREAM = None
+
+def _release_crash_stream():
+    """Close the single process-lifetime crash log without dangling faulthandler."""
+    global _CRASH_STREAM
+    if _CRASH_STREAM is not None:
+        faulthandler.disable()
+        _CRASH_STREAM.close()
+        _CRASH_STREAM = None
+
+atexit.register(_release_crash_stream)
 
 def handle_exception(exc_type, exc_value, exc_traceback):
     try:
@@ -3639,6 +3650,10 @@ class DownloaderAPI:
         finally:
             if process is not None and process.poll() is None:
                 kill_process_tree(process.pid)
+            if process is not None:
+                stream = getattr(process, "stdout", None)
+                if stream is not None:
+                    stream.close()
             self._active_download_process = None
             if temporary is not None:
                 try:
@@ -3769,6 +3784,10 @@ class DownloaderAPI:
         finally:
             if proc is not None and proc.poll() is None:
                 kill_process_tree(proc.pid)
+            if proc is not None:
+                stream = getattr(proc, "stdout", None)
+                if stream is not None:
+                    stream.close()
             self._active_download_process = None
 
     def start_downloads(self, items):
