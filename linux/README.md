@@ -1,6 +1,6 @@
 # All-Download Linux x86_64 — bêta
 
-**Version 0.1.3-beta :** vérification des nouvelles versions Linux depuis les paramètres (sur demande, sans installation automatique), création/suppression facultative d'un raccourci dans le menu Linux, et archive .tar.xz supplémentaire. Les correctifs MKV, Twitch VOD et pause/reprise de 0.1.1 sont conservés.
+**Version 0.1.3-beta :** les VOD Twitch dont la qualité préférée est 1080p retombent sur le **720p natif** si le 1080p n'existe pas (sans upscaling). Les dossiers temporaires d'une exécution interrompue depuis plus de sept jours sont nettoyés prudemment au démarrage : 16 dossiers maximum et uniquement dans `Donnees/temporaires/`. La recherche manuelle de mises à jour privilégie désormais l'archive `.tar.xz` si son SHA-256 est fourni. Le raccourci Linux et les fonctions 0.1.2 restent disponibles.
 
 La version Linux reprend le **HTML/CSS/JS Windows à l'identique** (extrait automatiquement de yt_app.py), mais utilise une fenêtre native Qt WebEngine et des binaires Linux yt-dlp/FFmpeg. **Aucun EXE Windows n'est exécuté.**
 
