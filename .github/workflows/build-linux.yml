@@ -58,6 +58,11 @@ jobs:
           chmod +x stage/All-Download/Donnees/bin/{yt-dlp,ffmpeg,ffprobe}
           stage/All-Download/Donnees/bin/yt-dlp --version
           stage/All-Download/Donnees/bin/ffmpeg -version | head -n 1
+      - name: Real localhost audio download and FFmpeg conversion
+        env:
+          ALL_DOWNLOAD_LINUX_E2E: "1"
+          ALL_DOWNLOAD_LINUX_BIN: ${{ github.workspace }}/stage/All-Download/Donnees/bin
+        run: python -m unittest discover -s linux/tests -p 'test_download_e2e.py' -v
       - name: Package native Linux interface
         run: |
           python -m PyInstaller --noconfirm --clean --onedir --windowed \
