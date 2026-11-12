@@ -9,7 +9,7 @@
 Windows 10/11 · Android 7+ · Linux x86_64 (bêta) · Interface en français · Thèmes clair, sombre et OLED
 
 [![Windows](https://img.shields.io/badge/Windows-Portable%20%26%20Classique-2563EB?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/anderson76389/All-Download/releases/latest)
-[![Android](https://img.shields.io/badge/Android-APK%20b%C3%AAta-16A34A?style=for-the-badge&logo=android&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.15-beta)
+[![Android](https://img.shields.io/badge/Android-APK%20b%C3%AAta-16A34A?style=for-the-badge&logo=android&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.16-beta)
 [![Linux](https://img.shields.io/badge/Linux-x86__64%20b%C3%AAta-6D28D9?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/linux-v0.1.0-beta)
 
 </div>
@@ -22,10 +22,10 @@ Windows 10/11 · Android 7+ · Linux x86_64 (bêta) · Interface en français ·
 |:--|:--|:--|
 | 🖥️ **Windows 10/11 (x64)** | **Portable** · Sans installation | **[⬇️ Télécharger le ZIP Portable](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Portable-Windows.zip)** |
 | 🖥️ **Windows 10/11 (x64)** | **Classique** · Avec installateur | **[⬇️ Télécharger le ZIP Classique](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Classique-Windows.zip)** |
-| 📱 **Android 7+** | **APK officielle — 0.6.15-beta** | **[⬇️ Télécharger l’APK Android](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.15-beta/All-Download-Android-0.6.15-beta.apk)** |
+| 📱 **Android 7+** | **APK officielle — 0.6.16-beta** | **[⬇️ Télécharger l’APK Android](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.16-beta/All-Download-Android-0.6.16-beta.apk)** |
 | 🐧 **Linux x86_64 (glibc)** | **Portable — 0.1.0-beta** | **[⬇️ Télécharger l'archive Linux](https://github.com/anderson76389/All-Download/releases/download/linux-v0.1.0-beta/All-Download-Linux-x86_64.tar.gz)** |
 
-**[Release Android et notes de version](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.15-beta)** · [Empreinte SHA-256 de l’APK](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.15-beta/All-Download-Android-0.6.15-beta.apk.sha256) · [Dernière Release stable Windows](https://github.com/anderson76389/All-Download/releases/latest)
+**[Release Android et notes de version](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.16-beta)** · [Empreinte SHA-256 de l’APK](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.16-beta/All-Download-Android-0.6.16-beta.apk.sha256) · [Dernière Release stable Windows](https://github.com/anderson76389/All-Download/releases/latest)
 
 > **Important :** Windows, Android et Linux sont trois éditions distinctes. Installez uniquement le format correspondant à votre appareil (ZIP Windows, APK Android, archive Linux). Les fichiers officiels sont ceux des [Releases GitHub](https://github.com/anderson76389/All-Download/releases). La première version Linux est une bêta portable, non un .deb/.rpm.
 
@@ -52,9 +52,9 @@ La disponibilité des formats et des plateformes dépend des sites, de leur auth
 
 ## 📱 Android — même identité, interface adaptée
 
-**Version Android 0.6.11 bêta :** suppression définitive de la barre de marque « ALL-DOWNLOAD » en haut des pages ; paramètres plus cohérents avec tuiles d'icônes harmonisées, textes lisibles, interrupteurs à droite, et regroupement des options par section. Les téléchargements et les versions Windows sont inchangés.
+**Version Android 0.6.16 bêta :** fiabilisation du collage après copie d'un lien depuis la file lors de restrictions temporaires du presse-papiers Android. Contrôles des raccourcis, réglages et interactions, interface sans barre de marque permanente, sections espacées et icônes harmonisées. Les éditions Windows et Linux sont indépendantes.
 
-<sub>Code et instructions : [android/README.md](https://github.com/anderson76389/All-Download/blob/feature/android-app/android/README.md) · Icône Android : [android/branding](https://github.com/anderson76389/All-Download/tree/feature/android-app/android/branding)</sub>
+<sub>Code et instructions : [android/README.md](https://github.com/anderson76389/All-Download/blob/main/android/README.md) · Icône Android : [android/branding](https://github.com/anderson76389/All-Download/tree/main/android/branding)</sub>
 
 - **Nom et logo conservés** dans le lanceur Android, le splash et la fenêtre de mise à jour ; aucun bandeau de marque permanent dans les pages.
 - **Aucun en-tête ALL-DOWNLOAD permanent.** Navigation en capsule **Liquid Glass** sur téléphone ; barre latérale sur tablette et pliable ouvert.
@@ -70,7 +70,7 @@ La disponibilité des formats et des plateformes dépend des sites, de leur auth
 3. Appuyer sur **Installer** : l’APK est téléchargée dans le cache privé, avec progression, contrôle SHA-256 et vérification de la signature.
 4. Confirmer l’installation dans **Android**. Le navigateur n’est pas ouvert.
 
-La recherche manuelle et l’activation des alertes se trouvent dans **Paramètres → Appli → Mises à jour Android**. La version **0.6.15-beta** utilise une signature permanente : les futures APK signées avec cette même clé pourront être installées par-dessus. Une ancienne bêta signée avec une autre clé peut nécessiter une désinstallation préalable, susceptible d’effacer les données privées de l’application. **Sauvegardez vos réglages et cookies si nécessaire.**
+La recherche manuelle et l’activation des alertes se trouvent dans **Paramètres → Appli → Mises à jour Android**. La version **0.6.16-beta** utilise une signature permanente : les futures APK signées avec cette même clé pourront être installées par-dessus. Une ancienne bêta signée avec une autre clé peut nécessiter une désinstallation préalable, susceptible d’effacer les données privées de l’application. **Sauvegardez vos réglages et cookies si nécessaire.**
 
 **Compatibilité testée en CI :** Android 9, 14 et 15, avec un profil tablette Android 14. Les tests de liens vidéo publics et de certains réseaux sociaux réussissent ; l’accès à toutes les vidéos de chaque service n’est pas garanti.
 
@@ -139,7 +139,7 @@ Les fonctionnalités de base incluent analyse des URL, téléchargement vidéo/a
 - **Windows :** les éditions officielles sont disponibles dans la dernière Release stable. Un avertissement SmartScreen peut apparaître en l’absence d’une signature d’éditeur reconnue ; ne désactivez pas les protections de Windows.
 - **Mises à jour :** les téléchargements Android et Windows sont distincts. La suppression d’anciennes Releases ne doit pas supprimer la dernière version Windows ni l’APK Android courante.
 
-**Dépannage :** [signaler un problème](https://github.com/anderson76389/All-Download/issues) · [documentation Android](https://github.com/anderson76389/All-Download/blob/feature/android-app/android/README.md) · [voir les Releases](https://github.com/anderson76389/All-Download/releases)
+**Dépannage :** [signaler un problème](https://github.com/anderson76389/All-Download/issues) · [documentation Android](https://github.com/anderson76389/All-Download/blob/main/android/README.md) · [voir les Releases](https://github.com/anderson76389/All-Download/releases)
 
 <details>
 <summary><strong>Développeurs — exécution depuis les sources Windows</strong></summary>
