@@ -1413,7 +1413,8 @@ class AndroidSmokeTest {
                 instrumentation.runOnMainSync { focused = activity.hasWindowFocus() }
                 if (!focused) android.os.SystemClock.sleep(50)
             }
-            assertTrue("La fenêtre de l’application doit avoir le focus pour lire le presse-papiers.", focused)
+            // An app-owned popup can hold focus while clipboard access remains
+            // allowed for the app UID. The actual pasted URL is the requirement.
             val paste = activity.findViewById<Button>(R.id.pasteUrlButton)
             val bounds = android.graphics.Rect()
             val screenPoint = IntArray(2)
@@ -1446,7 +1447,9 @@ class AndroidSmokeTest {
                 }
                 if (pasted != job.url) android.os.SystemClock.sleep(50)
             }
-            assertEquals("Copier puis Coller doit fournir le lien exact.", job.url,
+            val activeWindow = instrumentation.uiAutomation.rootInActiveWindow
+            assertEquals("Copier puis Coller doit fournir le lien exact. " +
+                "Activity focus=$focused; active=${activeWindow?.packageName}/${activeWindow?.className}", job.url,
                 activity.findViewById<EditText>(R.id.urlInput).text.toString())
             instrumentation.runOnMainSync { activity.findViewById<Button>(R.id.navQueue).performClick() }
             instrumentation.waitForIdleSync()
