@@ -79,7 +79,7 @@ La recherche manuelle et l’activation des alertes se trouvent dans **Paramètr
 **Mesurer la RAM, le CPU et la batterie sur un appareil réel :** connecter un téléphone Android avec ADB autorisé, puis exécuter depuis la racine du dépôt (PowerShell Windows) :
 
 ```powershell
-.\\scripts\\audit-android-performance.ps1 -Samples 18 -IntervalSeconds 10
+.\scripts\audit-android-performance.ps1 -Samples 18 -IntervalSeconds 10
 ```
 
 Le rapport CSV est enregistré dans `Donnees/diagnostics/`. Comparer une session au repos et une session en téléchargement. **Les résultats CI n’équivalent pas à une mesure prolongée sur un HONOR Magic V6.**
