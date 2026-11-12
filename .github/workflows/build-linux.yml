@@ -147,6 +147,10 @@ jobs:
         env:
           QTWEBENGINE_DISABLE_SANDBOX: "1"
           QTWEBENGINE_CHROMIUM_FLAGS: "--disable-gpu --disable-gpu-compositing"
+          # Qt's offscreen platform avoids a GLX context not supplied by minimal
+          # GitHub runners. Ubuntu 22.04 still tests the regular Xvfb window.
+          QT_QPA_PLATFORM: "offscreen"
+          QT_QUICK_BACKEND: "software"
           QT_OPENGL: "software"
           LIBGL_ALWAYS_SOFTWARE: "1"
         run: |
