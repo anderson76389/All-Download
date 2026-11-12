@@ -178,7 +178,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG="linux-v0.1.2-beta"
+          TAG="linux-v0.1.3-beta"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Linux $TAG already exists; keeping verified assets intact."
             exit 0
@@ -191,6 +191,6 @@ jobs:
             All-Download-Linux-x86_64.tar.xz \
             All-Download-Linux-x86_64.tar.xz.sha256 \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "All-Download Linux 0.1.2-beta (x86_64)" \
+            --title "All-Download Linux 0.1.3-beta (x86_64)" \
             --notes "Linux 0.1.2 : vérification manuelle des nouvelles versions depuis les paramètres, raccourci facultatif et réversible dans le menu des applications, archive .tar.xz alternative plus compressée et tests de démarrage sur Ubuntu 22.04 et 24.04. Portable et données locales préservées. Ni installation automatique ni format .deb/.rpm. L'interface Windows reste inchangée. Consultez linux/README.md." \
             --prerelease
