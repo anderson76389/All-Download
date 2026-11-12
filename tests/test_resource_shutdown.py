@@ -102,7 +102,7 @@ class ResourceShutdownTests(unittest.TestCase):
         self.assertLessEqual(after_handles - before_handles, 24,
                              "Repeated shutdown leaked Windows handles")
 
-        def test_idle_cancel_is_safe_for_legacy_api_test_fixtures(self):
+    def test_idle_cancel_is_safe_for_legacy_api_test_fixtures(self):
         api = yt_app.DownloaderAPI.__new__(yt_app.DownloaderAPI)
         api._active_download_process = None
         api._suspended_download_pids = []
