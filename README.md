@@ -10,7 +10,7 @@ Windows 10/11 · Android 7+ · Linux x86_64 (bêta) · Interface en français ·
 
 [![Windows](https://img.shields.io/badge/Windows-Portable%20%26%20Classique-2563EB?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/anderson76389/All-Download/releases/latest)
 [![Android](https://img.shields.io/badge/Android-APK%20b%C3%AAta-16A34A?style=for-the-badge&logo=android&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.16-beta)
-[![Linux](https://img.shields.io/badge/Linux-x86__64%20b%C3%AAta-6D28D9?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/linux-v0.1.1-beta)
+[![Linux](https://img.shields.io/badge/Linux-x86__64%20b%C3%AAta-6D28D9?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/linux-v0.1.2-beta)
 
 </div>
 
@@ -23,7 +23,7 @@ Windows 10/11 · Android 7+ · Linux x86_64 (bêta) · Interface en français ·
 | 🖥️ **Windows 10/11 (x64)** | **Portable** · Sans installation | **[⬇️ Télécharger le ZIP Portable](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Portable-Windows.zip)** |
 | 🖥️ **Windows 10/11 (x64)** | **Classique** · Avec installateur | **[⬇️ Télécharger le ZIP Classique](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Classique-Windows.zip)** |
 | 📱 **Android 7+** | **APK officielle — 0.6.16-beta** | **[⬇️ Télécharger l’APK Android](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.16-beta/All-Download-Android-0.6.16-beta.apk)** |
-| 🐧 **Linux x86_64 (glibc)** | **Portable — 0.1.1-beta** | **[⬇️ Télécharger l'archive Linux](https://github.com/anderson76389/All-Download/releases/download/linux-v0.1.1-beta/All-Download-Linux-x86_64.tar.gz)** |
+| 🐧 **Linux x86_64 (glibc)** | **Portable — 0.1.2-beta** | **[⬇️ Télécharger Linux (archive .tar.xz)](https://github.com/anderson76389/All-Download/releases/download/linux-v0.1.2-beta/All-Download-Linux-x86_64.tar.xz)** |
 
 **[Release Android et notes de version](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.16-beta)** · [Empreinte SHA-256 de l’APK](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.16-beta/All-Download-Android-0.6.16-beta.apk.sha256) · [Dernière Release stable Windows](https://github.com/anderson76389/All-Download/releases/latest)
 
@@ -40,11 +40,13 @@ Windows 10/11 · Android 7+ · Linux x86_64 (bêta) · Interface en français ·
 | Thèmes clair, sombre et OLED | ✅ | ✅ | ✅ |
 | Clips Twitch et VOD publiques accessibles | ✅ | ✅ | ✅² |
 | TwitchDownloader spécialisé et secours HLS | ✅ | — | — |
-| Mise à jour depuis l'application | Selon édition | ✅¹ | — |
+| Mise à jour depuis l'application | Selon édition | ✅¹ | Vérification manuelle³ |
 
 ¹ Sur Android, All-Download télécharge et vérifie l’APK **dans l’application**, puis ouvre **l’installateur officiel Android** : l’autorisation et la confirmation de l’utilisateur restent nécessaires. Il n’y a pas d’installation silencieuse.
 
 ² La version Linux réutilise l'interface Windows mais possède un moteur natif séparé. Les sous-titres et quelques traitements particuliers restent à valider sur une distribution réelle.
+
+³ Sous Linux, **Paramètres → Appli → Linux** vérifie les nouvelles Releases officielles sur demande et ouvre leur page. Le téléchargement, la décompression et le remplacement restent manuels : aucune mise à jour silencieuse.
 
 La disponibilité des formats et des plateformes dépend des sites, de leur authentification et de leurs éventuelles restrictions. Les vidéos protégées par DRM ne sont pas prises en charge.
 
@@ -120,17 +122,20 @@ Les **sept catégories de médias** sont créées automatiquement. `Donnees/` re
 
 ## 🐧 Linux — portable x86_64 (bêta)
 
-**0.1.1 bêta :** remux MKV corrigé, URL Twitch VOD vérifiées, commandes de pause/reprise/annulation sécurisées contre les arrêts de processus, et import des cookies limité en mémoire. Tests automatiques des actions du pont Windows/Linux et d'un téléchargement audio réel.
+**0.1.2 bêta :** vérification des mises à jour **depuis les paramètres**, raccourci facultatif dans le menu des applications Linux, archive `.tar.xz` alternative à `.tar.gz`, contrôles de lancement du programme sur **Ubuntu 22.04 et 24.04**.
 
-**Même interface HTML/CSS/JavaScript que Windows**, générée directement à partir du fichier source Windows pendant la compilation. Le backend est écrit pour Linux avec Qt WebEngine, yt-dlp et FFmpeg natifs : **aucun fichier EXE Windows ni WebView2**.
+**L'interface HTML/CSS/JavaScript reste basée sur Windows** (extraite de `yt_app.py`). Seuls les boutons Linux de mise à jour et de raccourci sont ajoutés à l'onglet Appli. Le moteur Qt WebEngine, yt-dlp et FFmpeg est natif Linux, sans WebView2 ni exécutable Windows.
 
-1. Télécharger l'archive **All-Download-Linux-x86_64.tar.gz** depuis la [Release Linux 0.1.1-beta](https://github.com/anderson76389/All-Download/releases/tag/linux-v0.1.1-beta).
-2. Décompresser le dossier **All-Download/** dans un emplacement modifiable, puis lancer **All-Download-Linux**.
-3. Les téléchargements et données restent dans ce dossier : **VIDÉOS, AUDIOS, TWITCH, GIFS, CHAÎNES, PLAYLIST, AUTRES, Donnees/**.
+1. Télécharger **[Linux x86_64 0.1.2-beta (.tar.xz)](https://github.com/anderson76389/All-Download/releases/download/linux-v0.1.2-beta/All-Download-Linux-x86_64.tar.xz)**, ou l'**[archive .tar.gz](https://github.com/anderson76389/All-Download/releases/download/linux-v0.1.2-beta/All-Download-Linux-x86_64.tar.gz)**.
+2. Extraire le dossier **All-Download/** dans un emplacement modifiable, puis lancer **All-Download-Linux** (sans sudo).
+3. Pour obtenir un raccourci de menu, ouvrir **Paramètres → Appli → Linux → Ajouter au menu des applications**. Il est possible de le retirer depuis l'application.
+4. Pour vérifier une nouvelle version, choisir **Vérifier les mises à jour Linux**. Le navigateur n'ouvre la Release que sur demande ; l'installation reste manuelle.
 
-Les fonctionnalités de base incluent analyse des URL, téléchargement vidéo/audio, sélection des formats, thèmes, paramètres, file, pause/reprise/annulation et liens copiables. La version Linux a été pensée pour des distributions x86_64 avec glibc et session graphique. Elle ne garantit pas encore la parité complète de la prise en charge des VOD Twitch avec Windows.
+Les téléchargements et les données restent dans le dossier All-Download/ (catégories et Donnees/), à l'exception du fichier `.desktop` facultatif placé dans le répertoire des applications utilisateur. Avant de remplacer une version, **fermer All-Download** et conserver `Donnees/` ainsi que vos sept dossiers de médias.
 
-**[Documentation Linux et limites](https://github.com/anderson76389/All-Download/blob/main/linux/README.md)** · [Fichier SHA-256 Linux](https://github.com/anderson76389/All-Download/releases/download/linux-v0.1.1-beta/All-Download-Linux-x86_64.tar.gz.sha256)
+Les VOD Twitch sont gérées par yt-dlp, sans le moteur spécialisé TwitchDownloaderCLI de Windows. Debian, Fedora et les environnements Wayland variés nécessitent encore des validations réelles.
+
+**[Documentation Linux détaillée](https://github.com/anderson76389/All-Download/blob/main/linux/README.md)** · [SHA-256 de l'archive .tar.xz](https://github.com/anderson76389/All-Download/releases/download/linux-v0.1.2-beta/All-Download-Linux-x86_64.tar.xz.sha256)
 
 ---
 

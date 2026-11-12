@@ -124,6 +124,12 @@ def video_format(quality: str, is_twitch_vod: bool = False) -> str:
             f"best[height<=?{height}]")
 
 
+def should_emit_progress(percent: float, now: float, previous: float, previous_at: float) -> bool:
+    """Avoid overwhelming Qt with repeated yt-dlp progress messages."""
+    return (previous < 0 or percent >= 100 or percent < previous or
+            percent - previous >= 1 or now - previous_at >= .5)
+
+
 def _duration(value) -> str:
     try:
         seconds = max(0, int(value))
@@ -200,6 +206,18 @@ class DownloaderAPI:
                 window.evaluate_js(fn + "(" + ", ".join(json.dumps(a, ensure_ascii=False) for a in args) + ")")
             except Exception:
                 pass
+
+    def check_linux_updates(self):
+        from linux.update_check import check_linux_updates
+        return check_linux_updates()
+
+    def install_linux_launcher(self):
+        from linux.desktop import install_linux_launcher
+        return install_linux_launcher(self.root)
+
+    def remove_linux_launcher(self):
+        from linux.desktop import remove_linux_launcher
+        return remove_linux_launcher()
 
     def get_download_folder(self):
         return self.download_folder
@@ -543,14 +561,20 @@ class DownloaderAPI:
                         elif self._paused:
                             os.killpg(proc.pid, signal.SIGSTOP)
                     reason = ""
+                    previous_pct, previous_at = -1.0, 0.0
                     if proc.stdout is not None:
-                        for line in proc.stdout:
-                            if "ERROR:" in line:
-                                reason = line.strip()[-280:]
-                            match = re.search(r"\[download\]\s+(\d+(?:\.\d+)?)%", line)
-                            if match:
-                                self._js("updateDownloadProgress", float(match.group(1)),
-                                         f"[{index}/{total}] {line.strip()[:160]}")
+                        with proc.stdout:
+                            for line in proc.stdout:
+                                if "ERROR:" in line:
+                                    reason = line.strip()[-280:]
+                                match = re.search(r"\[download\]\s+(\d+(?:\.\d+)?)%", line)
+                                if match:
+                                    percent = float(match.group(1))
+                                    now = time.monotonic()
+                                    if should_emit_progress(percent, now, previous_pct, previous_at):
+                                        self._js("updateDownloadProgress", percent,
+                                                 f"[{index}/{total}] {line.strip()[:160]}")
+                                        previous_pct, previous_at = percent, now
                     exit_code = proc.wait()
                     with self._lock:
                         self._current = None
@@ -607,10 +631,14 @@ def load_html() -> str:
     bundled = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
     html_file = bundled / "ui.html"
     if html_file.is_file():
-        return html_file.read_text(encoding="utf-8")
-    # Running directly from the repository reuses the exact Windows HTML string.
-    from extract_ui import extract
-    return extract(Path(__file__).resolve().parents[1] / "yt_app.py")
+        html = html_file.read_text(encoding="utf-8")
+    else:
+        # Running from the repository reuses the exact Windows HTML source.
+        from extract_ui import extract
+        html = extract(Path(__file__).resolve().parents[1] / "yt_app.py")
+    # Additional Linux-only controls; the Windows source remains unchanged.
+    from linux.ui_extras import inject_linux_controls
+    return inject_linux_controls(html)
 
 
 def main() -> int:

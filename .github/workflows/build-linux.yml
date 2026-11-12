@@ -23,7 +23,8 @@ concurrency:
 
 jobs:
   linux-x86_64:
-    runs-on: ubuntu-24.04
+    # Ubuntu 22.04 keeps the packaged glibc baseline compatible with older distros.
+    runs-on: ubuntu-22.04
     timeout-minutes: 45
     steps:
       - name: Checkout All-Download
@@ -35,7 +36,7 @@ jobs:
       - name: Native libraries for Qt WebEngine and Xvfb
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y xvfb xauth libxkbcommon-x11-0 libxcb-cursor0 libxcb-xinerama0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-image0 libxcb-util1 libxcb-render-util0 libxcb-xkb1 libxcb-randr0 libxcb-xfixes0 libxcb-glx0 libxcb-shm0 libxcb-xinput0 libegl1 libgl1 libdbus-1-3 libnss3 libasound2t64 libpulse0 libgtk-3-0
+          sudo apt-get install -y xvfb xauth libxkbcommon-x11-0 libxcb-cursor0 libxcb-xinerama0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-image0 libxcb-util1 libxcb-render-util0 libxcb-xkb1 libxcb-randr0 libxcb-xfixes0 libxcb-glx0 libxcb-shm0 libxcb-xinput0 libegl1 libgl1 libdbus-1-3 libnss3 libasound2 libpulse0 libgtk-3-0
       - name: Install UI backend and packager
         run: |
           python -m pip install --upgrade pip
@@ -70,13 +71,28 @@ jobs:
         run: python -m unittest discover -s linux/tests -p 'test_download_e2e.py' -v
       - name: Package native Linux interface
         run: |
+          # QtWebEngine may require Wayland server even under X11. Bundle its
+          # stable ABI library so clean desktops need no manual Wayland install.
+          WAYLAND_SERVER="$(ldconfig -p | awk '$1 == "libwayland-server.so.0" {print $NF; exit}')"
+          test -f "$WAYLAND_SERVER"
           python -m PyInstaller --noconfirm --clean --onedir --windowed \
             --name All-Download-Linux \
             --paths . --paths linux \
             --add-data "linux/ui.html:." \
+            --add-binary "$WAYLAND_SERVER:." \
             --collect-submodules webview \
             linux/app.py
           cp -a dist/All-Download-Linux/. stage/All-Download/
+          # The Ubuntu 22.04 C++ runtime bundled by PyInstaller can prevent
+          # Ubuntu 24.04 Mesa/GLX drivers from loading. Use the host graphics
+          # and C++ runtime instead, as Qt itself already expects host drivers.
+          for library in libstdc++.so.6 libgcc_s.so.1 libX11.so.6 libX11-xcb.so.1 libxcb-glx.so.0; do
+            find stage/All-Download/_internal -maxdepth 1 -name "$library" -type f -print -delete
+          done
+          test ! -e stage/All-Download/_internal/libstdc++.so.6
+          test ! -e stage/All-Download/_internal/libgcc_s.so.1
+          cp logo.jpg stage/All-Download/logo.jpg
+          test -s stage/All-Download/_internal/libwayland-server.so.0
           for kind in AUDIOS VIDÉOS TWITCH GIFS CHAÎNES PLAYLIST AUTRES; do
             mkdir -p "stage/All-Download/$kind"
           done
@@ -94,10 +110,15 @@ jobs:
       - name: Archive and checksum
         run: |
           tar -C stage -czf All-Download-Linux-x86_64.tar.gz All-Download
+          tar -C stage -cf - All-Download | xz -T2 -4 > All-Download-Linux-x86_64.tar.xz
           sha256sum All-Download-Linux-x86_64.tar.gz > All-Download-Linux-x86_64.tar.gz.sha256
+          sha256sum All-Download-Linux-x86_64.tar.xz > All-Download-Linux-x86_64.tar.xz.sha256
+          stat -c "%n %s bytes" All-Download-Linux-x86_64.tar.gz All-Download-Linux-x86_64.tar.xz
           test -s All-Download-Linux-x86_64.tar.gz
           tar -tzf All-Download-Linux-x86_64.tar.gz | grep -Fx 'All-Download/All-Download-Linux'
           tar -tzf All-Download-Linux-x86_64.tar.gz | grep -Fx 'All-Download/Donnees/bin/yt-dlp'
+          tar -tJf All-Download-Linux-x86_64.tar.xz | grep -Fx 'All-Download/All-Download-Linux'
+          tar -tJf All-Download-Linux-x86_64.tar.xz | grep -Fx 'All-Download/logo.jpg'
       - name: Upload verified Linux beta archive
         uses: actions/upload-artifact@v4
         with:
@@ -105,22 +126,71 @@ jobs:
           path: |
             All-Download-Linux-x86_64.tar.gz
             All-Download-Linux-x86_64.tar.gz.sha256
-      - name: Publish separate Linux beta Release (main only)
-        if: github.ref == 'refs/heads/main'
+            All-Download-Linux-x86_64.tar.xz
+            All-Download-Linux-x86_64.tar.xz.sha256
+
+  linux-ubuntu24-smoke:
+    name: Test packaged Linux application on Ubuntu 24.04
+    needs: linux-x86_64
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Download the tested Linux package
+        uses: actions/download-artifact@v4
+        with:
+          name: All-Download-Linux-x86_64
+      - name: Install graphical runtime dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb xauth libxkbcommon-x11-0 libxcb-cursor0 libxcb-xinerama0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-image0 libxcb-util1 libxcb-render-util0 libxcb-xkb1 libxcb-randr0 libxcb-xfixes0 libxcb-glx0 libxcb-shm0 libxcb-xinput0 libegl1 libgl1 libdbus-1-3 libnss3 libasound2t64 libpulse0 libgtk-3-0 libgl1-mesa-dri libglx-mesa0 libopengl0 mesa-utils
+      - name: Verify checksum and start packaged Qt interface
+        env:
+          QTWEBENGINE_DISABLE_SANDBOX: "1"
+          QTWEBENGINE_CHROMIUM_FLAGS: "--disable-gpu --disable-gpu-compositing"
+          # Qt's offscreen platform avoids a GLX context not supplied by minimal
+          # GitHub runners. Ubuntu 22.04 still tests the regular Xvfb window.
+          QT_QPA_PLATFORM: "offscreen"
+          QT_QUICK_BACKEND: "software"
+          QT_OPENGL: "software"
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: |
+          sha256sum -c All-Download-Linux-x86_64.tar.gz.sha256
+          mkdir unpacked
+          tar -xzf All-Download-Linux-x86_64.tar.gz -C unpacked
+          cd unpacked/All-Download
+          timeout 120 xvfb-run -a ./All-Download-Linux --smoke-ui
+
+  publish-linux:
+    name: Publish Linux after both platform checks
+    needs: [linux-x86_64, linux-ubuntu24-smoke]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download validated Linux archives
+        uses: actions/download-artifact@v4
+        with:
+          name: All-Download-Linux-x86_64
+      - name: Publish separate Linux beta Release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          TAG="linux-v0.1.1-beta"
+          TAG="linux-v0.1.2-beta"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Linux $TAG already exists. Existing assets are preserved."
+            echo "Linux $TAG already exists; keeping verified assets intact."
             exit 0
           fi
+          sha256sum -c All-Download-Linux-x86_64.tar.gz.sha256
+          sha256sum -c All-Download-Linux-x86_64.tar.xz.sha256
           gh release create "$TAG" \
             All-Download-Linux-x86_64.tar.gz \
             All-Download-Linux-x86_64.tar.gz.sha256 \
+            All-Download-Linux-x86_64.tar.xz \
+            All-Download-Linux-x86_64.tar.xz.sha256 \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "All-Download Linux 0.1.1-beta (x86_64)" \
-            --notes "Mise à jour Linux 0.1.1 : remux MP4/MKV corrigé, sélection Twitch VOD plus stricte, robustesse des commandes Pause/Reprise/Annuler et import de cookies volumineux protégé. Interface Windows HTML identique; backend Linux Qt / yt-dlp / FFmpeg natif. Décompressez dans un dossier en écriture puis lancez All-Download-Linux. Linux x86_64 glibc avec session graphique. TwitchDownloaderCLI.exe Windows non inclus. Consultez linux/README.md." \
+            --title "All-Download Linux 0.1.2-beta (x86_64)" \
+            --notes "Linux 0.1.2 : vérification manuelle des nouvelles versions depuis les paramètres, raccourci facultatif et réversible dans le menu des applications, archive .tar.xz alternative plus compressée et tests de démarrage sur Ubuntu 22.04 et 24.04. Portable et données locales préservées. Ni installation automatique ni format .deb/.rpm. L'interface Windows reste inchangée. Consultez linux/README.md." \
             --prerelease
