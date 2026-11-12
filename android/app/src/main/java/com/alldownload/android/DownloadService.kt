@@ -235,14 +235,14 @@ class DownloadService : Service() {
                 val showFinished = DownloadOptions.get(this)
                     .getBoolean("notify_finished", true)
                 val manager = getSystemService(NotificationManager::class.java)
-                if (!cancelled && showFinished) {
+                if (!cancelled && !timedOut && showFinished) {
                     // Also publish the final error if the worker failed unexpectedly.
                     manager.notify(NOTIFICATION_ID,
                         notification(state.message, state.progress, false))
                 }
-                stopForeground(if (cancelled || !showFinished)
+                stopForeground(if (cancelled || timedOut || !showFinished)
                     STOP_FOREGROUND_REMOVE else STOP_FOREGROUND_DETACH)
-                if (cancelled || !showFinished) manager.cancel(NOTIFICATION_ID)
+                if (cancelled || timedOut || !showFinished) manager.cancel(NOTIFICATION_ID)
                 // stopSelfResult(oldStartId) leaves this service resident after a later
                 // pause/cancel/add command increments startId. All work is finished now.
                 stopSelf()
