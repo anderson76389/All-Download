@@ -56,8 +56,8 @@ class LinuxDesktopUpdateTests(unittest.TestCase):
         payload = [
             linux_release("android-v999.0.0-beta"),
             linux_release("linux-v9.9.9-beta", complete=False),
-            linux_release("linux-v0.1.6-beta", draft=True),
-            linux_release("linux-v0.1.5-beta", compact=True),
+            linux_release("linux-v0.1.7-beta", draft=True),
+            linux_release("linux-v0.1.6-beta", compact=True),
             linux_release("linux-v0.1.2-beta"),
             linux_release("linux-v0.1.1-beta"),
         ]
@@ -65,12 +65,12 @@ class LinuxDesktopUpdateTests(unittest.TestCase):
             result = check_linux_updates()
         self.assertTrue(result["success"], result)
         self.assertTrue(result["available"])
-        self.assertEqual("0.1.5-beta", result["latest"])
+        self.assertEqual("0.1.6-beta", result["latest"])
         self.assertEqual("All-Download-Linux-x86_64.tar.xz", result["preferred_asset"])
         self.assertEqual("All-Download-Linux-x86_64.tar.xz.sha256", result["checksum_asset"])
         self.assertEqual(CURRENT_LINUX_VERSION, result["current"])
         self.assertEqual(
-            "https://github.com/anderson76389/All-Download/releases/tag/linux-v0.1.5-beta",
+            "https://github.com/anderson76389/All-Download/releases/tag/linux-v0.1.6-beta",
             result["url"],
         )
         self.assertEqual(8, mocked.call_args.kwargs["timeout"])
