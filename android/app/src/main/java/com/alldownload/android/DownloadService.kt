@@ -102,8 +102,23 @@ class DownloadService : Service() {
     override fun onCreate() {
         super.onCreate()
         DownloadQueue.recoverInterrupted(this)
-        // Keep tracked resumable parts and discard only old, unreferenced scratch.
-        DownloadQueue.cleanupOrphanWorkspaces(this)
+        // Never block the UI/main service thread while deleting old media scratch.
+        // A low-priority sweep at most once per day keeps I/O and battery bounded.
+        val prefs = getSharedPreferences("android_scratch_maintenance", MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        if (now - prefs.getLong("last_sweep_ms", 0L) > 24L * 60 * 60 * 1000) {
+            prefs.edit().putLong("last_sweep_ms", now).apply()
+            Thread({
+                try {
+                    DownloadQueue.cleanupOrphanWorkspaces(applicationContext)
+                } catch (error: Exception) {
+                    Log.w("AllDownloadVideo", "Nettoyage différé impossible", error)
+                }
+            }, "all-download-scratch-maintenance").apply {
+                priority = Thread.MIN_PRIORITY
+                isDaemon = true
+            }.start()
+        }
         if (Build.VERSION.SDK_INT >= 26) {
             getSystemService(NotificationManager::class.java).createNotificationChannel(
                 NotificationChannel(CHANNEL, "Téléchargements All-Download",
