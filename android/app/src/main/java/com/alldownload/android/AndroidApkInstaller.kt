@@ -298,7 +298,6 @@ internal object AndroidApkInstaller {
                 .setNegativeButton("Plus tard", null).show()
             return
         }
-        preferences.edit().clear().apply()
         try {
             val uri = FileProvider.getUriForFile(
                 activity, activity.packageName + ".files", file)
@@ -306,6 +305,9 @@ internal object AndroidApkInstaller {
                 setDataAndType(uri, "application/vnd.android.package-archive")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             })
+            // Clear pending state only AFTER the OS accepted the installer
+            // intent. A failed start must allow retry without redownloading.
+            preferences.edit().clear().apply()
             report("Installateur Android ouvert", false)
         } catch (error: Exception) {
             report("Installateur Android indisponible : " + error.localizedMessage, true)
@@ -343,7 +345,7 @@ internal object AndroidApkInstaller {
             }
             return
         }
-        preferences.edit().clear().apply()
+        if (!busy.compareAndSet(false, true)) return
         Thread({
             try {
                 if (sha256(file) != hash) throw IOException("Empreinte modifiée.")
@@ -355,7 +357,12 @@ internal object AndroidApkInstaller {
                                 .setMessage(message).setPositiveButton("OK", null).show()
                         }
                 }
-            } catch (_: Exception) { file.delete() }
+            } catch (_: Exception) {
+                file.delete()
+                preferences.edit().clear().apply()
+            } finally {
+                busy.set(false)
+            }
         }, "all-download-verify-update").start()
     }
 }
