@@ -525,7 +525,12 @@ class DownloaderAPI:
             cmd.append("--write-thumbnail")
         if settings.get("audio_add_metadata" if audio else "video_add_metadata"):
             cmd.append("--add-metadata")
-        if mode == "Vidéo" and (urlsplit(url).hostname or "").endswith(("youtube.com", "youtu.be")):
+        # Hostname must match exactly (or a genuine YouTube subdomain).
+        # A forged hostname such as notyoutube.com must never receive
+        # YouTube-only post-processing flags.
+        host = (urlsplit(url).hostname or "").lower()
+        youtube_host = host in ("youtube.com", "youtu.be") or host.endswith(".youtube.com")
+        if mode == "Vidéo" and youtube_host:
             if settings.get("sponsor_enable"):
                 remove = settings.get("sponsor_remove")
                 if remove in ("sponsor", "all"):
