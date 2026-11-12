@@ -9,8 +9,8 @@
 Windows 10/11 · Android 7+ · Linux x86_64 (bêta) · Interface en français · Thèmes clair, sombre et OLED
 
 [![Windows](https://img.shields.io/badge/Windows-Portable%20%26%20Classique-2563EB?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/anderson76389/All-Download/releases/latest)
-[![Android](https://img.shields.io/badge/Android-APK%20b%C3%AAta-16A34A?style=for-the-badge&logo=android&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.18-beta)
-[![Linux](https://img.shields.io/badge/Linux-x86__64%20b%C3%AAta-6D28D9?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/linux-v0.1.3-beta)
+[![Android](https://img.shields.io/badge/Android-APK%20b%C3%AAta-16A34A?style=for-the-badge&logo=android&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.21-beta)
+[![Linux](https://img.shields.io/badge/Linux-x86__64%20b%C3%AAta-6D28D9?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/linux-v0.1.5-beta)
 
 </div>
 
@@ -22,10 +22,10 @@ Windows 10/11 · Android 7+ · Linux x86_64 (bêta) · Interface en français ·
 |:--|:--|:--|
 | 🖥️ **Windows 10/11 (x64)** | **Portable** · Sans installation | **[⬇️ Télécharger le ZIP Portable](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Portable-Windows.zip)** |
 | 🖥️ **Windows 10/11 (x64)** | **Classique** · Avec installateur | **[⬇️ Télécharger le ZIP Classique](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Classique-Windows.zip)** |
-| 📱 **Android 7+** | **APK officielle — 0.6.18-beta** | **[⬇️ Télécharger l’APK Android](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.18-beta/All-Download-Android-0.6.18-beta.apk)** |
-| 🐧 **Linux x86_64 (glibc)** | **Portable — 0.1.3-beta** | **[⬇️ Télécharger Linux (archive .tar.xz)](https://github.com/anderson76389/All-Download/releases/download/linux-v0.1.3-beta/All-Download-Linux-x86_64.tar.xz)** |
+| 📱 **Android 7+** | **APK officielle — 0.6.21-beta** | **[⬇️ Télécharger l’APK Android](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.21-beta/All-Download-Android-0.6.21-beta.apk)** |
+| 🐧 **Linux x86_64 (glibc)** | **Portable — 0.1.5-beta** | **[⬇️ Télécharger Linux (archive .tar.xz)](https://github.com/anderson76389/All-Download/releases/download/linux-v0.1.5-beta/All-Download-Linux-x86_64.tar.xz)** |
 
-**[Release Android et notes de version](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.18-beta)** · [Empreinte SHA-256 de l’APK](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.18-beta/All-Download-Android-0.6.18-beta.apk.sha256) · [Dernière Release stable Windows](https://github.com/anderson76389/All-Download/releases/latest)
+**[Release Android et notes de version](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.21-beta)** · [Empreinte SHA-256 de l’APK](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.21-beta/All-Download-Android-0.6.21-beta.apk.sha256) · [Dernière Release stable Windows](https://github.com/anderson76389/All-Download/releases/latest)
 
 > **Important :** Windows, Android et Linux sont trois éditions distinctes. Installez uniquement le format correspondant à votre appareil (ZIP Windows, APK Android, archive Linux). Les fichiers officiels sont ceux des [Releases GitHub](https://github.com/anderson76389/All-Download/releases). La première version Linux est une bêta portable, non un .deb/.rpm.
 
@@ -54,7 +54,7 @@ La disponibilité des formats et des plateformes dépend des sites, de leur auth
 
 ## 📱 Android — même identité, interface adaptée
 
-**Version Android 0.6.16 bêta :** fiabilisation du collage après copie d'un lien depuis la file lors de restrictions temporaires du presse-papiers Android. Contrôles des raccourcis, réglages et interactions, interface sans barre de marque permanente, sections espacées et icônes harmonisées. Les éditions Windows et Linux sont indépendantes.
+**Version Android 0.6.21 bêta :** Android 15 interrompt proprement les téléchargements en arrière-plan à expiration de la durée système : tâches sauvegardées et reprise manuelle possible sans effacer les fichiers partiels. Réessais réseau limités, nettoyage prudent des anciens dossiers temporaires orphelins et notifications « Fermer ». L’interface et les formats de téléchargement existants restent inchangés.
 
 <sub>Code et instructions : [android/README.md](https://github.com/anderson76389/All-Download/blob/main/android/README.md) · Icône Android : [android/branding](https://github.com/anderson76389/All-Download/tree/main/android/branding)</sub>
 
@@ -72,9 +72,17 @@ La disponibilité des formats et des plateformes dépend des sites, de leur auth
 3. Appuyer sur **Installer** : l’APK est téléchargée dans le cache privé, avec progression, contrôle SHA-256 et vérification de la signature.
 4. Confirmer l’installation dans **Android**. Le navigateur n’est pas ouvert.
 
-La recherche manuelle et l’activation des alertes se trouvent dans **Paramètres → Appli → Mises à jour Android**. La version **0.6.18-beta** utilise une signature permanente et supprime les anciennes APK du cache privé après installation : les futures APK signées avec cette même clé pourront être installées par-dessus. Une ancienne bêta signée avec une autre clé peut nécessiter une désinstallation préalable, susceptible d’effacer les données privées de l’application. **Sauvegardez vos réglages et cookies si nécessaire.**
+La recherche manuelle et l’activation des alertes se trouvent dans **Paramètres → Appli → Mises à jour Android**. La version **0.6.21-beta** utilise une signature permanente et supprime les anciennes APK du cache privé après installation : les futures APK signées avec cette même clé pourront être installées par-dessus. Une ancienne bêta signée avec une autre clé peut nécessiter une désinstallation préalable, susceptible d’effacer les données privées de l’application. **Sauvegardez vos réglages et cookies si nécessaire.**
 
 **Compatibilité testée en CI :** Android 9, 14 et 15, avec un profil tablette Android 14. Les tests de liens vidéo publics et de certains réseaux sociaux réussissent ; l’accès à toutes les vidéos de chaque service n’est pas garanti.
+
+**Mesurer la RAM, le CPU et la batterie sur un appareil réel :** connecter un téléphone Android avec ADB autorisé, puis exécuter depuis la racine du dépôt (PowerShell Windows) :
+
+```powershell
+.\scripts\audit-android-performance.ps1 -Samples 18 -IntervalSeconds 10
+```
+
+Le rapport CSV est enregistré dans `Donnees/diagnostics/`. Comparer une session au repos et une session en téléchargement. **Les résultats CI n’équivalent pas à une mesure prolongée sur un HONOR Magic V6.**
 
 ---
 
@@ -122,11 +130,11 @@ Les **sept catégories de médias** sont créées automatiquement. `Donnees/` re
 
 ## 🐧 Linux — portable x86_64 (bêta)
 
-**0.1.3 bêta :** qualité Twitch **1080p natif, puis 720p natif** lorsque le 1080p manque ; nettoyage prudent des anciens dossiers temporaires après interruption, et archive `.tar.xz` privilégiée si son SHA-256 existe. Vérification des mises à jour **depuis les paramètres**, raccourci facultatif et tests de lancement sur **Ubuntu 22.04 et 24.04**.
+**0.1.5 bêta :** fermeture Qt et sous-processus yt-dlp/FFmpeg arrêtés proprement, réessais réseau limités, qualité Twitch **1080p puis 720p natifs**, et archive `.tar.xz` optimisée de **321,1 Mo à 311,6 Mo** (mesure CI, sans suppression de bibliothèques). Mises à jour Linux vérifiées manuellement avec SHA-256 ; lancement testé sur **Ubuntu 22.04 et 24.04**.
 
 **L'interface HTML/CSS/JavaScript reste basée sur Windows** (extraite de `yt_app.py`). Seuls les boutons Linux de mise à jour et de raccourci sont ajoutés à l'onglet Appli. Le moteur Qt WebEngine, yt-dlp et FFmpeg est natif Linux, sans WebView2 ni exécutable Windows.
 
-1. Télécharger **[Linux x86_64 0.1.3-beta (.tar.xz)](https://github.com/anderson76389/All-Download/releases/download/linux-v0.1.3-beta/All-Download-Linux-x86_64.tar.xz)**, ou l'**[archive .tar.gz](https://github.com/anderson76389/All-Download/releases/download/linux-v0.1.3-beta/All-Download-Linux-x86_64.tar.gz)**.
+1. Télécharger **[Linux x86_64 0.1.5-beta (.tar.xz)](https://github.com/anderson76389/All-Download/releases/download/linux-v0.1.5-beta/All-Download-Linux-x86_64.tar.xz)**, ou l'**[archive .tar.gz](https://github.com/anderson76389/All-Download/releases/download/linux-v0.1.5-beta/All-Download-Linux-x86_64.tar.gz)**.
 2. Extraire le dossier **All-Download/** dans un emplacement modifiable, puis lancer **All-Download-Linux** (sans sudo).
 3. Pour obtenir un raccourci de menu, ouvrir **Paramètres → Appli → Linux → Ajouter au menu des applications**. Il est possible de le retirer depuis l'application.
 4. Pour vérifier une nouvelle version, choisir **Vérifier les mises à jour Linux**. Le navigateur n'ouvre la Release que sur demande ; l'installation reste manuelle.
@@ -135,7 +143,7 @@ Les téléchargements et les données restent dans le dossier All-Download/ (cat
 
 Les VOD Twitch sont gérées par yt-dlp, sans le moteur spécialisé TwitchDownloaderCLI de Windows. Debian, Fedora et les environnements Wayland variés nécessitent encore des validations réelles.
 
-**[Documentation Linux détaillée](https://github.com/anderson76389/All-Download/blob/main/linux/README.md)** · [SHA-256 de l'archive .tar.xz](https://github.com/anderson76389/All-Download/releases/download/linux-v0.1.3-beta/All-Download-Linux-x86_64.tar.xz.sha256)
+**[Documentation Linux détaillée](https://github.com/anderson76389/All-Download/blob/main/linux/README.md)** · [SHA-256 de l'archive .tar.xz](https://github.com/anderson76389/All-Download/releases/download/linux-v0.1.5-beta/All-Download-Linux-x86_64.tar.xz.sha256)
 
 ---
 
