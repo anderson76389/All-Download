@@ -32,6 +32,34 @@ internal object AndroidApkInstaller {
     private val cancelled = AtomicBoolean(false)
     private val main = Handler(Looper.getMainLooper())
 
+    /**
+     * An installed update must not leave another ~200 MB APK in private cache.
+     * Delete only our own older/equal-version APKs and their interrupted .part
+     * files. Never touch an APK of a newer pending update or unrelated files.
+     * Runs once on resume, without network traffic or expensive SHA-256 scans.
+     */
+    internal fun clearInstalledUpdateCache(
+        context: Context, installedVersion: String = BuildConfig.VERSION_NAME
+    ) {
+        if (busy.get()) return
+        val folder = File(context.cacheDir, "updates")
+        val owned = Regex("^All-Download-Android-(\\d+\\.\\d+\\.\\d+-beta)\\.apk(?:\\.part)?$")
+        folder.listFiles()?.forEach { file ->
+            if (!file.isFile) return@forEach
+            val version = owned.matchEntire(file.name)?.groupValues?.get(1)
+                ?: return@forEach
+            if (AndroidUpdates.compareVersions(version, installedVersion) <= 0)
+                file.delete()
+        }
+        val prefs = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+        val pending = prefs.getString("version", "").orEmpty()
+        if (Regex("^\\d+\\.\\d+\\.\\d+-beta$").matches(pending) &&
+            AndroidUpdates.compareVersions(pending, installedVersion) <= 0) {
+            // Installation completed: don't reopen a stale package installer.
+            prefs.edit().clear().apply()
+        }
+    }
+
     /** Used by the pinned banner when returning from system installer settings. */
     fun isBusy(): Boolean = busy.get()
 
@@ -287,6 +315,7 @@ internal object AndroidApkInstaller {
     /** Resume after user grants Android's installation permission, without a browser. */
     fun onResume(activity: Activity) {
         if (busy.get()) return
+        clearInstalledUpdateCache(activity.applicationContext)
         val preferences = activity.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
         val name = preferences.getString("pending", "").orEmpty()
         val version = preferences.getString("version", "").orEmpty()
