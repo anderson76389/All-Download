@@ -1,5 +1,7 @@
 # All-Download Linux x86_64 — bêta
 
+**Version 0.1.1-beta :** le remuxage respecte le format MP4/MKV choisi, les VOD Twitch sont reconnues uniquement sur les vrais domaines, et l'import des cookies vérifie la taille avant toute lecture. Pause, Reprendre et Annuler sont testés avec de vrais signaux de processus Linux.
+
 La version Linux reprend le **HTML/CSS/JS Windows à l'identique** (extrait automatiquement de yt_app.py), mais utilise une fenêtre native Qt WebEngine et des binaires Linux yt-dlp/FFmpeg. **Aucun EXE Windows n'est exécuté.**
 
 ## Installer et démarrer
