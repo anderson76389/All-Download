@@ -1,0 +1,100 @@
+name: Ultimate three-platform release audit
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/scripts/audit_release_assets.py"
+      - ".github/workflows/audit-three-platform-releases.yml"
+  push:
+    branches: [main]
+    paths:
+      - ".github/scripts/audit_release_assets.py"
+      - ".github/workflows/audit-three-platform-releases.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: all-download-release-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  published-release-integrity:
+    name: Validate published ${{ matrix.platform }} release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [windows, android, linux]
+    steps:
+      - name: Check out independent release auditor
+        uses: actions/checkout@v4
+      - name: Select published release for requested platform
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLATFORM: ${{ matrix.platform }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$PLATFORM" = windows ]; then
+            TAG="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq '.tag_name')"
+            [[ "$TAG" =~ ^build-[0-9]+$ ]]
+          else
+            PREFIX="$PLATFORM-v"
+            TAG="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+              --jq ". | map(select(.draft == false and (.tag_name | startswith(\"$PREFIX\")))) | sort_by(.published_at) | last | .tag_name")"
+            if [ "$PLATFORM" = android ]; then
+              [[ "$TAG" =~ ^android-v[0-9]+\.[0-9]+\.[0-9]+-beta$ ]]
+            else
+              [[ "$TAG" =~ ^linux-v[0-9]+\.[0-9]+\.[0-9]+-beta$ ]]
+            fi
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Auditing $PLATFORM published tag $TAG"
+      - name: Download the release assets from GitHub (not build artifacts)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+          PLATFORM: ${{ matrix.platform }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "release-assets/$PLATFORM"
+          case "$PLATFORM" in
+            windows) PATTERN="All-Download-*-Windows.zip" ;;
+            android) PATTERN="All-Download-Android-*.apk*" ;;
+            linux) PATTERN="All-Download-Linux-x86_64.*" ;;
+          esac
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --pattern "$PATTERN" --dir "release-assets/$PLATFORM"
+          find "release-assets/$PLATFORM" -maxdepth 1 -type f \
+            -printf '%f (%s bytes)\n' | sort
+      - name: Install Android signing verification tools
+        if: matrix.platform == 'android'
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path "*/bin/sdkmanager" -type f | sort -V | tail -n 1)"
+          test -n "$SDKMANAGER"
+          "$SDKMANAGER" --install "build-tools;35.0.0"
+          test -x "$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          test -x "$ANDROID_HOME/build-tools/35.0.0/aapt"
+      - name: Independently check hashes, signatures and archive layouts
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+          PLATFORM: ${{ matrix.platform }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/audit_release_assets.py \
+            "$PLATFORM" "release-assets/$PLATFORM" --tag "$TAG" \
+            | tee release-audit-result.txt
+          {
+            echo "### All-Download $PLATFORM : $TAG"
+            echo '~~~text'
+            cat release-audit-result.txt
+            echo '~~~'
+          } >> "$GITHUB_STEP_SUMMARY"
