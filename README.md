@@ -156,6 +156,8 @@ Les VOD Twitch sont gérées par yt-dlp, sans le moteur spécialisé TwitchDownl
 - **Windows :** les éditions officielles sont disponibles dans la dernière Release stable. Un avertissement SmartScreen peut apparaître en l’absence d’une signature d’éditeur reconnue ; ne désactivez pas les protections de Windows.
 - **Mises à jour :** les téléchargements Android et Windows sont distincts. La suppression d’anciennes Releases ne doit pas supprimer la dernière version Windows ni l’APK Android courante.
 
+**Pérennité :** [sauvegarde/restauration hors ligne et maintenance](docs/MAINTENANCE.md) · vérification des SHA-256 sans internet avec `python scripts/verify_release_asset.py <archive>` (garder le `.sha256` à côté).
+
 **Dépannage :** [signaler un problème](https://github.com/anderson76389/All-Download/issues) · [documentation Android](https://github.com/anderson76389/All-Download/blob/main/android/README.md) · [voir les Releases](https://github.com/anderson76389/All-Download/releases)
 
 <details>

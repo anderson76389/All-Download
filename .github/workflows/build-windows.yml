@@ -17,6 +17,7 @@ on:
       # Never publish a new Windows EXE for backup tests or documentation-only commits.
       - "docs/**"
       - "tests/test_offline_backup.py"
+      - "tests/test_release_asset_integrity.py"
       - ".github/dependabot.yml"
       - ".github/workflows/test-offline-recovery.yml"
   workflow_dispatch:
