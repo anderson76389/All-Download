@@ -3553,17 +3553,20 @@ class DownloaderAPI:
                 if lock is not None:
                     with lock:
                         self._metadata_processes.discard(proc)
-                if proc.poll() is None:
+                # Real Popen has poll/streams; older offline test doubles may
+                # implement only communicate(). Do not break those contracts.
+                poll = getattr(proc, "poll", None)
+                if callable(poll) and poll() is None:
                     kill_process_tree(proc.pid)
                     try:
                         proc.wait(timeout=2)
                     except subprocess.TimeoutExpired:
                         proc.kill()
                         proc.wait(timeout=2)
-                if proc.stdout is not None:
-                    proc.stdout.close()
-                if proc.stderr is not None:
-                    proc.stderr.close()
+                for stream_name in ("stdout", "stderr"):
+                    stream = getattr(proc, stream_name, None)
+                    if stream is not None:
+                        stream.close()
 
     def _download_twitch_hls(self, item, target_dir, quality, idx, total, status):
         """Secours indépendant : CDN HLS accessible sans cookie + FFmpeg commun.
