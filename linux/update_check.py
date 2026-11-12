@@ -9,7 +9,7 @@ import json
 import re
 from urllib.request import Request, urlopen
 
-CURRENT_LINUX_VERSION = "0.1.4-beta"
+CURRENT_LINUX_VERSION = "0.1.5-beta"
 RELEASE_API = "https://api.github.com/repos/anderson76389/All-Download/releases?per_page=30"
 RELEASE_ROOT = "https://github.com/anderson76389/All-Download/releases"
 VERSION_PATTERN = re.compile(r"^linux-v([0-9]+)\.([0-9]+)\.([0-9]+)-beta$")
