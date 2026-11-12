@@ -1,0 +1,33 @@
+name: Validate Windows resource profiling script
+on:
+  pull_request:
+    paths:
+      - "scripts/audit-windows-performance.ps1"
+      - ".github/workflows/test-windows-profiler.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/audit-windows-performance.ps1"
+      - ".github/workflows/test-windows-profiler.yml"
+permissions:
+  contents: read
+jobs:
+  powershell-parse:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse Windows performance profiler without executing it
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $tokens = $null
+          $errors = $null
+          $path = (Resolve-Path "scripts/audit-windows-performance.ps1").Path
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            $path, [ref]$tokens, [ref]$errors)
+          if ($errors.Count -ne 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            throw "Le script de diagnostic contient une erreur PowerShell."
+          }
+          Write-Output "Syntaxe PowerShell valide, sans lancer de commandes ni telechargements."
