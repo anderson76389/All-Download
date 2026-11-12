@@ -13,6 +13,7 @@ import subprocess
 import threading
 import traceback
 import faulthandler
+import atexit
 import logging
 from logging.handlers import RotatingFileHandler
 from datetime import datetime
@@ -146,6 +147,16 @@ try:
     faulthandler.enable(file=_CRASH_STREAM, all_threads=True)
 except (OSError, RuntimeError):
     _CRASH_STREAM = None
+
+def _release_crash_stream():
+    """Close the single process-lifetime crash log without dangling faulthandler."""
+    global _CRASH_STREAM
+    if _CRASH_STREAM is not None:
+        faulthandler.disable()
+        _CRASH_STREAM.close()
+        _CRASH_STREAM = None
+
+atexit.register(_release_crash_stream)
 
 def handle_exception(exc_type, exc_value, exc_traceback):
     try:
@@ -3082,6 +3093,8 @@ class DownloaderAPI:
         self.is_paused = False
         self._active_download_process = None
         self._suspended_download_pids = []
+        self._metadata_process_lock = threading.Lock()
+        self._metadata_processes = set()
 
     def _load_config(self):
         if os.path.exists(CONFIG_FILE):
@@ -3345,6 +3358,13 @@ class DownloaderAPI:
                 kill_process_tree(proc.pid)
             except (OSError, AttributeError):
                 pass
+        lock = getattr(self, "_metadata_process_lock", None)
+        if lock is not None:
+            with lock:
+                metadata = tuple(self._metadata_processes)
+            for process in metadata:
+                if process.poll() is None:
+                    kill_process_tree(process.pid)
         return True
 
     def pause_downloads(self):
@@ -3451,6 +3471,10 @@ class DownloaderAPI:
                 creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
                 env=local_ytdlp_environment(),
             )
+            lock = getattr(self, "_metadata_process_lock", None)
+            if lock is not None:
+                with lock:
+                    self._metadata_processes.add(proc)
             stdout, stderr = proc.communicate(timeout=60)
             
             if proc.returncode != 0:
@@ -3535,7 +3559,25 @@ class DownloaderAPI:
                 return {"success": True, "data": fallback_metadata(url)}
             return {"success": False, "error": str(e)}
         finally:
-            gc.collect()
+            if proc is not None:
+                lock = getattr(self, "_metadata_process_lock", None)
+                if lock is not None:
+                    with lock:
+                        self._metadata_processes.discard(proc)
+                # Real Popen has poll/streams; older offline test doubles may
+                # implement only communicate(). Do not break those contracts.
+                poll = getattr(proc, "poll", None)
+                if callable(poll) and poll() is None:
+                    kill_process_tree(proc.pid)
+                    try:
+                        proc.wait(timeout=2)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        proc.wait(timeout=2)
+                for stream_name in ("stdout", "stderr"):
+                    stream = getattr(proc, stream_name, None)
+                    if stream is not None:
+                        stream.close()
 
     def _download_twitch_hls(self, item, target_dir, quality, idx, total, status):
         """Secours indépendant : CDN HLS accessible sans cookie + FFmpeg commun.
@@ -3608,6 +3650,10 @@ class DownloaderAPI:
         finally:
             if process is not None and process.poll() is None:
                 kill_process_tree(process.pid)
+            if process is not None:
+                stream = getattr(process, "stdout", None)
+                if stream is not None:
+                    stream.close()
             self._active_download_process = None
             if temporary is not None:
                 try:
@@ -3738,6 +3784,10 @@ class DownloaderAPI:
         finally:
             if proc is not None and proc.poll() is None:
                 kill_process_tree(proc.pid)
+            if proc is not None:
+                stream = getattr(proc, "stdout", None)
+                if stream is not None:
+                    stream.close()
             self._active_download_process = None
 
     def start_downloads(self, items):
@@ -4377,6 +4427,10 @@ if __name__ == '__main__':
 
         def on_window_closed(*_):
             webview_closed.set()
+            try:
+                api.cancel_downloads()
+            finally:
+                api._window = None
 
         window.events.shown += on_window_shown
         window.events.loaded += on_window_loaded
@@ -4414,6 +4468,8 @@ if __name__ == '__main__':
                 )
             finally:
                 webview_closed.set()
+                api.cancel_downloads()
+                api._window = None
         log_startup_phase("Fermeture normale de la fenetre")
     except Exception as exc:
         log_startup_phase(f"Echec: {type(exc).__name__}: {exc}")
