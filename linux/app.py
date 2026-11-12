@@ -201,6 +201,18 @@ class DownloaderAPI:
             except Exception:
                 pass
 
+    def check_linux_updates(self):
+        from linux.update_check import check_linux_updates
+        return check_linux_updates()
+
+    def install_linux_launcher(self):
+        from linux.desktop import install_linux_launcher
+        return install_linux_launcher(self.root)
+
+    def remove_linux_launcher(self):
+        from linux.desktop import remove_linux_launcher
+        return remove_linux_launcher()
+
     def get_download_folder(self):
         return self.download_folder
 
@@ -607,10 +619,14 @@ def load_html() -> str:
     bundled = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
     html_file = bundled / "ui.html"
     if html_file.is_file():
-        return html_file.read_text(encoding="utf-8")
-    # Running directly from the repository reuses the exact Windows HTML string.
-    from extract_ui import extract
-    return extract(Path(__file__).resolve().parents[1] / "yt_app.py")
+        html = html_file.read_text(encoding="utf-8")
+    else:
+        # Running from the repository reuses the exact Windows HTML source.
+        from extract_ui import extract
+        html = extract(Path(__file__).resolve().parents[1] / "yt_app.py")
+    # Additional Linux-only controls; the Windows source remains unchanged.
+    from linux.ui_extras import inject_linux_controls
+    return inject_linux_controls(html)
 
 
 def main() -> int:
