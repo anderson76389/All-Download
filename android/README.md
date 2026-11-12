@@ -1,3 +1,9 @@
+## Correctifs 0.6.21-beta
+
+- Android 15 : expiration des services de transfert gérée proprement, reprise manuelle après pause sans suppression des fichiers partiels.
+- Réessais HTTP/fragment bornés et nettoyage prudent, plafonné à huit dossiers temporaires orphelins âgés de plus de sept jours.
+- File et paramètres conservés à travers les mises à jour signées ; Android demande toujours confirmation pour installer l'APK.
+
 # All-Download Android — bêta 0.6.20
 
 ## Partage et fermeture de l’application — 0.6.20
