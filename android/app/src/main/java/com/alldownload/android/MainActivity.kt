@@ -339,14 +339,21 @@ class MainActivity : Activity() {
         engineVersionText.text = "yt-dlp et FFmpeg intégrés • All-Download " + BuildConfig.VERSION_NAME
         // Keep cold startup light: advanced settings are built only on first opening.
         applyPalette()
-        processSharedUrl(intent)
         if (savedInstanceState != null) {
             urlInput.setText(savedInstanceState.getString("url", urlInput.text.toString()))
             modeSpinner.setSelection(savedInstanceState.getInt("mode", 0))
             qualitySpinner.setSelection(savedInstanceState.getInt("quality", 0))
             selectedTab = savedInstanceState.getInt("tab", 0).coerceIn(0, 3)
         }
+        processSharedUrl(intent)
         selectTab(selectedTab)
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+                PackageManager.PERMISSION_GRANTED &&
+            !settings.getBoolean("notifications_prompted", false)) {
+            settings.edit().putBoolean("notifications_prompted", true).apply()
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 103)
+        }
         // Keep a Windows-like sidebar on large tablets; phones dock the same tabs
         // below the content instead of spending vertical space above the URL field.
         if (resources.configuration.screenWidthDp >= 600) configureWideScreen()
@@ -1553,10 +1560,17 @@ class MainActivity : Activity() {
     }
 
     private fun processSharedUrl(intent: Intent?) {
-        if (intent?.action != Intent.ACTION_SEND || intent.type != "text/plain") return
-        val shared = intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
-        val candidate = Regex("https?://[^\\s<>]+").find(shared)?.value
-        if (!candidate.isNullOrBlank()) urlInput.setText(candidate)
+        if (intent?.action != Intent.ACTION_SEND) return
+        val url = SharedVideoLinks.extract(intent)
+        if (url != null) {
+            selectedTab = 0
+            urlInput.setText(url)
+            urlInput.setSelection(url.length)
+        } else {
+            Toast.makeText(this,
+                "Partage le lien de la vidéo (HTTP/HTTPS), pas le fichier local.",
+                Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun dp(value: Int): Int =
@@ -1575,6 +1589,7 @@ class MainActivity : Activity() {
         super.onResume()
         handler.removeCallbacks(refresh)
         handler.post(refresh)
+        DownloadService.showOpenNotification(this)
         // Resume only a user-authorized APK installation after Android's settings screen.
         AndroidApkInstaller.onResume(this)
         // Like Kovelyx: restore a pinned banner immediately, then refresh from GitHub.
@@ -1584,8 +1599,19 @@ class MainActivity : Activity() {
         AndroidUpdates.check(this, onRelease = { release -> updateBanner?.show(release) })
     }
 
+    override fun onRequestPermissionsResult(
+        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 103 && grantResults.firstOrNull() ==
+            PackageManager.PERMISSION_GRANTED && !isFinishing) {
+            DownloadService.showOpenNotification(this)
+        }
+    }
+
     override fun onPause() {
         handler.removeCallbacks(refresh)
+        DownloadService.hideOpenNotification(this)
         super.onPause()
     }
 
@@ -1593,6 +1619,7 @@ class MainActivity : Activity() {
         handler.removeCallbacks(refresh)
         fileRequestId++
         fileExecutor.shutdownNow()
+        DownloadService.hideOpenNotification(this)
         super.onDestroy()
     }
 }
