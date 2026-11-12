@@ -134,9 +134,13 @@ class HLSFallbackTests(unittest.TestCase):
                     )
 
     def test_source_720_native_accepted_and_not_transcoded(self):
+        def only_720(url, timeout=12):
+            if "/1080p" in url:
+                raise HTTPError(url, 403, "Forbidden", None, None)
+            return 803, 8001.0
         with patch.object(twitch_hls, "metadata_for_vod",
                           return_value={"seekPreviewsURL": PREVIEW}), \
-             patch.object(twitch_hls, "read_public_manifest", return_value=(803, 8001.0)):
+             patch.object(twitch_hls, "read_public_manifest", side_effect=only_720):
             _, label, _, _ = twitch_hls.resolve_hls(
                 "https://www.twitch.tv/videos/2919531847", "1080p (60fps)",
                 source_height_probe=lambda _: 720
