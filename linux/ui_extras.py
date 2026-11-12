@@ -39,7 +39,9 @@ LINUX_SETTINGS_SCRIPT = r"""
         if (!result || !result.success) {
           status.textContent = (result && result.error) || 'Vérification impossible.';
         } else if (result.available) {
-          status.textContent = 'Version ' + result.latest + ' disponible (installable manuellement).';
+          status.textContent = 'Version ' + result.latest + ' disponible — ' +
+            (result.preferred_asset || 'archive Linux') +
+            ' (SHA-256 fourni, installation manuelle).';
           open.hidden = false;
           open.onclick = () => bridge().open_external(result.url);
         } else {

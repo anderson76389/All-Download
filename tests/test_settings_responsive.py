@@ -71,6 +71,7 @@ class SettingsWorkflowTests(unittest.TestCase):
 
     def test_ytdlp_uses_only_local_cache_for_downloads_and_metadata(self):
         command = self.download("Vidéo")
+        self.assertEqual(command[command.index("--progress-delta") + 1], "0.5")
         self.assertEqual(command[command.index("--cache-dir") + 1],
                          yt_app.YTDLP_CACHE_DIR)
         self.assertEqual(os.path.commonpath([

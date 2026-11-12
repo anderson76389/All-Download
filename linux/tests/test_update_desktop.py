@@ -24,11 +24,16 @@ from linux.ui_extras import inject_linux_controls
 from linux.update_check import CURRENT_LINUX_VERSION, check_linux_updates, parse_linux_version
 
 
-def linux_release(tag, complete=True, **overrides):
+def linux_release(tag, complete=True, compact=False, **overrides):
     assets = [
         {"name": "All-Download-Linux-x86_64.tar.gz"},
         {"name": "All-Download-Linux-x86_64.tar.gz.sha256"},
     ] if complete else [{"name": "All-Download-Linux-x86_64.tar.gz"}]
+    if compact:
+        assets.extend([
+            {"name": "All-Download-Linux-x86_64.tar.xz"},
+            {"name": "All-Download-Linux-x86_64.tar.xz.sha256"},
+        ])
     return {"tag_name": tag, "assets": assets, "draft": False, **overrides}
 
 
@@ -51,8 +56,8 @@ class LinuxDesktopUpdateTests(unittest.TestCase):
         payload = [
             linux_release("android-v999.0.0-beta"),
             linux_release("linux-v9.9.9-beta", complete=False),
-            linux_release("linux-v0.1.4-beta", draft=True),
-            linux_release("linux-v0.1.3-beta"),
+            linux_release("linux-v0.1.5-beta", draft=True),
+            linux_release("linux-v0.1.4-beta", compact=True),
             linux_release("linux-v0.1.2-beta"),
             linux_release("linux-v0.1.1-beta"),
         ]
@@ -60,35 +65,46 @@ class LinuxDesktopUpdateTests(unittest.TestCase):
             result = check_linux_updates()
         self.assertTrue(result["success"], result)
         self.assertTrue(result["available"])
-        self.assertEqual("0.1.3-beta", result["latest"])
+        self.assertEqual("0.1.4-beta", result["latest"])
+        self.assertEqual("All-Download-Linux-x86_64.tar.xz", result["preferred_asset"])
+        self.assertEqual("All-Download-Linux-x86_64.tar.xz.sha256", result["checksum_asset"])
         self.assertEqual(CURRENT_LINUX_VERSION, result["current"])
         self.assertEqual(
-            "https://github.com/anderson76389/All-Download/releases/tag/linux-v0.1.3-beta",
+            "https://github.com/anderson76389/All-Download/releases/tag/linux-v0.1.4-beta",
             result["url"],
         )
         self.assertEqual(8, mocked.call_args.kwargs["timeout"])
 
     def test_release_check_does_not_trust_remote_redirect_urls(self):
-        record = linux_release("linux-v0.1.3-beta", html_url="https://evil.example/download")
+        record = linux_release("linux-v0.1.4-beta", html_url="https://evil.example/download")
         record["assets"][0]["browser_download_url"] = "https://evil.example/binary"
         with mock.patch("linux.update_check.urlopen", return_value=fake_api_response([record])):
             result = check_linux_updates()
         self.assertTrue(result["url"].startswith(
             "https://github.com/anderson76389/All-Download/releases/tag/"))
 
+    def test_compact_archive_without_checksum_is_never_preferred(self):
+        broken = linux_release("linux-v0.1.4-beta")
+        broken["assets"].append({"name": "All-Download-Linux-x86_64.tar.xz"})
+        with mock.patch("linux.update_check.urlopen", return_value=fake_api_response([broken])):
+            result = check_linux_updates()
+        self.assertTrue(result["success"], result)
+        self.assertEqual("All-Download-Linux-x86_64.tar.gz", result["preferred_asset"])
+
     def test_up_to_date_or_network_failure(self):
         with mock.patch("linux.update_check.urlopen", return_value=fake_api_response(
-                [linux_release("linux-v0.1.2-beta")])):
+                [linux_release("linux-v0.1.3-beta")])):
             result = check_linux_updates()
         self.assertTrue(result["success"])
         self.assertFalse(result["available"])
+        self.assertEqual("All-Download-Linux-x86_64.tar.gz", result["preferred_asset"])
         with mock.patch("linux.update_check.urlopen", side_effect=URLError("hors ligne")):
             result = check_linux_updates()
         self.assertFalse(result["success"])
         self.assertIn("indisponible", result["error"])
 
     def test_version_parser_rejects_other_products_and_nonstandard_tags(self):
-        self.assertEqual((0, 1, 2), parse_linux_version("linux-v0.1.2-beta"))
+        self.assertEqual((0, 1, 3), parse_linux_version("linux-v0.1.3-beta"))
         for value in ("android-v0.1.2-beta", "linux-v0.1.2-beta-evil",
                       "linux-v0.1.2", "../linux-v0.1.2-beta", "", None):
             self.assertIsNone(parse_linux_version(value))

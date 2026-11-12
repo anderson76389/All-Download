@@ -3006,6 +3006,44 @@ def html_for_config(config):
 # -------------------------------------------------------------
 # BACKEND API PYTHON (UNIVERSAL EXTRACTOR + 4K / AUDIO HD)
 # -------------------------------------------------------------
+def available_video_qualities(info):
+    """Only advertise resolutions present in actual yt-dlp video formats.
+
+    A maximum resolution of 1080p does NOT imply that the source also has
+    720p/480p. Audio-only formats never imply a video quality. If yt-dlp has
+    not supplied formats yet (e.g. a flat playlist), leave only Auto visible.
+    """
+    result = ["Meilleure qualité (Auto)"]
+    if not isinstance(info, dict):
+        return result
+    formats = info.get("formats")
+    if not isinstance(formats, list):
+        return result
+    heights = {}
+    for entry in formats:
+        if not isinstance(entry, dict) or entry.get("vcodec") == "none":
+            continue
+        height = entry.get("height")
+        if not isinstance(height, int) or isinstance(height, bool):
+            note = str(entry.get("resolution") or entry.get("format_note") or "")
+            match = re.search(r"(?<!\d)(\d{3,4})p(?:\d{2,3})?(?!\d)", note)
+            height = int(match.group(1)) if match else None
+        if not isinstance(height, int) or not (144 <= height <= 4320):
+            continue
+        fps = entry.get("fps")
+        # yt-dlp normally reports a number. Bad/missing metadata must not
+        # break analysis or create fictitious 60-fps quality labels.
+        if isinstance(fps, (int, float)) and not isinstance(fps, bool) and 1 <= fps <= 240:
+            fps = int(fps)
+        else:
+            fps = 30
+        heights[height] = max(heights.get(height, 0), fps)
+    for height in sorted(heights, reverse=True):
+        fps = heights[height]
+        result.append(f"{height}p" + (f" ({fps}fps)" if fps > 30 else ""))
+    return result
+
+
 class DownloaderAPI:
     def __init__(self):
         # pywebview 6.2.1 parcourt recursivement les attributs publics de js_api.
@@ -3440,33 +3478,8 @@ class DownloaderAPI:
             
             info = json.loads(stdout)
             
-            video_map = {}
-            for f in info.get("formats", []):
-                h = f.get("height")
-                if not h:
-                    res_str = f.get("resolution") or f.get("format_note") or ""
-                    m = re.search(r'(\d{3,4})p?', res_str)
-                    if m: h = int(m.group(1))
-                
-                if h and isinstance(h, int) and h >= 144:
-                    fps = f.get("fps") or 30
-                    if h not in video_map or fps > video_map[h]:
-                        video_map[h] = int(fps)
-
-            sorted_formats = ["Meilleure qualité (Auto)"]
-            if video_map:
-                standard_tiers = [4320, 2160, 1440, 1080, 720, 480, 360, 240, 144]
-                max_detected = max(video_map.keys())
-                for tier in standard_tiers:
-                    if tier <= max_detected and tier not in video_map:
-                        video_map[tier] = 30
-
-                for h in sorted(video_map.keys(), reverse=True):
-                    fps = video_map[h]
-                    fps_str = f" ({fps}fps)" if fps and fps > 30 else ""
-                    sorted_formats.append(f"{h}p{fps_str}")
-            else:
-                sorted_formats.extend(["1080p", "720p", "480p", "360p"])
+            # Report only source-confirmed video resolutions; never invent tiers.
+            sorted_formats = available_video_qualities(info)
 
             dur = info.get("duration")
             if dur is not None and isinstance(dur, (int, float)):
@@ -3856,6 +3869,7 @@ class DownloaderAPI:
                         "--ffmpeg-location", BIN_DIR,
                         "--windows-filenames",
                         "--newline",
+                        "--progress-delta", "0.5",  # limiter stdout/CPU sans masquer la fin
                         "--force-ipv4",
                         "--socket-timeout", "15",
                         "-P", target_dir,

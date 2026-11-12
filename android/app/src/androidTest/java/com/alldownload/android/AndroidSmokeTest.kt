@@ -1030,6 +1030,27 @@ class AndroidSmokeTest {
             AndroidUpdates.findNewer(releases.toString(), "0.3.1-beta"))
     }
 
+    @Test fun installedUpdateCleanupPreservesNewerAndUnknownPrivateFiles() {
+        val directory = File(context.cacheDir, "updates").apply { mkdirs() }
+        val old = File(directory, "All-Download-Android-0.0.1-beta.apk")
+        val interrupted = File(directory, "All-Download-Android-0.0.2-beta.apk.part")
+        val installed = File(directory, "All-Download-Android-0.0.2-beta.apk")
+        val newer = File(directory, "All-Download-Android-99.0.0-beta.apk")
+        val unrelated = File(directory, "other-app-private-cache.data")
+        val files = listOf(old, interrupted, installed, newer, unrelated)
+        try {
+            files.forEach { it.writeText("fake payload (never executable)") }
+            AndroidApkInstaller.clearInstalledUpdateCache(context, "0.0.2-beta")
+            assertFalse("Ancienne APK non nettoyée.", old.exists())
+            assertFalse("Téléchargement partiel obsolète non nettoyé.", interrupted.exists())
+            assertFalse("APK déjà installée non nettoyée.", installed.exists())
+            assertTrue("Une mise à jour plus récente a été supprimée.", newer.exists())
+            assertTrue("Un fichier de cache étranger a été supprimé.", unrelated.exists())
+        } finally {
+            files.forEach { it.delete() }
+        }
+    }
+
     @Test fun privateUpdateApkProviderAndChecksumRulesWorkWithoutBrowser() {
         val name = "All-Download-Android-0.5.0-beta.apk"
         val digest = "f".repeat(64)

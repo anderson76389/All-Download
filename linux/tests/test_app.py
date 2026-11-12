@@ -10,7 +10,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from linux.app import DownloaderAPI, category_for, inside_folder, is_twitch_vod_url, native_twitch_format, should_emit_progress, valid_url, video_format
+from linux.app import DownloaderAPI, category_for, cleanup_old_workspaces, inside_folder, is_twitch_vod_url, native_twitch_format, should_emit_progress, valid_url, video_format
 from linux.extract_ui import extract
 
 
@@ -74,6 +74,57 @@ class LinuxBackendTests(unittest.TestCase):
         self.assertEqual("TWITCH", category_for({"url": "https://www.twitch.tv/videos/12345", "mode": "Vidéo"}))
         self.assertEqual("AUDIOS", category_for({"url": "https://youtu.be/test", "mode": "Audio"}))
 
+    def test_twitch_selected_1080_falls_back_to_real_native_720(self):
+        # The quality preselected after metadata extraction was "1080p".
+        # Previously that path had no 720p fallback even when Auto did.
+        for selected in ("1080p", "1080p (60fps)", "Meilleure qualité (Auto)"):
+            fmt = native_twitch_format(selected)
+            self.assertIn("height=1080", fmt)
+            self.assertIn("height=720", fmt)
+            self.assertNotIn("480", fmt)
+            self.assertEqual(fmt.count("height=1080"), 2)
+        limited = native_twitch_format("720p")
+        self.assertIn("height=720", limited)
+        self.assertNotIn("height=1080", limited)
+
+    def test_old_linux_scratch_cleanup_never_removes_downloads(self):
+        scratch = self.root / "Donnees" / "temporaires"
+        old = scratch / ("a" * 32)
+        recent = scratch / ("b" * 32)
+        manual = scratch / "important-user-folder"
+        outside = self.root / "VIDÉOS" / "user-video.mp4"
+        old.mkdir()
+        recent.mkdir()
+        manual.mkdir()
+        (old / "partial.part").write_bytes(b"old interrupted video segment")
+        outside.write_bytes(b"keep this video")
+        clock = time.time()
+        os.utime(old, (clock - 9 * 86400, clock - 9 * 86400))
+        os.utime(recent, (clock - 2 * 86400, clock - 2 * 86400))
+        os.utime(manual, (clock - 20 * 86400, clock - 20 * 86400))
+        self.assertEqual(1, cleanup_old_workspaces(scratch, now=clock))
+        self.assertFalse(old.exists())
+        self.assertTrue(recent.is_dir())
+        self.assertTrue(manual.is_dir())
+        self.assertEqual(b"keep this video", outside.read_bytes())
+        self.assertEqual(0, cleanup_old_workspaces(scratch, now=clock))
+
+    def test_cleanup_refuses_symlink_and_limits_work(self):
+        scratch = self.root / "Donnees" / "temporaires"
+        outside = self.root / "AUTRES" / "safe"
+        outside.mkdir()
+        clock = time.time()
+        target = scratch / ("c" * 32)
+        target.symlink_to(outside, target_is_directory=True)
+        old = scratch / ("d" * 32)
+        old.mkdir()
+        os.utime(old, (clock - 9 * 86400, clock - 9 * 86400))
+        self.assertEqual(0, cleanup_old_workspaces(scratch, now=clock, max_removals=0))
+        self.assertEqual(1, cleanup_old_workspaces(scratch, now=clock, max_removals=1))
+        self.assertTrue(target.is_symlink())
+        self.assertTrue(outside.is_dir())
+        self.assertEqual(0, cleanup_old_workspaces(target, now=clock))
+
     def test_progress_notifications_throttled_without_losing_completion(self):
         self.assertTrue(should_emit_progress(0.2, 1.0, -1, 0))
         self.assertFalse(should_emit_progress(0.3, 1.1, 0.2, 1.0))
@@ -94,6 +145,7 @@ class LinuxBackendTests(unittest.TestCase):
         self.assertIn("--extract-audio", command)
         self.assertIn("mp3", command)
         self.assertIn("--audio-quality", command)
+        self.assertEqual("0.5", command[command.index("--progress-delta") + 1])
         self.assertTrue(any("AUDIOS" in arg for arg in command))
         self.assertTrue(any("temporaires" in arg for arg in command))
         self.assertTrue(command[-1].startswith("https://"))
