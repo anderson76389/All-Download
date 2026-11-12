@@ -537,6 +537,34 @@ jobs:
       - name: Fabriquer et verifier les deux ZIP complets avec les sources GitHub
         run: python scripts/build_release_archives.py --output release-archives
 
+      - name: Generer et valider les empreintes SHA-256 des ZIP officiels
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $files = @(
+            "release-archives/All-Download-Portable-Windows.zip",
+            "release-archives/All-Download-Classique-Windows.zip"
+          )
+          foreach ($archive in $files) {
+            if (-not (Test-Path $archive -PathType Leaf)) {
+              throw "Archive manquante : $archive"
+            }
+            if ((Get-Item $archive).Length -lt 1000000) {
+              throw "Archive Windows trop petite ou incomplete : $archive"
+            }
+            $filename = Split-Path $archive -Leaf
+            $hash = (Get-FileHash -Algorithm SHA256 -Path $archive).Hash.ToLowerInvariant()
+            $line = "$hash  $filename"
+            [IO.File]::WriteAllText("$archive.sha256", $line + "`n",
+              [System.Text.Encoding]::ASCII)
+            if ((Get-Content "$archive.sha256" -Raw).Trim() -ne $line) {
+              throw "Empreinte SHA-256 non fiable pour $filename"
+            }
+            $actual = (Get-FileHash -Algorithm SHA256 -Path $archive).Hash.ToLowerInvariant()
+            if ($actual -ne $hash) { throw "Le ZIP a change pendant sa verification : $filename" }
+            Write-Output "$filename : $hash"
+          }
+
       - name: Publier la Release Windows et les liens permanents du README
         shell: pwsh
         env:
@@ -559,10 +587,23 @@ jobs:
           - WebView2 : correction du pont JavaScript (aucune reference WinForms publique), testee sur 32 premiers lancements experimentaux, puis 12 lancements Windows obligatoires en CI.
           - Sur le runner de comparaison : 2/5 de l'ancienne version et 8/9 de la version corrigee sans relance.
           - Une lenteur WebView2 reste possible : watchdog de recuperation unique et journaux presents.
+          - Deux empreintes SHA-256 officielles accompagnent les ZIP pour verifier leur integrite.
           - Application non signee : avertissement SmartScreen possible.
           "@
-          gh release create $tag $portable $classic --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title "All-Download Windows - Build $env:GITHUB_RUN_NUMBER" --notes "$notes" --latest
+          gh release create $tag $portable "$portable.sha256" $classic "$classic.sha256" --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title "All-Download Windows - Build $env:GITHUB_RUN_NUMBER" --notes "$notes" --latest
           if ($LASTEXITCODE -ne 0) { throw "Publication de la Release impossible" }
+          $publishedAssets = @(gh release view $tag --repo "$env:GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+          if ($LASTEXITCODE -ne 0) { throw "Impossible de verifier les quatre assets Windows" }
+          foreach ($expected in @(
+            "All-Download-Portable-Windows.zip",
+            "All-Download-Portable-Windows.zip.sha256",
+            "All-Download-Classique-Windows.zip",
+            "All-Download-Classique-Windows.zip.sha256"
+          )) {
+            if ($publishedAssets -notcontains $expected) {
+              throw "Asset SHA-256/ZIP manquant dans la Release : $expected"
+            }
+          }
           Write-Output "ZIP Portable permanent : https://github.com/$env:GITHUB_REPOSITORY/releases/latest/download/All-Download-Portable-Windows.zip"
           Write-Output "ZIP Classique permanent : https://github.com/$env:GITHUB_REPOSITORY/releases/latest/download/All-Download-Classique-Windows.zip"
 
