@@ -3869,6 +3869,7 @@ class DownloaderAPI:
                         "--ffmpeg-location", BIN_DIR,
                         "--windows-filenames",
                         "--newline",
+                        "--progress-delta", "0.5",  # limiter stdout/CPU sans masquer la fin
                         "--force-ipv4",
                         "--socket-timeout", "15",
                         "-P", target_dir,
