@@ -1,3 +1,14 @@
+# All-Download Android — bêta 0.6.17
+
+## Alignement final des icônes et textes — 0.6.17
+
+- Sur téléphone, les pictogrammes et libellés des actions **Télécharger**, **Ajouter**, **Coller**, **Vidéo**, **Audio**, **GIF**, **Playlist** et **Twitch** sont centrés ensemble, sans icône isolée à gauche du texte.
+- Les onglets de réglages **Médias / Appli / Réseau** sont alignés sur une seule ligne quand l'écran le permet et empilés sur les petits écrans ou avec des caractères agrandis.
+- Les titres de sections sont alignés verticalement avec leur pictogramme ; les grandes commandes de file d'attente et de cookies gardent leur alignement à gauche.
+- La correction conserve les mêmes boutons, gestes et écouteurs, et ne modifie pas les moteurs de téléchargement.
+- Validation GitHub : compilation signée, **42 tests Android instrumentés** par profil (Android 9/14/15 et tablette Android 14), tests de téléchargements publics et réseaux sociaux. Les médias bloqués par leur plateforme sont notés **non vérifiés / ignorés**, jamais comptés comme téléchargements réussis.
+- APK officielle : [Android 0.6.17-beta](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.17-beta) · [SHA-256](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.17-beta/All-Download-Android-0.6.17-beta.apk.sha256).
+
 # All-Download Android — bêta 0.6.15
 
 ## Finitions mobile et actions vérifiées — 0.6.15
