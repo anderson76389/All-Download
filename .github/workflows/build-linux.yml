@@ -83,6 +83,14 @@ jobs:
             --collect-submodules webview \
             linux/app.py
           cp -a dist/All-Download-Linux/. stage/All-Download/
+          # The Ubuntu 22.04 C++ runtime bundled by PyInstaller can prevent
+          # Ubuntu 24.04 Mesa/GLX drivers from loading. Use the host graphics
+          # and C++ runtime instead, as Qt itself already expects host drivers.
+          for library in libstdc++.so.6 libgcc_s.so.1 libX11.so.6 libX11-xcb.so.1 libxcb-glx.so.0; do
+            find stage/All-Download/_internal -maxdepth 1 -name "$library" -type f -print -delete
+          done
+          test ! -e stage/All-Download/_internal/libstdc++.so.6
+          test ! -e stage/All-Download/_internal/libgcc_s.so.1
           cp logo.jpg stage/All-Download/logo.jpg
           test -s stage/All-Download/_internal/libwayland-server.so.0
           for kind in AUDIOS VIDÉOS TWITCH GIFS CHAÎNES PLAYLIST AUTRES; do
