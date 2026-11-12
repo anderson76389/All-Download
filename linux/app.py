@@ -73,6 +73,16 @@ def inside_folder(child: Path, root: Path) -> bool:
         return False
 
 
+def is_twitch_vod_url(url: str) -> bool:
+    """Recognize only actual Twitch VOD addresses, never similarly named hosts."""
+    if not valid_url(url):
+        return False
+    parsed = urlsplit(url.strip())
+    return (parsed.hostname or "").lower() in (
+        "twitch.tv", "www.twitch.tv", "m.twitch.tv"
+    ) and bool(re.fullmatch(r"/videos/[0-9]{5,20}/?", parsed.path or ""))
+
+
 def category_for(item: dict) -> str:
     url = str(item.get("url", "")).lower()
     host = urlsplit(url).hostname or ""
@@ -310,7 +320,11 @@ class DownloaderAPI:
                                                      directory=str(self.root))
             if not paths:
                 return None
-            raw = Path(paths[0]).read_bytes()
+            selected = Path(paths[0])
+            # Reject oversized or non-regular files *before* allocating memory.
+            if not selected.is_file() or selected.stat().st_size > 2_000_000:
+                return None
+            raw = selected.read_bytes()
             if len(raw) > 2_000_000 or not raw.lstrip().startswith(
                 (b"# Netscape HTTP Cookie File", b"# HTTP Cookie File")
             ):
@@ -342,7 +356,8 @@ class DownloaderAPI:
             for entry in extractor_args.splitlines():
                 if entry.strip():
                     args.extend(["--extractor-args", entry.strip()])
-        if "youtube.com" in (urlsplit(url).hostname or ""):
+        host = (urlsplit(url).hostname or "").lower()
+        if host == "youtu.be" or host == "youtube.com" or host.endswith(".youtube.com"):
             deno = self._tool("deno", required=False)
             if deno:
                 args.extend(["--js-runtimes", "deno:" + deno])
@@ -435,12 +450,13 @@ class DownloaderAPI:
         elif mode == "GIF":
             cmd += ["-f", "bestvideo+bestaudio/best", "--recode-video", "gif"]
         else:
-            is_twitch = bool(re.match(r"https?://(?:www\.)?twitch\.tv/videos/\d+", url))
+            is_twitch = is_twitch_vod_url(url)
             cmd += ["--format", video_format(quality, is_twitch)]
+            container = "mkv" if settings.get("video_format") == "MKV" else "mp4"
             if not settings.get("video_origin_stream"):
-                cmd += ["--merge-output-format", str(settings.get("video_format", "MP4")).lower()]
+                cmd += ["--merge-output-format", container]
             if settings.get("post_process_video") == "Remuxer":
-                cmd += ["--remux-video", "mp4"]
+                cmd += ["--remux-video", container]
         audio = mode == "Audio"
         if settings.get("audio_embed_thumb" if audio else "video_embed_thumb"):
             cmd.append("--embed-thumbnail")
@@ -465,7 +481,7 @@ class DownloaderAPI:
             try:
                 os.killpg(proc.pid, signal.SIGCONT)
                 os.killpg(proc.pid, signal.SIGTERM)
-            except ProcessLookupError:
+            except (ProcessLookupError, PermissionError):
                 pass
 
     def cancel_downloads(self):
@@ -483,7 +499,10 @@ class DownloaderAPI:
                 return {"success": False, "error": "Aucun téléchargement actif."}
             self._paused = True
             if self._current and self._current.poll() is None:
-                os.killpg(self._current.pid, signal.SIGSTOP)
+                try:
+                    os.killpg(self._current.pid, signal.SIGSTOP)
+                except ProcessLookupError:
+                    return {"success": True, "mode": "queue"}
                 return {"success": True, "mode": "active"}
             return {"success": True, "mode": "queue"}
 
@@ -493,7 +512,10 @@ class DownloaderAPI:
                 return {"success": False, "error": "Aucune file active."}
             self._paused = False
             if self._current and self._current.poll() is None:
-                os.killpg(self._current.pid, signal.SIGCONT)
+                try:
+                    os.killpg(self._current.pid, signal.SIGCONT)
+                except ProcessLookupError:
+                    pass
             return {"success": True}
 
     def _worker(self, items):
