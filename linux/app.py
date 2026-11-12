@@ -399,7 +399,8 @@ class DownloaderAPI:
     def _common_args(self, url, settings) -> list[str]:
         args = ["--cache-dir", str(self.cache), "--newline",
                 "--progress-delta", "0.5",  # keep the Qt bridge responsive on long downloads
-                "--socket-timeout", "20", "--retries", "3", "--no-overwrites"]
+                "--socket-timeout", "20", "--retries", "5",
+                "--fragment-retries", "5", "--continue", "--no-overwrites"]
         cookie_file = str(self.config.get("cookie_file") or "")
         if cookie_file and Path(cookie_file).is_file() and inside_folder(Path(cookie_file), self.root):
             args.extend(["--cookies", cookie_file])
@@ -705,14 +706,23 @@ def main() -> int:
                                    background_color={"light": "#f8fafc", "dark": "#141414",
                                                      "dark_pure": "#000000"}[theme])
     api._window = window
+    def on_linux_window_closed(*_):
+        # Interrupt yt-dlp/FFmpeg immediately instead of waiting for Qt to exit.
+        api.cancel_downloads()
+        api._window = None
+    window.events.closed += on_linux_window_closed
     if "--smoke-ui" in sys.argv:
         def close_after_loaded(*_):
             threading.Thread(target=lambda: (time.sleep(1), window.destroy()),
                              daemon=True).start()
         window.events.loaded += close_after_loaded
-    webview.start(gui="qt", debug=False, private_mode=True,
-                  storage_path=str(api.data / "webview"))
-    api.cancel_downloads()
+    try:
+        webview.start(gui="qt", debug=False, private_mode=True,
+                      storage_path=str(api.data / "webview"))
+    finally:
+        # Also release children on a failed Qt startup / unexpected exit.
+        api.cancel_downloads()
+        api._window = None
     return 0
 
 
