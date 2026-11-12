@@ -141,7 +141,6 @@ internal object DownloadQueue {
      * Bounded idle cleanup: only UUID directories no longer referenced by the
      * persistent queue, older than seven days. Never delete resumable work.
      */
-    @Synchronized
     fun cleanupOrphanWorkspaces(context: Context, now: Long = System.currentTimeMillis()): Int {
         val root = context.getExternalFilesDir(null) ?: context.filesDir
         val folder = java.io.File(root, "All-Download/Donnees/temporaires")
