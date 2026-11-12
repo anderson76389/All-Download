@@ -1093,6 +1093,41 @@ class AndroidSmokeTest {
         }
     }
 
+    @Test fun updatePreflightRejectsLowDiskAndLongChecksumResponses() {
+        val reserve = 16L * 1024L * 1024L
+        val size = 203_000_000L
+        assertFalse(AndroidApkInstaller.sufficientStorage(size, size))
+        assertFalse(AndroidApkInstaller.sufficientStorage(-1L, size))
+        assertFalse(AndroidApkInstaller.sufficientStorage(size + reserve - 1L, size))
+        assertTrue(AndroidApkInstaller.sufficientStorage(size + reserve, size))
+        val checksum = "f".repeat(64) + "  safe.apk"
+        val ok = java.io.ByteArrayInputStream((checksum + "\n").toByteArray())
+        assertEquals(checksum, AndroidApkInstaller.boundedChecksumLine(ok))
+        try {
+            AndroidApkInstaller.boundedChecksumLine(
+                java.io.ByteArrayInputStream("a".repeat(2000).toByteArray()))
+            fail("A never-ending checksum response must not allocate unlimited RAM")
+        } catch (_: IOException) { /* length safely rejected */ }
+    }
+
+    @Test fun updateCleanupNeverDeletesOtherPrivateFilesOrNewerApks() {
+        val directory = File(context.cacheDir, "updates").apply { mkdirs() }
+        val old = File(directory, "All-Download-Android-0.0.1-beta.apk")
+        val newer = File(directory, "All-Download-Android-99.0.0-beta.apk")
+        val unrelated = File(directory, "unrelated-personal-file.txt")
+        try {
+            listOf(old, newer, unrelated).forEach { it.writeText("keep if unrelated") }
+            val count = AndroidApkInstaller.cleanupOlderApks(directory, "0.7.0-beta",
+                emptySet())
+            assertTrue(count >= 1)
+            assertFalse(old.exists())
+            assertTrue(newer.exists())
+            assertTrue(unrelated.exists())
+        } finally {
+            listOf(old, newer, unrelated).forEach { it.delete() }
+        }
+    }
+
     @Test fun privateUpdateApkProviderAndChecksumRulesWorkWithoutBrowser() {
         val name = "All-Download-Android-0.5.0-beta.apk"
         val digest = "f".repeat(64)
