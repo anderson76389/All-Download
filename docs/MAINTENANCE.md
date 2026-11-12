@@ -95,3 +95,12 @@ Le contrôle refuse les fichiers altérés, les checksums associés à un autre 
 les lignes de checksum anormalement volumineuses. Une empreinte fournie par le
 même serveur compromis que le binaire ne garantit pas à elle seule l'identité
 de l'éditeur : vérifier aussi les signatures Android et la provenance des builds.
+
+## Surveillance légère des dépendances
+
+Un seul workflow GitHub Actions hebdomadaire lit les métadonnées des trois
+projets amont officiels : yt-dlp, FFmpeg-Builds, TwitchDownloader.
+Aucun téléchargement de média, aucune compilation, aucune PR automatique et
+aucune mise à jour silencieuse. Les versions sont affichées dans le résumé
+GitHub Actions et doivent être examinées humainement. La surveillance est
+conditionnée à la disponibilité de GitHub Actions.
