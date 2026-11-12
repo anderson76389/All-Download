@@ -4,12 +4,16 @@ on:
     paths:
       - "scripts/offline_backup.py"
       - "tests/test_offline_backup.py"
+      - "tests/test_monitor_upstreams.py"
+      - "scripts/monitor_upstreams.py"
       - ".github/workflows/test-offline-recovery.yml"
   push:
     branches: [main]
     paths:
       - "scripts/offline_backup.py"
       - "tests/test_offline_backup.py"
+      - "tests/test_monitor_upstreams.py"
+      - "scripts/monitor_upstreams.py"
       - ".github/workflows/test-offline-recovery.yml"
   workflow_dispatch:
 permissions:
@@ -25,3 +29,4 @@ jobs:
           python-version: "3.12"
       - run: python -m py_compile scripts/offline_backup.py tests/test_offline_backup.py
       - run: python -m unittest discover -s tests -p test_offline_backup.py -v
+      - run: python -m unittest discover -s tests -p test_monitor_upstreams.py -v
