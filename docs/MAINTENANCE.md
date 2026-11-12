@@ -62,7 +62,7 @@ données privées exportées ; il n'installe pas les logiciels sur ton appareil.
 
 ## Maintenir sans casser
 
-- Les contrôles de dépendances sont hebdomadaires et ouvrent des PR à valider,
+- Les contrôles de dépendances sont manuels avant chaque Release et les PR doivent être validées,
   **jamais une fusion automatique** des nouvelles bibliothèques.
 - Après changement de yt-dlp/FFmpeg, exécuter les tests des sites, des formats
   Twitch 1080p/720p natifs et de conversion, avec rollback prévu.
@@ -82,3 +82,16 @@ La 1.0 doit attendre une restauration hors ligne vérifiée, un parcours de mise
 bloquante, des rapports de charge sur les appareils physiques, la sauvegarde de
 la clé Android, le contrôle de l'intégrité des binaires et un guide de rollback.
 Ce sont des critères de validation, pas une garantie absolue.
+
+## Vérifier une archive téléchargée sans réseau
+
+Conserver l'archive de Release et son fichier .sha256 au même endroit.
+
+    python scripts/verify_release_asset.py All-Download-Portable-Windows.zip
+    python scripts/verify_release_asset.py All-Download-Android-0.6.22-beta.apk
+    python scripts/verify_release_asset.py All-Download-Linux-x86_64.tar.xz
+
+Le contrôle refuse les fichiers altérés, les checksums associés à un autre nom et
+les lignes de checksum anormalement volumineuses. Une empreinte fournie par le
+même serveur compromis que le binaire ne garantit pas à elle seule l'identité
+de l'éditeur : vérifier aussi les signatures Android et la provenance des builds.
