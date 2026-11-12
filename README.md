@@ -35,7 +35,7 @@ Windows 10/11 · Android 7+ · Linux x86_64 (bêta) · Interface en français ·
 |:--|:--:|:--:|:--:|
 | Vidéo MP4/WebM et audio MP3/M4A/FLAC | ✅ | ✅ | ✅ |
 | GIF, playlists, chaînes et file d'attente | ✅ | ✅ | ✅ |
-| Choix de qualité, sous-titres et métadonnées | ✅ | ✅ | ✅² |
+| Qualités, miniatures et métadonnées | ✅ | ✅ | ✅² |
 | Dossiers organisés et ouverture des fichiers | ✅ | ✅ | ✅ |
 | Thèmes clair, sombre et OLED | ✅ | ✅ | ✅ |
 | Clips Twitch et VOD publiques accessibles | ✅ | ✅ | ✅² |
@@ -44,7 +44,7 @@ Windows 10/11 · Android 7+ · Linux x86_64 (bêta) · Interface en français ·
 
 ¹ Sur Android, All-Download télécharge et vérifie l’APK **dans l’application**, puis ouvre **l’installateur officiel Android** : l’autorisation et la confirmation de l’utilisateur restent nécessaires. Il n’y a pas d’installation silencieuse.
 
-² La version Linux réutilise l'interface Windows mais possède un moteur natif séparé. Quelques traitements et sites protégés demandent encore une validation sur distribution réelle.
+² La version Linux réutilise l'interface Windows mais possède un moteur natif séparé. Les sous-titres et quelques traitements particuliers restent à valider sur une distribution réelle.
 
 La disponibilité des formats et des plateformes dépend des sites, de leur authentification et de leurs éventuelles restrictions. Les vidéos protégées par DRM ne sont pas prises en charge.
 
