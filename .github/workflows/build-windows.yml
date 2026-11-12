@@ -18,6 +18,13 @@ on:
       - "docs/**"
       - "tests/test_offline_backup.py"
       - "tests/test_release_asset_integrity.py"
+      - "tests/test_monitor_upstreams.py"
+      - ".github/workflows/monitor-upstreams.yml"
+      - ".github/workflows/build-android.yml"
+      - ".github/workflows/publish-android-release.yml"
+      - ".github/workflows/test-android-public-videos.yml"
+      - ".github/workflows/test-android-social-videos.yml"
+      - ".github/workflows/build-linux.yml"
       - ".github/dependabot.yml"
       - ".github/workflows/test-offline-recovery.yml"
   workflow_dispatch:

@@ -1,0 +1,22 @@
+name: Lightweight upstream dependency watch
+on:
+  schedule:
+    # One tiny metadata-only check per week, avoiding large YouTube/Twitch CI jobs.
+    - cron: "17 7 * * 1"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: all-download-upstreams
+  cancel-in-progress: true
+jobs:
+  upstream-tags:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check three official upstream release metadata endpoints
+        run: python scripts/monitor_upstreams.py

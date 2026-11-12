@@ -5,6 +5,8 @@ on:
       - "scripts/offline_backup.py"
       - "tests/test_offline_backup.py"
       - "tests/test_release_asset_integrity.py"
+      - "tests/test_monitor_upstreams.py"
+      - "scripts/monitor_upstreams.py"
       - "scripts/verify_release_asset.py"
       - ".github/workflows/test-offline-recovery.yml"
   push:
@@ -28,3 +30,4 @@ jobs:
       - run: python -m py_compile scripts/offline_backup.py tests/test_offline_backup.py
       - run: python -m unittest discover -s tests -p test_offline_backup.py -v
       - run: python -m unittest discover -s tests -p test_release_asset_integrity.py -v
+      - run: python -m unittest discover -s tests -p test_monitor_upstreams.py -v
