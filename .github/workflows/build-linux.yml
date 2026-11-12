@@ -149,7 +149,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Download the tested Linux package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: All-Download-Linux-x86_64
       - name: Install graphical runtime dependencies
@@ -182,7 +182,7 @@ jobs:
       contents: write
     steps:
       - name: Download validated Linux archives
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: All-Download-Linux-x86_64
       - name: Publish separate Linux beta Release
