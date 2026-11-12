@@ -69,6 +69,48 @@ class AndroidSmokeTest {
         }
     }
 
+    @Test fun sharesheetRecognizesVideoLinksAndRejectsLocalFiles() {
+        val url = "https://www.youtube.com/watch?v=abc123"
+        for (mime in listOf("text/plain", "video/mp4")) {
+            val shared = Intent(Intent.ACTION_SEND).apply {
+                type = mime
+                putExtra(Intent.EXTRA_TEXT, "Vidéo : $url.")
+            }
+            assertEquals(url, SharedVideoLinks.extract(shared))
+            val chooser = Intent(Intent.ACTION_SEND).apply {
+                type = mime
+                setPackage(context.packageName)
+                addCategory(Intent.CATEGORY_DEFAULT)
+            }
+            assertTrue("All-Download absent du menu de partage $mime",
+                context.packageManager.queryIntentActivities(
+                    chooser, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+                    .any { it.activityInfo.name.endsWith(".MainActivity") })
+        }
+        val clipShare = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            clipData = android.content.ClipData.newPlainText(
+                "Lien", "https://www.twitch.tv/videos/2919531847")
+        }
+        assertEquals("https://www.twitch.tv/videos/2919531847",
+            SharedVideoLinks.extract(clipShare))
+        val fileOnly = Intent(Intent.ACTION_SEND).apply {
+            type = "video/mp4"
+            putExtra(Intent.EXTRA_STREAM, android.net.Uri.parse("content://gallery/video/1"))
+        }
+        assertNull("Un fichier local n'est pas une URL téléchargeable.",
+            SharedVideoLinks.extract(fileOnly))
+        assertNull(SharedVideoLinks.extract(Intent(Intent.ACTION_VIEW)))
+    }
+
+    @Test fun downloadServiceIsPrivateWithUserTriggeredShutdown() {
+        val component = android.content.ComponentName(context, DownloadService::class.java)
+        val info = context.packageManager.getServiceInfo(component, 0)
+        assertFalse("Le service de transfert ne doit pas être exporté.", info.exported)
+        assertEquals("com.alldownload.android.SHUTDOWN",
+            DownloadService.ACTION_SHUTDOWN)
+    }
+
     @Test fun exportsFileToCorrectAllDownloadFolderWithoutRewritingBytes() {
         grantLegacyStorage()
         assertLegacyFolderWritable()

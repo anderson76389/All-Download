@@ -5,6 +5,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.app.ActivityManager
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.os.PowerManager
 import android.content.Intent
@@ -31,12 +35,51 @@ class DownloadService : Service() {
         const val ACTION_RUN_QUEUE = "com.alldownload.android.RUN_QUEUE"
         const val ACTION_PAUSE = "com.alldownload.android.PAUSE"
         const val ACTION_CANCEL = "com.alldownload.android.CANCEL"
+        const val ACTION_SHUTDOWN = "com.alldownload.android.SHUTDOWN"
         const val EXTRA_URL = "url"
         const val EXTRA_MODE = "mode"
         const val EXTRA_QUALITY = "quality"
         private const val CHANNEL = "downloads"
+        private const val APP_CHANNEL = "application"
         private const val NOTIFICATION_ID = 101
+        private const val APP_NOTIFICATION_ID = 102
         private const val PROCESS_ID = "all-download-android"
+
+        // A notification while the UI is visible does NOT need an idle foreground
+        // service. This avoids keeping CPU and battery awake just to show "Quitter".
+        fun showOpenNotification(context: Context) {
+            if (state.busy) return
+            if (Build.VERSION.SDK_INT >= 33 &&
+                context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+                    PackageManager.PERMISSION_GRANTED) return
+            val manager = context.getSystemService(NotificationManager::class.java)
+            if (Build.VERSION.SDK_INT >= 26) manager.createNotificationChannel(
+                NotificationChannel(APP_CHANNEL, "Application All-Download",
+                    NotificationManager.IMPORTANCE_LOW))
+            val open = PendingIntent.getActivity(context, 10,
+                Intent(context, MainActivity::class.java),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            val quit = PendingIntent.getService(context, 11,
+                Intent(context, DownloadService::class.java).setAction(ACTION_SHUTDOWN),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            val builder = if (Build.VERSION.SDK_INT >= 26)
+                Notification.Builder(context, APP_CHANNEL) else Notification.Builder(context)
+            manager.notify(APP_NOTIFICATION_ID, builder
+                .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                .setContentTitle("All-Download ouverte")
+                .setContentText("Fermer l’application depuis cette notification")
+                .setContentIntent(open)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setPriority(Notification.PRIORITY_LOW)
+                .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Fermer", quit)
+                .build())
+        }
+
+        fun hideOpenNotification(context: Context) {
+            context.getSystemService(NotificationManager::class.java)
+                .cancel(APP_NOTIFICATION_ID)
+        }
 
         @Volatile var state = UiState(false, 0, "Prêt.")
             private set
@@ -66,6 +109,29 @@ class DownloadService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
+            ACTION_SHUTDOWN -> {
+                // Explicit shutdown ends this transfer and closes only our own task.
+                // Pending downloads stay persisted and can be started next launch.
+                if (active) {
+                    cancelled = true
+                    paused = false
+                    state = state.copy(message = "Fermeture et arrêt du téléchargement…")
+                    YoutubeDL.getInstance().destroyProcessById(PROCESS_ID)
+                } else {
+                    state = UiState(false, 0, "Application fermée.")
+                    stopSelfResult(startId)
+                }
+                hideOpenNotification(this)
+                if (!active) getSystemService(NotificationManager::class.java)
+                    .cancel(NOTIFICATION_ID)
+                val tasks = (getSystemService(ACTIVITY_SERVICE) as ActivityManager).appTasks
+                tasks.forEach { task ->
+                    try { task.finishAndRemoveTask() }
+                    catch (error: RuntimeException) {
+                        Log.w("AllDownloadVideo", "Fermeture de la tâche refusée", error)
+                    }
+                }
+            }
             ACTION_CANCEL -> {
                 if (active) {
                     cancelled = true
@@ -131,6 +197,7 @@ class DownloadService : Service() {
         lastNotifiedPercent = -1
         lastSavedPercent = -1
         state = UiState(true, 0, "Initialisation du moteur Android…")
+        hideOpenNotification(this)
         startForeground(NOTIFICATION_ID, notification("File d’attente en préparation", 0))
         Thread({ processQueue() }, "all-download-worker").start()
     }
@@ -365,6 +432,10 @@ class DownloadService : Service() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             builder.addAction(android.R.drawable.ic_media_pause, "Pause", pause)
             builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Annuler", cancel)
+            val quit = PendingIntent.getService(this, 3,
+                Intent(this, DownloadService::class.java).setAction(ACTION_SHUTDOWN),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Fermer", quit)
         }
         return builder.build()
     }
