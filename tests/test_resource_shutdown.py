@@ -54,7 +54,55 @@ class ResourceShutdownTests(unittest.TestCase):
                     process.kill()
                 process.wait(timeout=8)
 
-    def test_idle_cancel_is_safe_for_legacy_api_test_fixtures(self):
+    @unittest.skipUnless(sys.platform == "win32", "Windows-only taskkill fallback")
+    def test_taskkill_timeout_falls_back_to_child_then_parent_termination(self):
+        import psutil
+        root, child = Mock(), Mock()
+        root.children.return_value = [child]
+        with patch.object(yt_app.subprocess, "run",
+                          side_effect=subprocess.TimeoutExpired("taskkill", 6)) as runner, \
+             patch.object(psutil, "Process", return_value=root):
+            yt_app.kill_process_tree(987654)
+        self.assertEqual(runner.call_args.kwargs["timeout"], 6)
+        child.kill.assert_called_once_with()
+        root.kill.assert_called_once_with()
+
+    @unittest.skipUnless(sys.platform == "win32", "Windows handle and memory probe")
+    def test_repeated_cancel_reaps_children_without_handle_accumulation(self):
+        import gc
+        import psutil
+        current = psutil.Process()
+        gc.collect()
+        before_handles = current.num_handles()
+        before_rss = current.memory_info().rss
+        for _ in range(4):
+            proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"],
+                                    creationflags=subprocess.CREATE_NO_WINDOW)
+            try:
+                api = yt_app.DownloaderAPI.__new__(yt_app.DownloaderAPI)
+                api._active_download_process = proc
+                api._suspended_download_pids = []
+                api.is_cancelled = False
+                api.is_paused = False
+                api.cancel_downloads()
+                proc.wait(timeout=8)
+                self.assertIsNotNone(proc.returncode)
+            finally:
+                if proc.poll() is None:
+                    proc.kill()
+                proc.wait(timeout=8)
+                proc.stdout and proc.stdout.close()
+                proc.stderr and proc.stderr.close()
+        del proc
+        gc.collect()
+        after_handles = current.num_handles()
+        after_rss = current.memory_info().rss
+        print("Windows shutdown probe: RSS before=%d after=%d; handles before=%d after=%d" %
+              (before_rss, after_rss, before_handles, after_handles))
+        self.assertLessEqual(after_handles - before_handles, 24,
+                             "Repeated shutdown leaked Windows handles")
+
+        def test_idle_cancel_is_safe_for_legacy_api_test_fixtures(self):
         api = yt_app.DownloaderAPI.__new__(yt_app.DownloaderAPI)
         api._active_download_process = None
         api._suspended_download_pids = []
