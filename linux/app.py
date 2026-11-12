@@ -245,9 +245,9 @@ class DownloaderAPI:
             requested.mkdir(parents=True, exist_ok=True)
             for category in CATEGORIES:
                 (requested / category).mkdir(exist_ok=True)
-            with (requested / (".writable-" + uuid.uuid4().hex)).open("w") as check:
+            check_name = requested / (".writable-" + uuid.uuid4().hex)
+            with check_name.open("w") as check:
                 check.write("")
-            check_name = next(requested.glob(".writable-*"))
             check_name.unlink()
         except OSError as error:
             return {"success": False, "error": f"Dossier non modifiable : {error}"}
@@ -607,6 +607,11 @@ def main() -> int:
                                    background_color={"light": "#f8fafc", "dark": "#141414",
                                                      "dark_pure": "#000000"}[theme])
     api._window = window
+    if "--smoke-ui" in sys.argv:
+        def close_after_loaded(*_):
+            threading.Thread(target=lambda: (time.sleep(1), window.destroy()),
+                             daemon=True).start()
+        window.events.loaded += close_after_loaded
     webview.start(gui="qt", debug=False, private_mode=True,
                   storage_path=str(api.data / "webview"))
     api.cancel_downloads()
