@@ -3942,7 +3942,9 @@ class DownloaderAPI:
                         "--newline",
                         "--progress-delta", "0.5",  # limiter stdout/CPU sans masquer la fin
                         "--force-ipv4",
-                        "--socket-timeout", "15",
+                        "--socket-timeout", "20",
+                        "--retries", "5", "--fragment-retries", "5",
+                        "--continue",  # preserve yt-dlp .part files on reconnect
                         "-P", target_dir,
                         "-o", f"{sanitize_filename(item.get('title', 'Media'))}.%(ext)s" if "v.pinimg.com" in url else "%(title)s.%(ext)s"
                     ] + self._get_cookie_args() + youtube_js_args(url)
