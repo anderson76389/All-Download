@@ -178,6 +178,30 @@ class LinuxBackendTests(unittest.TestCase):
         self.assertEqual("mkv", command[command.index("--merge-output-format") + 1])
         self.assertEqual("mkv", command[command.index("--remux-video") + 1])
 
+    def test_sponsorblock_uses_only_genuine_youtube_hosts(self):
+        bin_dir = self.root / "Donnees" / "bin"
+        for name in ("yt-dlp", "ffmpeg"):
+            binary = bin_dir / name
+            binary.write_text("#!/bin/sh\nexit 0\n")
+            binary.chmod(0o755)
+        settings = self.api.get_app_settings()
+        settings.update(sponsor_enable=True, sponsor_remove="sponsor",
+                        sponsor_mark="chapters")
+        self.assertTrue(self.api.save_app_settings(settings)["success"])
+        for url, expected in (
+            ("https://www.youtube.com/watch?v=abc123", True),
+            ("https://music.youtube.com/watch?v=abc123", True),
+            ("https://youtu.be/abc123", True),
+            ("https://notyoutube.com/watch?v=abc123", False),
+            ("https://youtube.com.evil.example/watch?v=abc123", False),
+            ("https://evil.example/watch?v=youtube.com", False),
+        ):
+            command = self.api._command(
+                {"url": url, "mode": "Vidéo", "selectedQuality": "720p"},
+                self.api.temp / "video")
+            self.assertEqual("--sponsorblock-remove" in command, expected, url)
+            self.assertEqual("--sponsorblock-mark" in command, expected, url)
+
     def test_twitch_vod_format_applies_only_to_real_twitch_hosts(self):
         self.assertTrue(is_twitch_vod_url("https://www.twitch.tv/videos/123456789"))
         self.assertTrue(is_twitch_vod_url("https://m.twitch.tv/videos/123456789"))
