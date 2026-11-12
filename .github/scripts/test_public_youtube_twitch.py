@@ -34,7 +34,8 @@ REMOTE_BLOCKERS = (
     "requested format is not available", "unsupported url",
     "this clip is not available", "unable to download webpage",
     "failed to download m3u8", "geo-restricted", "not found",
-    "requires authentication", "this video is no longer available",
+    "requires authentication", "this video is unavailable",
+    "this video is no longer available",
     "this video is only available", "unable to extract",
 )
 
@@ -74,14 +75,14 @@ def metadata(binary: str, url: str) -> tuple[dict | None, str, str]:
         return None, "ERROR", f"Malformed yt-dlp metadata: {error}"
 
 
-def download(binary: str, url: str, folder: Path) -> tuple[dict | None, str, str]:
+def download(binary: str, url: str, folder: Path, max_height: int = 720) -> tuple[dict | None, str, str]:
     output = str(folder / "public-test-%(id)s.%(ext)s")
     command = [
         binary, "--ignore-config", "--no-playlist", "--no-warnings",
         "--socket-timeout", "15", "--retries", "1", "--fragment-retries", "1",
         "--extractor-retries", "1", "--no-overwrites",
         "--max-filesize", "80M", "--download-sections", "*0-5",
-        "--format", "bv*[height<=720]+ba/b[height<=720]/best",
+        "--format", f"bv*[height<={max_height}]+ba/b[height<={max_height}]/best",
         "--merge-output-format", "mp4", "-o", output, url,
     ]
     code, stdout, stderr = run(command, 130)
@@ -147,10 +148,20 @@ def main() -> int:
                 }
                 folder = Path(scratch) / case
                 folder.mkdir()
-                video, download_status, download_error = download(binary, url, folder)
+                # Twitch clip has a true 1080p source: verify its native
+                # quality rather than reporting a 720p-only smoke test.
+                requested_height = 1080 if case == "twitch_clip" else 720
+                video, download_status, download_error = download(
+                    binary, url, folder, max_height=requested_height)
                 record["download"] = download_status
                 if video:
                     record["exported"] = video
+                    if case == "twitch_clip" and 1080 in heights:
+                        record["expected_native_height"] = 1080
+                        if video["height"] != 1080:
+                            record["quality_warning"] = (
+                                f"1080p source listed but exported height={video['height']}"
+                            )
                 if download_error:
                     record["download_reason"] = download_error
             elif meta_error:
