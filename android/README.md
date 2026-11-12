@@ -1,4 +1,13 @@
-# All-Download Android — bêta 0.6.18
+# All-Download Android — bêta 0.6.20
+
+## Partage et fermeture de l’application — 0.6.20
+
+- **Partager → All-Download** depuis YouTube, Twitch ou une application envoyant un lien HTTP(S) : ouverture du téléchargeur avec l’URL préremplie ; démarrage uniquement après confirmation.
+- Partages texte et vidéo contenant un lien pris en charge ; un fichier local `content://` sans URL ne peut pas être téléchargé et déclenche un message explicatif.
+- Notification « All-Download ouverte » avec **Fermer** sans service permanent au repos. Pendant les transferts, boutons **Pause / Annuler / Fermer** ; fermeture du transfert en cours et conservation de la file d’attente.
+- Rafraîchissement de l’interface désactivé en arrière-plan. Une absence absolue de fuite mémoire ou de consommation batterie exige encore des mesures sur un téléphone réel.
+
+
 
 ## Mises à jour : récupération de l'espace privé — 0.6.18
 
