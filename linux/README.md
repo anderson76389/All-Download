@@ -1,12 +1,14 @@
 # All-Download Linux x86_64 — bêta
 
+**Version 0.1.4-beta :** les domaines qui ressemblent à YouTube mais n'en sont pas ne déclenchent plus SponsorBlock. L'interface et les fichiers Linux restent identiques.
+
 **Version 0.1.3-beta :** les VOD Twitch dont la qualité préférée est 1080p retombent sur le **720p natif** si le 1080p n'existe pas (sans upscaling). Les dossiers temporaires d'une exécution interrompue depuis plus de sept jours sont nettoyés prudemment au démarrage : 16 dossiers maximum et uniquement dans `Donnees/temporaires/`. La recherche manuelle de mises à jour privilégie désormais l'archive `.tar.xz` si son SHA-256 est fourni. Le raccourci Linux et les fonctions 0.1.2 restent disponibles.
 
 La version Linux reprend le **HTML/CSS/JS Windows à l'identique** (extrait automatiquement de yt_app.py), mais utilise une fenêtre native Qt WebEngine et des binaires Linux yt-dlp/FFmpeg. **Aucun EXE Windows n'est exécuté.**
 
 ## Installer et démarrer
 
-1. Télécharger All-Download-Linux-x86_64.tar.xz (ou .tar.gz) depuis la Release Linux 0.1.3-beta.
+1. Télécharger All-Download-Linux-x86_64.tar.xz (ou .tar.gz) depuis la Release Linux 0.1.4-beta.
 2. Décompresser le dossier All-Download dans un emplacement où l'utilisateur peut écrire.
 3. Ouvrir ce dossier, puis lancer All-Download-Linux (pas besoin de sudo).
 4. Les médias sont stockés dans les sept dossiers VIDÉOS, AUDIOS, GIFS, TWITCH, PLAYLIST, CHAÎNES et AUTRES. Paramètres, cookies facultatifs et cache restent sous Donnees/.
