@@ -82,3 +82,13 @@ La 1.0 doit attendre une restauration hors ligne vérifiée, un parcours de mise
 bloquante, des rapports de charge sur les appareils physiques, la sauvegarde de
 la clé Android, le contrôle de l'intégrité des binaires et un guide de rollback.
 Ce sont des critères de validation, pas une garantie absolue.
+
+## Vérification hebdomadaire à très faible coût
+
+Le workflow GitHub Actions « Lightweight upstream dependency watch » effectue
+**trois lectures de métadonnées officielles par semaine** (yt-dlp,
+FFmpeg-Builds, TwitchDownloader). Il n'ouvre aucune PR, ne modifie aucun
+code, ne télécharge aucun média et ne compile aucune application. Les
+versions amont apparaissent dans le résumé du workflow ; inspecter
+manuellement toute évolution avant de changer les moteurs. Cette surveillance
+cesse si GitHub Actions ou son accès réseau deviennent indisponibles.
