@@ -1621,4 +1621,141 @@ class AndroidSmokeTest {
         }
     }
 
+
+    /**
+     * Regression: the two similarly named update switches control different
+     * features. App-engine updates must not disable APK announcements, and
+     * the APK announcement switch must survive a fresh Activity instance.
+     */
+    @Test fun engineUpdateAndApkAlertsRemainIndependentAfterRelaunch() {
+        val prefs = DownloadOptions.get(context)
+        val savedEngine = if (prefs.contains("auto_update"))
+            prefs.getBoolean("auto_update", true) else null
+        val savedUiAlert = if (prefs.contains("update_alerts"))
+            prefs.getBoolean("update_alerts", true) else null
+        val savedApkAlert = AndroidUpdates.enabled(context)
+        var activity = instrumentation.startActivitySync(
+            Intent(context, MainActivity::class.java).addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        ) as MainActivity
+        try {
+            fun findAlertControl(root: View): android.widget.Switch? {
+                if (root is android.widget.Switch &&
+                    root.contentDescription?.toString() == "Me prévenir des nouvelles versions")
+                    return root
+                if (root is android.view.ViewGroup) {
+                    for (index in 0 until root.childCount) {
+                        findAlertControl(root.getChildAt(index))?.let { return it }
+                    }
+                }
+                return null
+            }
+            fun openApplicationSettings() {
+                instrumentation.runOnMainSync {
+                    activity.findViewById<Button>(R.id.navSettings).performClick()
+                    activity.findViewById<Button>(R.id.settingsTabApplication).performClick()
+                }
+                instrumentation.waitForIdleSync()
+            }
+            openApplicationSettings()
+            val engine = activity.findViewById<android.widget.Switch>(R.id.autoUpdateCheck)
+            val alerts = findAlertControl(activity.findViewById(R.id.settingsPage))
+            assertNotNull("Le contrôle des mises à jour APK doit exister.", alerts)
+            assertTrue("Le réglage moteur est inaccessible.", engine.isShown)
+            assertTrue("Le réglage APK est inaccessible.", alerts!!.isShown)
+            val initialEngine = engine.isChecked
+            val initialAlerts = alerts.isChecked
+            instrumentation.runOnMainSync {
+                engine.performClick()
+                alerts.performClick()
+            }
+            instrumentation.waitForIdleSync()
+            assertEquals(!initialEngine, prefs.getBoolean("auto_update", initialEngine))
+            assertEquals(!initialAlerts, AndroidUpdates.enabled(context))
+            assertEquals(!initialAlerts, prefs.getBoolean("update_alerts", initialAlerts))
+            instrumentation.runOnMainSync { activity.finish() }
+            instrumentation.waitForIdleSync()
+
+            activity = instrumentation.startActivitySync(
+                Intent(context, MainActivity::class.java).addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            ) as MainActivity
+            openApplicationSettings()
+            assertEquals("L'option yt-dlp doit persister après réouverture.", !initialEngine,
+                activity.findViewById<android.widget.Switch>(R.id.autoUpdateCheck).isChecked)
+            assertEquals("L'option APK doit persister après réouverture.", !initialAlerts,
+                findAlertControl(activity.findViewById(R.id.settingsPage))?.isChecked)
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+            val edit = prefs.edit()
+            if (savedEngine == null) edit.remove("auto_update")
+            else edit.putBoolean("auto_update", savedEngine)
+            if (savedUiAlert == null) edit.remove("update_alerts")
+            else edit.putBoolean("update_alerts", savedUiAlert)
+            edit.commit()
+            AndroidUpdates.setEnabled(context, savedApkAlert)
+        }
+    }
+
+    /** All five quick-access listeners remain connected after responsive reparenting. */
+    @Test fun everyHomeShortcutChangesRealDownloadModeWithoutStartingTransfer() {
+        val prefs = DownloadOptions.get(context)
+        val savedMode = if (prefs.contains("last_mode"))
+            prefs.getInt("last_mode", 0) else null
+        val savedQuality = if (prefs.contains("last_quality"))
+            prefs.getInt("last_quality", 0) else null
+        val activity = instrumentation.startActivitySync(
+            Intent(context, MainActivity::class.java).addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        ) as MainActivity
+        try {
+            val modes = activity.findViewById<Spinner>(R.id.modeSpinner)
+            val quality = activity.findViewById<Spinner>(R.id.qualitySpinner)
+            val qualityGroup = activity.findViewById<View>(R.id.downloadQualityGroup)
+            val shortcuts = listOf(
+                R.id.quickVideoButton to 0,
+                R.id.quickAudioButton to 1,
+                R.id.quickGifButton to 4,
+                R.id.quickPlaylistButton to 5
+            )
+            for ((buttonId, expectedMode) in shortcuts) {
+                instrumentation.runOnMainSync {
+                    activity.findViewById<Button>(buttonId).performClick()
+                }
+                instrumentation.waitForIdleSync()
+                assertEquals("Raccourci déconnecté : $buttonId",
+                    expectedMode, modes.selectedItemPosition)
+                assertEquals("Le raccourci doit revenir à l'accueil.",
+                    View.VISIBLE, activity.findViewById<View>(R.id.homePage).visibility)
+                assertEquals(if (expectedMode == 1) View.GONE else View.VISIBLE,
+                    qualityGroup.visibility)
+            }
+            instrumentation.runOnMainSync {
+                modes.setSelection(3) // FLAC: quality is irrelevant.
+            }
+            instrumentation.waitForIdleSync()
+            assertEquals(View.GONE, qualityGroup.visibility)
+            instrumentation.runOnMainSync {
+                quality.setSelection(2)
+                activity.findViewById<Button>(R.id.quickTwitchButton).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            assertEquals("Twitch doit préparer un téléchargement vidéo.",
+                0, modes.selectedItemPosition)
+            assertEquals("Twitch doit revenir à la qualité 1080p par défaut.",
+                0, quality.selectedItemPosition)
+            assertEquals(View.VISIBLE, qualityGroup.visibility)
+            assertFalse("Les raccourcis ne doivent pas lancer un transfert.",
+                DownloadService.state.busy)
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+            val edit = prefs.edit()
+            if (savedMode == null) edit.remove("last_mode")
+            else edit.putInt("last_mode", savedMode)
+            if (savedQuality == null) edit.remove("last_quality")
+            else edit.putInt("last_quality", savedQuality)
+            edit.commit()
+        }
+    }
+
 }
