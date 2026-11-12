@@ -30,7 +30,7 @@ jobs:
             os: ubuntu-24.04
     steps:
       - name: Checkout production sources and test script
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Python 3.12
         uses: actions/setup-python@v5
         with:
@@ -92,7 +92,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 50
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

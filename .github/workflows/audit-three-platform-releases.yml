@@ -30,7 +30,7 @@ jobs:
         platform: [windows, android, linux]
     steps:
       - name: Check out independent release auditor
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Select published release for requested platform
         id: release
         env:

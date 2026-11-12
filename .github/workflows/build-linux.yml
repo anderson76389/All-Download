@@ -28,7 +28,7 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout All-Download
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Python 3.12
         uses: actions/setup-python@v5
         with:
