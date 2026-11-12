@@ -48,6 +48,41 @@ USER_AGENTS = {
     "safari_mac15": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15",
 }
 
+def cleanup_old_workspaces(folder: Path, *, now: float | None = None,
+                           max_removals: int = 16, max_scan: int = 256) -> int:
+    """Remove old app-created scratch dirs without touching user downloads.
+
+    Only names generated from uuid.uuid4().hex are eligible. Skip symlinks,
+    non-directories and anything modified in the last seven days. Bound the
+    scan/deletion work to keep first-launch CPU/disk usage predictable.
+    """
+    root = Path(folder)
+    if root.is_symlink() or not root.is_dir():
+        return 0
+    current = time.time() if now is None else now
+    cutoff = current - 7 * 24 * 60 * 60
+    removed = 0
+    try:
+        for index, child in enumerate(root.iterdir()):
+            if index >= max_scan or removed >= max_removals:
+                break
+            if not re.fullmatch(r"[0-9a-f]{32}", child.name):
+                continue
+            if child.is_symlink() or not child.is_dir():
+                continue
+            try:
+                if child.stat().st_mtime >= cutoff:
+                    continue
+                shutil.rmtree(child)
+                removed += 1
+            except OSError:
+                # A concurrent process may still own a temporary workspace.
+                continue
+    except OSError:
+        pass
+    return removed
+
+
 def app_root() -> Path:
     if getattr(sys, "frozen", False):
         return Path(sys.executable).resolve().parent
@@ -108,7 +143,11 @@ def native_twitch_format(quality: str) -> str:
         height = int(match.group(1))
         if height not in (720, 1080):
             raise ValueError("Pour les VOD Twitch : 1080p ou 720p natif uniquement.")
-        return f"bestvideo[height={height}]+bestaudio/best[height={height}]"
+        if height == 720:
+            return "bestvideo[height=720]+bestaudio/best[height=720]"
+    # "1080p" is the default preferred quality for Twitch; if the actual
+    # source has no 1080p, request native 720p rather than failing or
+    # upscaling a 720p stream. No 480p and no artificial conversion.
     return ("bestvideo[height=1080]+bestaudio/best[height=1080]/"
             "bestvideo[height=720]+bestaudio/best[height=720]")
 
@@ -149,6 +188,9 @@ class DownloaderAPI:
         for directory in (self.data, self.bin_dir, self.cache, self.temp,
                           *(self.root / category for category in CATEGORIES)):
             directory.mkdir(parents=True, exist_ok=True)
+        # Old interrupted yt-dlp workspaces can otherwise accumulate after a
+        # crash. This bounded, idle startup cleanup never touches media folders.
+        cleanup_old_workspaces(self.temp)
         if not os.access(self.root, os.W_OK):
             raise PermissionError("Le dossier All-Download est en lecture seule.")
         self._lock = threading.RLock()
