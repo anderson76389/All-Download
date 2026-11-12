@@ -10,7 +10,7 @@ Windows 10/11 · Android 7+ · Linux x86_64 (bêta) · Interface en français ·
 
 [![Windows](https://img.shields.io/badge/Windows-Portable%20%26%20Classique-2563EB?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/anderson76389/All-Download/releases/latest)
 [![Android](https://img.shields.io/badge/Android-APK%20b%C3%AAta-16A34A?style=for-the-badge&logo=android&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.16-beta)
-[![Linux](https://img.shields.io/badge/Linux-x86__64%20b%C3%AAta-6D28D9?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/linux-v0.1.0-beta)
+[![Linux](https://img.shields.io/badge/Linux-x86__64%20b%C3%AAta-6D28D9?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/linux-v0.1.1-beta)
 
 </div>
 
@@ -23,7 +23,7 @@ Windows 10/11 · Android 7+ · Linux x86_64 (bêta) · Interface en français ·
 | 🖥️ **Windows 10/11 (x64)** | **Portable** · Sans installation | **[⬇️ Télécharger le ZIP Portable](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Portable-Windows.zip)** |
 | 🖥️ **Windows 10/11 (x64)** | **Classique** · Avec installateur | **[⬇️ Télécharger le ZIP Classique](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Classique-Windows.zip)** |
 | 📱 **Android 7+** | **APK officielle — 0.6.16-beta** | **[⬇️ Télécharger l’APK Android](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.16-beta/All-Download-Android-0.6.16-beta.apk)** |
-| 🐧 **Linux x86_64 (glibc)** | **Portable — 0.1.0-beta** | **[⬇️ Télécharger l'archive Linux](https://github.com/anderson76389/All-Download/releases/download/linux-v0.1.0-beta/All-Download-Linux-x86_64.tar.gz)** |
+| 🐧 **Linux x86_64 (glibc)** | **Portable — 0.1.1-beta** | **[⬇️ Télécharger l'archive Linux](https://github.com/anderson76389/All-Download/releases/download/linux-v0.1.1-beta/All-Download-Linux-x86_64.tar.gz)** |
 
 **[Release Android et notes de version](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.16-beta)** · [Empreinte SHA-256 de l’APK](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.16-beta/All-Download-Android-0.6.16-beta.apk.sha256) · [Dernière Release stable Windows](https://github.com/anderson76389/All-Download/releases/latest)
 
@@ -120,15 +120,17 @@ Les **sept catégories de médias** sont créées automatiquement. `Donnees/` re
 
 ## 🐧 Linux — portable x86_64 (bêta)
 
+**0.1.1 bêta :** remux MKV corrigé, URL Twitch VOD vérifiées, commandes de pause/reprise/annulation sécurisées contre les arrêts de processus, et import des cookies limité en mémoire. Tests automatiques des actions du pont Windows/Linux et d'un téléchargement audio réel.
+
 **Même interface HTML/CSS/JavaScript que Windows**, générée directement à partir du fichier source Windows pendant la compilation. Le backend est écrit pour Linux avec Qt WebEngine, yt-dlp et FFmpeg natifs : **aucun fichier EXE Windows ni WebView2**.
 
-1. Télécharger l'archive **All-Download-Linux-x86_64.tar.gz** depuis la [Release Linux 0.1.0-beta](https://github.com/anderson76389/All-Download/releases/tag/linux-v0.1.0-beta).
+1. Télécharger l'archive **All-Download-Linux-x86_64.tar.gz** depuis la [Release Linux 0.1.1-beta](https://github.com/anderson76389/All-Download/releases/tag/linux-v0.1.1-beta).
 2. Décompresser le dossier **All-Download/** dans un emplacement modifiable, puis lancer **All-Download-Linux**.
 3. Les téléchargements et données restent dans ce dossier : **VIDÉOS, AUDIOS, TWITCH, GIFS, CHAÎNES, PLAYLIST, AUTRES, Donnees/**.
 
 Les fonctionnalités de base incluent analyse des URL, téléchargement vidéo/audio, sélection des formats, thèmes, paramètres, file, pause/reprise/annulation et liens copiables. La version Linux a été pensée pour des distributions x86_64 avec glibc et session graphique. Elle ne garantit pas encore la parité complète de la prise en charge des VOD Twitch avec Windows.
 
-**[Documentation Linux et limites](https://github.com/anderson76389/All-Download/blob/main/linux/README.md)** · [Fichier SHA-256 Linux](https://github.com/anderson76389/All-Download/releases/download/linux-v0.1.0-beta/All-Download-Linux-x86_64.tar.gz.sha256)
+**[Documentation Linux et limites](https://github.com/anderson76389/All-Download/blob/main/linux/README.md)** · [Fichier SHA-256 Linux](https://github.com/anderson76389/All-Download/releases/download/linux-v0.1.1-beta/All-Download-Linux-x86_64.tar.gz.sha256)
 
 ---
 

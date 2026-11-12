@@ -7,6 +7,11 @@ on:
       - "linux/**"
       - "yt_app.py"
       - ".github/workflows/build-linux.yml"
+  pull_request:
+    paths:
+      - "linux/**"
+      - "yt_app.py"
+      - ".github/workflows/build-linux.yml"
   workflow_dispatch:
 
 permissions:
@@ -107,7 +112,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG="linux-v0.1.0-beta"
+          TAG="linux-v0.1.1-beta"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Linux $TAG already exists. Existing assets are preserved."
             exit 0
@@ -116,6 +121,6 @@ jobs:
             All-Download-Linux-x86_64.tar.gz \
             All-Download-Linux-x86_64.tar.gz.sha256 \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "All-Download Linux 0.1.0-beta (x86_64)" \
-            --notes "Première préversion Linux. Interface HTML Windows identique; backend Linux Qt / yt-dlp / FFmpeg natif. Décompressez dans un dossier en écriture puis lancez All-Download-Linux. Linux x86_64 glibc avec session graphique. TwitchDownloaderCLI.exe Windows non inclus. Consultez linux/README.md." \
+            --title "All-Download Linux 0.1.1-beta (x86_64)" \
+            --notes "Mise à jour Linux 0.1.1 : remux MP4/MKV corrigé, sélection Twitch VOD plus stricte, robustesse des commandes Pause/Reprise/Annuler et import de cookies volumineux protégé. Interface Windows HTML identique; backend Linux Qt / yt-dlp / FFmpeg natif. Décompressez dans un dossier en écriture puis lancez All-Download-Linux. Linux x86_64 glibc avec session graphique. TwitchDownloaderCLI.exe Windows non inclus. Consultez linux/README.md." \
             --prerelease
