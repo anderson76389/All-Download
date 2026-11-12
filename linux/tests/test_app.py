@@ -1,12 +1,16 @@
 """No-network Linux regressions and opt-in localhost media end-to-end test."""
 import importlib.util
+import re
+import sys
+import time
+from unittest import mock
 import json
 import os
 import tempfile
 import unittest
 from pathlib import Path
 
-from linux.app import DownloaderAPI, category_for, inside_folder, native_twitch_format, valid_url, video_format
+from linux.app import DownloaderAPI, category_for, inside_folder, is_twitch_vod_url, native_twitch_format, valid_url, video_format
 from linux.extract_ui import extract
 
 
@@ -86,6 +90,114 @@ class LinuxBackendTests(unittest.TestCase):
         self.assertTrue(any("temporaires" in arg for arg in command))
         self.assertTrue(command[-1].startswith("https://"))
         self.assertNotIn("--exec", command)
+
+
+    def test_every_windows_ui_bridge_action_has_a_linux_implementation(self):
+        """A future Windows UI change must not silently create dead Linux buttons."""
+        html = extract(Path(__file__).resolve().parents[2] / "yt_app.py")
+        calls = set(re.findall(r"""callApi\\(\\s*['"]([a-zA-Z_0-9]+)['"]""", html))
+        self.assertGreaterEqual(len(calls), 16)
+        missing = sorted(name for name in calls if not callable(getattr(self.api, name, None)))
+        self.assertEqual([], missing, "Linux UI controls without native methods")
+        for callback in ("markDownloadSuccess", "markDownloadFailure",
+                         "updateDownloadProgress", "finishDownloadUIState", "showAppToast"):
+            self.assertIn("function " + callback + "(", html)
+
+    def test_mkv_remux_matches_video_container_selection(self):
+        bin_dir = self.root / "Donnees" / "bin"
+        for binary in ("yt-dlp", "ffmpeg"):
+            executable = bin_dir / binary
+            executable.write_text("#!/bin/sh\\nexit 0\\n")
+            executable.chmod(0o755)
+        settings = self.api.get_app_settings()
+        settings.update(video_format="MKV", post_process_video="Remuxer")
+        self.assertTrue(self.api.save_app_settings(settings)["success"])
+        command = self.api._command(
+            {"url": "https://example.org/movie.mp4", "mode": "Vidéo",
+             "selectedQuality": "1080p"}, self.api.temp / "video")
+        self.assertEqual("mkv", command[command.index("--merge-output-format") + 1])
+        self.assertEqual("mkv", command[command.index("--remux-video") + 1])
+
+    def test_twitch_vod_format_applies_only_to_real_twitch_hosts(self):
+        self.assertTrue(is_twitch_vod_url("https://www.twitch.tv/videos/123456789"))
+        self.assertTrue(is_twitch_vod_url("https://m.twitch.tv/videos/123456789"))
+        for url in (
+            "https://www.twitch.tv.evil.example/videos/123456789",
+            "https://not-twitch.tv/videos/123456789",
+            "https://www.twitch.tv/videos/12345wrong",
+            "https://www.twitch.tv/not-videos/123456789",
+            "https://www.twitch.tv/videos/1"
+        ):
+            self.assertFalse(is_twitch_vod_url(url), url)
+        bin_dir = self.root / "Donnees" / "bin"
+        for name in ("yt-dlp", "ffmpeg"):
+            executable = bin_dir / name
+            executable.write_text("#!/bin/sh\\nexit 0\\n")
+            executable.chmod(0o755)
+        for url, twitch in (
+            ("https://www.twitch.tv/videos/123456789", True),
+            ("https://www.twitch.tv.evil.example/videos/123456789", False)
+        ):
+            cmd = self.api._command(
+                {"url": url, "mode": "Vidéo", "selectedQuality": "Meilleure qualité (Auto)"},
+                self.api.temp / "vod")
+            chosen = cmd[cmd.index("--format") + 1]
+            self.assertEqual("height=1080" in chosen, twitch)
+
+    def test_cookie_import_rejects_large_file_without_loading_it_into_memory(self):
+        import types
+        filename = self.root / "oversize-cookies.txt"
+        with filename.open("wb") as handle:
+            handle.write(b"# Netscape HTTP Cookie File\\n")
+            handle.truncate(3_000_000)
+        self.api._window = types.SimpleNamespace(create_file_dialog=lambda *_a, **_kw: [str(filename)])
+        mock_webview = types.SimpleNamespace(FileDialog=types.SimpleNamespace(OPEN="open"))
+        with mock.patch.dict(sys.modules, {"webview": mock_webview}), mock.patch.object(
+                Path, "read_bytes", side_effect=AssertionError("Large file should not be read")
+        ):
+            self.assertIsNone(self.api.select_cookie_file())
+        self.assertFalse((self.api.data / "cookies.txt").exists())
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "POSIX process-group test")
+    def test_pause_resume_cancel_does_not_leave_running_processes(self):
+        """Exercise actual SIGSTOP / SIGCONT / SIGTERM against a local stub."""
+        bin_dir = self.root / "Donnees" / "bin"
+        downloader = bin_dir / "yt-dlp"
+        downloader.write_text(
+            "#!/bin/sh\\n"
+            "echo '[download] 2.0% of media'\\n"
+            "sleep 15\\n"
+            "echo '[download] 100.0% of media'\\n")
+        downloader.chmod(0o755)
+        ffmpeg = bin_dir / "ffmpeg"
+        ffmpeg.write_text("#!/bin/sh\\nexit 0\\n")
+        ffmpeg.chmod(0o755)
+        result = self.api.start_downloads([{
+            "url": "https://example.org/synthetic.mp4", "mode": "Vidéo"
+        }])
+        self.assertTrue(result["success"], result)
+        try:
+            deadline = time.monotonic() + 8
+            while self.api._current is None and time.monotonic() < deadline:
+                time.sleep(.05)
+            proc = self.api._current
+            self.assertIsNotNone(proc, "Local yt-dlp stub was not started")
+            self.assertIsNone(proc.poll())
+            pause = self.api.pause_downloads()
+            self.assertEqual({"success": True, "mode": "active"}, pause)
+            self.assertTrue(self.api._paused)
+            self.assertEqual({"success": True}, self.api.resume_downloads())
+            self.assertFalse(self.api._paused)
+            self.assertTrue(self.api.cancel_downloads())
+            deadline = time.monotonic() + 8
+            while self.api._running and time.monotonic() < deadline:
+                time.sleep(.05)
+            self.assertFalse(self.api._running, "Cancelled process did not stop")
+            self.assertIsNotNone(proc.poll(), "yt-dlp stub survived cancellation")
+            self.assertEqual([], list(self.api.temp.iterdir()),
+                             "Cancelled task left temporary files behind")
+        finally:
+            self.api.cancel_downloads()
 
 
 if __name__ == "__main__":
