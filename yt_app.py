@@ -512,10 +512,31 @@ def local_twitch_environment():
 
 
 def kill_process_tree(pid):
+    """Bound Windows shutdown time; fall back to psutil for stuck taskkill."""
+    if sys.platform != "win32":
+        return
     try:
-        if sys.platform == "win32":
-            subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except Exception:
+        result = subprocess.run(
+            ["taskkill", "/F", "/T", "/PID", str(pid)],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL, timeout=6, check=False
+        )
+        if result.returncode == 0:
+            return
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    # Windows may refuse taskkill or time it out. Kill children before parent.
+    try:
+        import psutil
+        process = psutil.Process(int(pid))
+        children = process.children(recursive=True)
+        for child in reversed(children):
+            try:
+                child.kill()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+        process.kill()
+    except (psutil.NoSuchProcess, psutil.AccessDenied, OSError, ValueError):
         pass
 
 def normalize_media_url(url):
