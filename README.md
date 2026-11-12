@@ -96,6 +96,8 @@ Le rapport CSV est enregistré dans `Donnees/diagnostics/`. Comparer une session
 
 **Prérequis :** Windows 10/11 x64, WebView2 et connexion Internet. Le lancement peut récupérer les outils nécessaires dans le dossier local de l’application. Aucun dossier personnel n’est censé être déplacé automatiquement en dehors de `All-Download/`.
 
+**Diagnostic RAM/CPU Windows (facultatif) :** depuis la racine du dépôt, lancer en PowerShell `./scripts/audit-windows-performance.ps1 -Samples 18 -IntervalSeconds 10`. Ce contrôle est en lecture seule : il collecte RAM, CPU, handles et processus fils dans `Donnees/diagnostics/`. Réaliser trois mesures séparées : au repos, pendant un téléchargement, puis après fermeture. Les mesures CI courtes ne remplacent pas un test prolongé sur ton PC.
+
 ### 📂 Organisation Windows
 
 ```text
