@@ -1,4 +1,26 @@
-# All-Download Android — bêta 0.6.18
+## Android 0.6.22-beta — sécurité des mises à jour
+
+- Vérification d'espace avant téléchargement de l'APK (réserve de 16 Mio), sans effacer de fichiers utilisateur.
+- Rejet des réponses checksum trop longues ; aucun chargement non borné en mémoire.
+- Seuls les anciens caches appartenant à All-Download sont éligibles au nettoyage ; les futures APK en attente sont préservées.
+- Les tests de reprise de la file après expiration Android 15 passent désormais réellement sur les émulateurs téléphone et tablette.
+
+## Correctifs 0.6.22-beta
+
+- Android 15 : expiration des services de transfert gérée proprement, reprise manuelle après pause sans suppression des fichiers partiels.
+- Réessais HTTP/fragment bornés et nettoyage prudent, plafonné à huit dossiers temporaires orphelins âgés de plus de sept jours.
+- File et paramètres conservés à travers les mises à jour signées ; Android demande toujours confirmation pour installer l'APK.
+
+# All-Download Android — bêta 0.6.20
+
+## Partage et fermeture de l’application — 0.6.20
+
+- **Partager → All-Download** depuis YouTube, Twitch ou une application envoyant un lien HTTP(S) : ouverture du téléchargeur avec l’URL préremplie ; démarrage uniquement après confirmation.
+- Partages texte et vidéo contenant un lien pris en charge ; un fichier local `content://` sans URL ne peut pas être téléchargé et déclenche un message explicatif.
+- Notification « All-Download ouverte » avec **Fermer** sans service permanent au repos. Pendant les transferts, boutons **Pause / Annuler / Fermer** ; fermeture du transfert en cours et conservation de la file d’attente.
+- Rafraîchissement de l’interface désactivé en arrière-plan. Une absence absolue de fuite mémoire ou de consommation batterie exige encore des mesures sur un téléphone réel.
+
+
 
 ## Mises à jour : récupération de l'espace privé — 0.6.18
 
