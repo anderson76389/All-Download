@@ -14,6 +14,11 @@ on:
       - "linux/**"
       - "scripts/**"
       - ".github/workflows/test-windows-profiler.yml"
+      # Never publish a new Windows EXE for backup tests or documentation-only commits.
+      - "docs/**"
+      - "tests/test_offline_backup.py"
+      - ".github/dependabot.yml"
+      - ".github/workflows/test-offline-recovery.yml"
   workflow_dispatch:
 
 # Une seule publication a la fois : les boutons pointent toujours
