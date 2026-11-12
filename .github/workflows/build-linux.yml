@@ -71,14 +71,20 @@ jobs:
         run: python -m unittest discover -s linux/tests -p 'test_download_e2e.py' -v
       - name: Package native Linux interface
         run: |
+          # QtWebEngine may require Wayland server even under X11. Bundle its
+          # stable ABI library so clean desktops need no manual Wayland install.
+          WAYLAND_SERVER="$(ldconfig -p | awk '$1 == "libwayland-server.so.0" {print $NF; exit}')"
+          test -f "$WAYLAND_SERVER"
           python -m PyInstaller --noconfirm --clean --onedir --windowed \
             --name All-Download-Linux \
             --paths . --paths linux \
             --add-data "linux/ui.html:." \
+            --add-binary "$WAYLAND_SERVER:." \
             --collect-submodules webview \
             linux/app.py
           cp -a dist/All-Download-Linux/. stage/All-Download/
           cp logo.jpg stage/All-Download/logo.jpg
+          test -s stage/All-Download/_internal/libwayland-server.so.0
           for kind in AUDIOS VIDÉOS TWITCH GIFS CHAÎNES PLAYLIST AUTRES; do
             mkdir -p "stage/All-Download/$kind"
           done
