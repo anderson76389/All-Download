@@ -7,6 +7,11 @@ on:
       - "linux/**"
       - "yt_app.py"
       - ".github/workflows/build-linux.yml"
+  pull_request:
+    paths:
+      - "linux/**"
+      - "yt_app.py"
+      - ".github/workflows/build-linux.yml"
   workflow_dispatch:
 
 permissions:
