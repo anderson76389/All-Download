@@ -40,7 +40,15 @@ class PublicVideoDownloadTest {
             val context = InstrumentationRegistry.getInstrumentation()
                 .targetContext.applicationContext
             YoutubeDL.getInstance().init(context)
-            YoutubeDL.getInstance().updateYoutubeDL(context)
+            try {
+                YoutubeDL.getInstance().updateYoutubeDL(context)
+            } catch (error: Exception) {
+                // GitHub's network can deny access to the updater. This is not
+                // a successful download: keep running real video tests with the
+                // bundled engine, whose limitations must still be reported.
+                android.util.Log.w("AllDownloadPublicTest",
+                    "yt-dlp refresh unavailable; testing bundled engine", error)
+            }
             android.util.Log.i("AllDownloadPublicTest",
                 "Actual yt-dlp: " + YoutubeDL.getInstance().version(context))
         }
