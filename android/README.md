@@ -1,4 +1,11 @@
-## Correctifs 0.6.21-beta
+## Android 0.6.22-beta — sécurité des mises à jour
+
+- Vérification d'espace avant téléchargement de l'APK (réserve de 16 Mio), sans effacer de fichiers utilisateur.
+- Rejet des réponses checksum trop longues ; aucun chargement non borné en mémoire.
+- Seuls les anciens caches appartenant à All-Download sont éligibles au nettoyage ; les futures APK en attente sont préservées.
+- Les tests de reprise de la file après expiration Android 15 passent désormais réellement sur les émulateurs téléphone et tablette.
+
+## Correctifs 0.6.22-beta
 
 - Android 15 : expiration des services de transfert gérée proprement, reprise manuelle après pause sans suppression des fichiers partiels.
 - Réessais HTTP/fragment bornés et nettoyage prudent, plafonné à huit dossiers temporaires orphelins âgés de plus de sept jours.
