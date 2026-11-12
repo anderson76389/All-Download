@@ -61,11 +61,7 @@ def classify(error: str) -> str:
 
 def metadata(binary: str, url: str) -> tuple[dict | None, str, str]:
     base = [binary, "--ignore-config", "--no-playlist", "--no-warnings",
-            "--socket-timeout", "15", "--retries", "1", "--extractor-retries", "1",
-            "--no-check-certificate"] if False else [
-            binary, "--ignore-config", "--no-playlist", "--no-warnings",
-            "--socket-timeout", "15", "--retries", "1", "--extractor-retries", "1",
-        ]
+            "--socket-timeout", "15", "--retries", "1", "--extractor-retries", "1"]
     code, stdout, stderr = run(base + ["--dump-single-json", "--skip-download", url], 85)
     if code != 0:
         return None, classify(stderr or stdout), (stderr or stdout)[-450:]
