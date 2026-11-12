@@ -95,7 +95,7 @@ class LinuxBackendTests(unittest.TestCase):
     def test_every_windows_ui_bridge_action_has_a_linux_implementation(self):
         """A future Windows UI change must not silently create dead Linux buttons."""
         html = extract(Path(__file__).resolve().parents[2] / "yt_app.py")
-        calls = set(re.findall(r"""callApi\\(\\s*['"]([a-zA-Z_0-9]+)['"]""", html))
+        calls = set(re.findall(r"""callApi\(\s*['"]([a-zA-Z_0-9]+)['"]""", html))
         self.assertGreaterEqual(len(calls), 16)
         missing = sorted(name for name in calls if not callable(getattr(self.api, name, None)))
         self.assertEqual([], missing, "Linux UI controls without native methods")
@@ -107,7 +107,7 @@ class LinuxBackendTests(unittest.TestCase):
         bin_dir = self.root / "Donnees" / "bin"
         for binary in ("yt-dlp", "ffmpeg"):
             executable = bin_dir / binary
-            executable.write_text("#!/bin/sh\\nexit 0\\n")
+            executable.write_text("#!/bin/sh\nexit 0\n")
             executable.chmod(0o755)
         settings = self.api.get_app_settings()
         settings.update(video_format="MKV", post_process_video="Remuxer")
@@ -132,7 +132,7 @@ class LinuxBackendTests(unittest.TestCase):
         bin_dir = self.root / "Donnees" / "bin"
         for name in ("yt-dlp", "ffmpeg"):
             executable = bin_dir / name
-            executable.write_text("#!/bin/sh\\nexit 0\\n")
+            executable.write_text("#!/bin/sh\nexit 0\n")
             executable.chmod(0o755)
         for url, twitch in (
             ("https://www.twitch.tv/videos/123456789", True),
@@ -148,7 +148,7 @@ class LinuxBackendTests(unittest.TestCase):
         import types
         filename = self.root / "oversize-cookies.txt"
         with filename.open("wb") as handle:
-            handle.write(b"# Netscape HTTP Cookie File\\n")
+            handle.write(b"# Netscape HTTP Cookie File\n")
             handle.truncate(3_000_000)
         self.api._window = types.SimpleNamespace(create_file_dialog=lambda *_a, **_kw: [str(filename)])
         mock_webview = types.SimpleNamespace(FileDialog=types.SimpleNamespace(OPEN="open"))
@@ -164,13 +164,13 @@ class LinuxBackendTests(unittest.TestCase):
         bin_dir = self.root / "Donnees" / "bin"
         downloader = bin_dir / "yt-dlp"
         downloader.write_text(
-            "#!/bin/sh\\n"
-            "echo '[download] 2.0% of media'\\n"
-            "sleep 15\\n"
-            "echo '[download] 100.0% of media'\\n")
+            "#!/bin/sh\n"
+            "echo '[download] 2.0% of media'\n"
+            "sleep 15\n"
+            "echo '[download] 100.0% of media'\n")
         downloader.chmod(0o755)
         ffmpeg = bin_dir / "ffmpeg"
-        ffmpeg.write_text("#!/bin/sh\\nexit 0\\n")
+        ffmpeg.write_text("#!/bin/sh\nexit 0\n")
         ffmpeg.chmod(0o755)
         result = self.api.start_downloads([{
             "url": "https://example.org/synthetic.mp4", "mode": "Vidéo"
