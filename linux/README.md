@@ -1,12 +1,12 @@
 # All-Download Linux x86_64 — bêta
 
-**Version 0.1.2-beta :** vérification des nouvelles versions Linux depuis les paramètres (sur demande, sans installation automatique), création/suppression facultative d'un raccourci dans le menu Linux, et archive .tar.xz supplémentaire. Les correctifs MKV, Twitch VOD et pause/reprise de 0.1.1 sont conservés.
+**Version 0.1.3-beta :** vérification des nouvelles versions Linux depuis les paramètres (sur demande, sans installation automatique), création/suppression facultative d'un raccourci dans le menu Linux, et archive .tar.xz supplémentaire. Les correctifs MKV, Twitch VOD et pause/reprise de 0.1.1 sont conservés.
 
 La version Linux reprend le **HTML/CSS/JS Windows à l'identique** (extrait automatiquement de yt_app.py), mais utilise une fenêtre native Qt WebEngine et des binaires Linux yt-dlp/FFmpeg. **Aucun EXE Windows n'est exécuté.**
 
 ## Installer et démarrer
 
-1. Télécharger All-Download-Linux-x86_64.tar.xz (ou .tar.gz) depuis la Release Linux 0.1.2-beta.
+1. Télécharger All-Download-Linux-x86_64.tar.xz (ou .tar.gz) depuis la Release Linux 0.1.3-beta.
 2. Décompresser le dossier All-Download dans un emplacement où l'utilisateur peut écrire.
 3. Ouvrir ce dossier, puis lancer All-Download-Linux (pas besoin de sudo).
 4. Les médias sont stockés dans les sept dossiers VIDÉOS, AUDIOS, GIFS, TWITCH, PLAYLIST, CHAÎNES et AUTRES. Paramètres, cookies facultatifs et cache restent sous Donnees/.
