@@ -6,10 +6,11 @@
 
 **Téléchargez vos vidéos, musiques, GIF et playlists dans une seule application.**
 
-Windows 10/11 et Android 7+ · Interface en français · Thèmes clair, sombre et OLED
+Windows 10/11 · Android 7+ · Linux x86_64 (bêta) · Interface en français · Thèmes clair, sombre et OLED
 
 [![Windows](https://img.shields.io/badge/Windows-Portable%20%26%20Classique-2563EB?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/anderson76389/All-Download/releases/latest)
-[![Android](https://img.shields.io/badge/Android-APK%20b%C3%AAta-16A34A?style=for-the-badge&logo=android&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.11-beta)
+[![Android](https://img.shields.io/badge/Android-APK%20b%C3%AAta-16A34A?style=for-the-badge&logo=android&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.15-beta)
+[![Linux](https://img.shields.io/badge/Linux-x86__64%20b%C3%AAta-6D28D9?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/linux-v0.1.0-beta)
 
 </div>
 
@@ -21,26 +22,29 @@ Windows 10/11 et Android 7+ · Interface en français · Thèmes clair, sombre e
 |:--|:--|:--|
 | 🖥️ **Windows 10/11 (x64)** | **Portable** · Sans installation | **[⬇️ Télécharger le ZIP Portable](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Portable-Windows.zip)** |
 | 🖥️ **Windows 10/11 (x64)** | **Classique** · Avec installateur | **[⬇️ Télécharger le ZIP Classique](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Classique-Windows.zip)** |
-| 📱 **Android 7+** | **APK officielle — 0.6.11-beta** | **[⬇️ Télécharger l’APK Android](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.11-beta/All-Download-Android-0.6.11-beta.apk)** |
+| 📱 **Android 7+** | **APK officielle — 0.6.15-beta** | **[⬇️ Télécharger l’APK Android](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.15-beta/All-Download-Android-0.6.15-beta.apk)** |
+| 🐧 **Linux x86_64 (glibc)** | **Portable — 0.1.0-beta** | **[⬇️ Télécharger l'archive Linux](https://github.com/anderson76389/All-Download/releases/download/linux-v0.1.0-beta/All-Download-Linux-x86_64.tar.gz)** |
 
-**[Release Android et notes de version](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.11-beta)** · [Empreinte SHA-256 de l’APK](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.11-beta/All-Download-Android-0.6.11-beta.apk.sha256) · [Dernière Release stable Windows](https://github.com/anderson76389/All-Download/releases/latest)
+**[Release Android et notes de version](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.15-beta)** · [Empreinte SHA-256 de l’APK](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.15-beta/All-Download-Android-0.6.15-beta.apk.sha256) · [Dernière Release stable Windows](https://github.com/anderson76389/All-Download/releases/latest)
 
-> **Important :** Windows et Android sont deux applications distinctes. Les ZIP Windows ne sont pas des fichiers Android et l’APK ne s’installe pas sur Windows. Les fichiers officiels sont uniquement ceux publiés dans les [Releases du dépôt](https://github.com/anderson76389/All-Download/releases).
+> **Important :** Windows, Android et Linux sont trois éditions distinctes. Installez uniquement le format correspondant à votre appareil (ZIP Windows, APK Android, archive Linux). Les fichiers officiels sont ceux des [Releases GitHub](https://github.com/anderson76389/All-Download/releases). La première version Linux est une bêta portable, non un .deb/.rpm.
 
 ## ✨ Fonctionnalités
 
-| Fonction | Windows | Android |
-|:--|:--:|:--:|
-| Vidéo MP4/WebM et extraction audio MP3/M4A/FLAC | ✅ | ✅ |
-| GIF, playlists, chaînes et file d’attente | ✅ | ✅ |
-| Choix de qualité, sous-titres, miniatures et métadonnées | ✅ | ✅ |
-| Dossiers organisés, accès aux médias téléchargés | ✅ | ✅ |
-| Thèmes clair, sombre et OLED | ✅ | ✅ |
-| Twitch : clips et vidéos accessibles | ✅ | ✅ |
-| Twitch VOD : moteur spécialisé TwitchDownloader + secours HLS | ✅ | — |
-| Mises à jour de l’application sans ouvrir le navigateur | Selon l’édition | ✅¹ |
+| Fonction | Windows | Android | Linux (bêta) |
+|:--|:--:|:--:|:--:|
+| Vidéo MP4/WebM et audio MP3/M4A/FLAC | ✅ | ✅ | ✅ |
+| GIF, playlists, chaînes et file d'attente | ✅ | ✅ | ✅ |
+| Choix de qualité, sous-titres et métadonnées | ✅ | ✅ | ✅² |
+| Dossiers organisés et ouverture des fichiers | ✅ | ✅ | ✅ |
+| Thèmes clair, sombre et OLED | ✅ | ✅ | ✅ |
+| Clips Twitch et VOD publiques accessibles | ✅ | ✅ | ✅² |
+| TwitchDownloader spécialisé et secours HLS | ✅ | — | — |
+| Mise à jour depuis l'application | Selon édition | ✅¹ | — |
 
 ¹ Sur Android, All-Download télécharge et vérifie l’APK **dans l’application**, puis ouvre **l’installateur officiel Android** : l’autorisation et la confirmation de l’utilisateur restent nécessaires. Il n’y a pas d’installation silencieuse.
+
+² La version Linux réutilise l'interface Windows mais possède un moteur natif séparé. Quelques traitements et sites protégés demandent encore une validation sur distribution réelle.
 
 La disponibilité des formats et des plateformes dépend des sites, de leur authentification et de leurs éventuelles restrictions. Les vidéos protégées par DRM ne sont pas prises en charge.
 
@@ -66,7 +70,7 @@ La disponibilité des formats et des plateformes dépend des sites, de leur auth
 3. Appuyer sur **Installer** : l’APK est téléchargée dans le cache privé, avec progression, contrôle SHA-256 et vérification de la signature.
 4. Confirmer l’installation dans **Android**. Le navigateur n’est pas ouvert.
 
-La recherche manuelle et l’activation des alertes se trouvent dans **Paramètres → Appli → Mises à jour Android**. La version **0.6.11-beta** utilise une signature permanente : les futures APK signées avec cette même clé pourront être installées par-dessus. Une ancienne bêta signée avec une autre clé peut nécessiter une désinstallation préalable, susceptible d’effacer les données privées de l’application. **Sauvegardez vos réglages et cookies si nécessaire.**
+La recherche manuelle et l’activation des alertes se trouvent dans **Paramètres → Appli → Mises à jour Android**. La version **0.6.15-beta** utilise une signature permanente : les futures APK signées avec cette même clé pourront être installées par-dessus. Une ancienne bêta signée avec une autre clé peut nécessiter une désinstallation préalable, susceptible d’effacer les données privées de l’application. **Sauvegardez vos réglages et cookies si nécessaire.**
 
 **Compatibilité testée en CI :** Android 9, 14 et 15, avec un profil tablette Android 14. Les tests de liens vidéo publics et de certains réseaux sociaux réussissent ; l’accès à toutes les vidéos de chaque service n’est pas garanti.
 
@@ -114,9 +118,24 @@ Les **sept catégories de médias** sont créées automatiquement. `Donnees/` re
 
 ---
 
+## 🐧 Linux — portable x86_64 (bêta)
+
+**Même interface HTML/CSS/JavaScript que Windows**, générée directement à partir du fichier source Windows pendant la compilation. Le backend est écrit pour Linux avec Qt WebEngine, yt-dlp et FFmpeg natifs : **aucun fichier EXE Windows ni WebView2**.
+
+1. Télécharger l'archive **All-Download-Linux-x86_64.tar.gz** depuis la [Release Linux 0.1.0-beta](https://github.com/anderson76389/All-Download/releases/tag/linux-v0.1.0-beta).
+2. Décompresser le dossier **All-Download/** dans un emplacement modifiable, puis lancer **All-Download-Linux**.
+3. Les téléchargements et données restent dans ce dossier : **VIDÉOS, AUDIOS, TWITCH, GIFS, CHAÎNES, PLAYLIST, AUTRES, Donnees/**.
+
+Les fonctionnalités de base incluent analyse des URL, téléchargement vidéo/audio, sélection des formats, thèmes, paramètres, file, pause/reprise/annulation et liens copiables. La version Linux a été pensée pour des distributions x86_64 avec glibc et session graphique. Elle ne garantit pas encore la parité complète de la prise en charge des VOD Twitch avec Windows.
+
+**[Documentation Linux et limites](https://github.com/anderson76389/All-Download/blob/main/linux/README.md)** · [Fichier SHA-256 Linux](https://github.com/anderson76389/All-Download/releases/download/linux-v0.1.0-beta/All-Download-Linux-x86_64.tar.gz.sha256)
+
+---
+
 ## 🛡️ Vérification et sécurité
 
 - **Android :** une APK signée est accompagnée de son fichier `.apk.sha256`. L’application valide également le nom de paquet, la version et la compatibilité de la signature avant de demander l’installation.
+- **Linux :** l'archive portable est publiée dans une Release bêta spécifique avec une empreinte SHA-256. Les exécutables Linux et leurs bibliothèques ne sont pas compatibles Windows/Android.
 - **Windows :** les éditions officielles sont disponibles dans la dernière Release stable. Un avertissement SmartScreen peut apparaître en l’absence d’une signature d’éditeur reconnue ; ne désactivez pas les protections de Windows.
 - **Mises à jour :** les téléchargements Android et Windows sont distincts. La suppression d’anciennes Releases ne doit pas supprimer la dernière version Windows ni l’APK Android courante.
 
@@ -130,7 +149,7 @@ python -m pip install pywebview==6.2.1
 python yt_app.py
 ```
 
-Les sources Windows incluent `yt_app.py`, la configuration PyInstaller et l’installateur. La branche `feature/android-app` contient la version native Android. Les dépendances, les licences et les versions doivent être vérifiées avant toute distribution.
+Les sources Windows incluent `yt_app.py`, la configuration PyInstaller et l’installateur. `android/` contient la version native Android ; `linux/` contient le port Linux et ses tests, qui réutilisent la page HTML Windows sans exécuter son code spécifique à Windows. Les dépendances, les licences et les versions doivent être vérifiées avant toute distribution.
 
 </details>
 

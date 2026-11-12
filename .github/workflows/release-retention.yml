@@ -9,6 +9,7 @@ on:
     workflows:
       - Build All-Download (Windows)
       - Publish All-Download Android beta
+      - Build and test Linux (beta)
     types: [completed]
   workflow_dispatch:
     inputs:
@@ -27,7 +28,7 @@ concurrency:
 
 jobs:
   curate:
-    name: Preserve Windows and Android downloads; prune obsolete releases
+    name: Preserve Windows Android and Linux downloads; prune obsolete releases
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -83,17 +84,29 @@ jobs:
               raise SystemExit("Safety stop: no Android Release containing a signed APK.")
           latest_android = max(android, key=lambda r:
               (r.get("published_at") or "", r["id"]))
-          keep = {r["tag_name"] for r in old + new + [stable_windows]}
+          linux = [r for r in releases
+              if r["tag_name"].startswith("linux-v") and any(
+                  a["name"] == "All-Download-Linux-x86_64.tar.gz"
+                  for a in r.get("assets", []))]
+          latest_linux = max(linux, key=lambda r:
+              (r.get("published_at") or "", r["id"])) if linux else None
+          protected = [stable_windows, latest_android] + (
+              [latest_linux] if latest_linux else [])
+          keep = {r["tag_name"] for r in old + new + protected}
           targets = [r["tag_name"] for r in releases if r["tag_name"] not in keep]
           print(f"Published Releases: {len(releases)}")
           print(f"Keep oldest 4: {[r['tag_name'] for r in old]}")
           print(f"Keep newest 4: {[r['tag_name'] for r in new]}")
-          print(f"Also keep latest stable Windows: {stable_windows['tag_name']}")
+          print(f"Also keep stable Windows: {stable_windows['tag_name']}")
+          print(f"Also keep signed Android: {latest_android['tag_name']}")
+          if latest_linux:
+              print(f"Also keep Linux beta: {latest_linux['tag_name']}")
           print(f"Keep {len(keep)}; remove {len(targets)} obsolete Releases and tags")
           print("Deleting:", targets)
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               output.write("windows_tag=" + stable_windows["tag_name"] + "\n")
               output.write("android_tag=" + latest_android["tag_name"] + "\n")
+              output.write("linux_tag=" + (latest_linux["tag_name"] if latest_linux else "") + "\n")
           with open("/tmp/releases-to-prune.json", "w") as f:
               json.dump(targets, f)
           PY
@@ -124,7 +137,7 @@ jobs:
                    os.environ["GITHUB_REPOSITORY"], "--cleanup-tag", "--yes"],
                   check=True,
               )
-          print("Cleanup completed. Stable Windows and latest Android assets retained.")
+          print("Cleanup completed. Latest Windows, Android and Linux assets retained.")
           PY
       - name: Confirm final Release count
         if: env.DRY_RUN != 'true'
@@ -140,11 +153,14 @@ jobs:
           with urllib.request.urlopen(req, timeout=30) as response:
               releases = [r for r in json.load(response) if not r.get("draft")]
           tags = {r["tag_name"] for r in releases}
-          assert 2 <= len(tags) <= 9, f"Unexpected Release count: {len(tags)}"
+          assert 2 <= len(tags) <= 11, f"Unexpected Release count: {len(tags)}"
           assert os.environ["ANDROID_TAG"] in tags, "Latest Android APK was removed"
           assert os.environ["WINDOWS_TAG"] in tags, "Latest Windows ZIPs were removed"
+          if os.environ.get("LINUX_TAG"):
+              assert os.environ["LINUX_TAG"] in tags, "Latest Linux package was removed"
           print(f"Confirmed: {len(tags)} published Releases remaining.")
           PY
         env:
           WINDOWS_TAG: ${{ steps.plan.outputs.windows_tag }}
           ANDROID_TAG: ${{ steps.plan.outputs.android_tag }}
+          LINUX_TAG: ${{ steps.plan.outputs.linux_tag }}
