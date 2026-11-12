@@ -36,7 +36,8 @@ def verify_checksum(path: Path) -> None:
             f"Incorrect SHA-256 sidecar filename: {checksum}")
     require(bool(re.fullmatch(r"[a-fA-F0-9]{64}", data[0])),
             f"Bad SHA-256 sidecar: {checksum}")
-    digest = hashlib.file_digest(path.open("rb"), "sha256").hexdigest()
+    with path.open("rb") as stream:
+        digest = hashlib.file_digest(stream, "sha256").hexdigest()
     require(digest.lower() == data[0].lower(), f"SHA-256 mismatch: {path.name}")
     print(f"  SHA-256 verified: {path.name} ({path.stat().st_size:,} bytes)")
 
@@ -48,7 +49,7 @@ def safe_name(name: str) -> bool:
     return norm not in ("", ".", "..") and not norm.startswith("../")
 
 
-def check_pe_x64(data: bytes, filename: str) -> None:
+def check_pe(data: bytes, filename: str, allow_setup_stub: bool = False) -> None:
     require(data[:2] == b"MZ" and len(data) > 0x40,
             f"Windows executable missing DOS header: {filename}")
     offset = struct.unpack_from("<I", data, 0x3C)[0]
@@ -56,7 +57,10 @@ def check_pe_x64(data: bytes, filename: str) -> None:
     require(data[offset:offset + 4] == b"PE\x00\x00",
             f"Invalid PE header: {filename}")
     machine = struct.unpack_from("<H", data, offset + 4)[0]
-    require(machine == 0x8664, f"Not Windows x64 PE: {filename}")
+    # Inno Setup may use a 32-bit bootstrapper while installing an x64 app.
+    # The portable application itself must always be PE x64.
+    allowed = (0x8664, 0x014C) if allow_setup_stub else (0x8664,)
+    require(machine in allowed, f"Unexpected Windows PE machine {machine:#x}: {filename}")
 
 
 def check_windows(folder: Path) -> None:
@@ -92,7 +96,7 @@ def check_windows(folder: Path) -> None:
                 require("INSTALLATION-WINDOWS.txt" in names, "Installer instructions absent")
             require(zf.testzip() is None, f"Corrupt ZIP member in {name}")
             with zf.open(executable) as exe:
-                check_pe_x64(exe.read(8192), executable)
+                check_pe(exe.read(8192), executable, allow_setup_stub=not bool(prefix))
             print(f"  Windows ZIP verified: {name} ({len(names)} entries)")
 
 
@@ -141,7 +145,10 @@ def check_linux(folder: Path) -> None:
             members = tf.getmembers()
             names = {x.name for x in members}
             require(len(names) == len(members), f"Duplicate TAR paths in {archive.name}")
-            require(all(safe_name(x.name) and x.name.startswith(ROOT + "/") for x in members),
+            # Python normalizes the tar root "All-Download/" to "All-Download".
+            require(all(safe_name(x.name) and
+                        (x.name == ROOT or x.name.startswith(ROOT + "/"))
+                        for x in members),
                     f"Unsafe Linux TAR paths: {archive.name}")
             for m in members:
                 if m.issym():
