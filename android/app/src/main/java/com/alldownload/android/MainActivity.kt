@@ -1610,8 +1610,9 @@ class MainActivity : Activity() {
     }
 
     override fun onPause() {
+        // Keep the lightweight "Fermer" action in the shade while this task is
+        // still in Recents. Only the UI polling pauses; no idle service runs.
         handler.removeCallbacks(refresh)
-        DownloadService.hideOpenNotification(this)
         super.onPause()
     }
 
