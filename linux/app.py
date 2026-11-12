@@ -6,6 +6,7 @@ Aucune modification de yt_app.py ou des versions Windows/Android.
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import re
 import shutil
@@ -81,6 +82,18 @@ def cleanup_old_workspaces(folder: Path, *, now: float | None = None,
     except OSError:
         pass
     return removed
+
+
+def resumable_workspace_name(item: dict) -> str:
+    """Stable, private workspace for yt-dlp .part fragments across failed attempts.
+
+    Hash a short selection of transfer parameters (not titles or cookies) so a
+    retry uses the same location without leaking a potentially signed URL.
+    """
+    key = json.dumps({name: item.get(name) for name in
+                      ("url", "mode", "selectedQuality", "start_idx", "end_idx")},
+                     sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()[:32]
 
 
 def app_root() -> Path:
@@ -595,8 +608,9 @@ class DownloaderAPI:
                 if self._cancel:
                     break
                 url = item["url"]
-                workspace = self.temp / uuid.uuid4().hex
+                workspace = self.temp / resumable_workspace_name(item)
                 workspace.mkdir(parents=True, exist_ok=True)
+                succeeded = False
                 try:
                     cmd = self._command(item, workspace)
                     proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
@@ -628,6 +642,7 @@ class DownloaderAPI:
                     with self._lock:
                         self._current = None
                     if exit_code == 0 and not self._cancel:
+                        succeeded = True
                         completed += 1
                         self._js("markDownloadSuccess", url)
                         if self.get_app_settings().get("notify") == "always":
@@ -637,7 +652,12 @@ class DownloaderAPI:
                 except (OSError, ValueError, subprocess.SubprocessError) as error:
                     self._js("markDownloadFailure", url, str(error)[:250])
                 finally:
-                    shutil.rmtree(workspace, ignore_errors=True)
+                    # A network failure must NOT discard yt-dlp's .part files.
+                    # Reusing this workspace plus --continue enables best-effort
+                    # resume. Explicit cancellation/success still release space.
+                    # Startup cleanup removes unreferenced work older than 7 days.
+                    if succeeded or self._cancel:
+                        shutil.rmtree(workspace, ignore_errors=True)
             message = ("Annulé" if self._cancel else
                        f"Terminé : {completed}/{total} téléchargement(s)")
             self._js("updateDownloadProgress", 100 if not self._cancel else 0, message)
