@@ -398,6 +398,7 @@ class DownloaderAPI:
 
     def _common_args(self, url, settings) -> list[str]:
         args = ["--cache-dir", str(self.cache), "--newline",
+                "--progress-delta", "0.5",  # keep the Qt bridge responsive on long downloads
                 "--socket-timeout", "20", "--retries", "3", "--no-overwrites"]
         cookie_file = str(self.config.get("cookie_file") or "")
         if cookie_file and Path(cookie_file).is_file() and inside_folder(Path(cookie_file), self.root):
