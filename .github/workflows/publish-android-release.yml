@@ -1,0 +1,229 @@
+name: Publish All-Download Android beta
+
+on:
+  push:
+    branches: [feature/android-app]
+    paths:
+      - "android/app/src/main/**"
+      - "android/app/src/androidTest/**"
+      - "android/app/src/test/**"
+      - "android/app/build.gradle.kts"
+      - ".github/workflows/publish-android-release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: all-download-android-beta-release
+  cancel-in-progress: true
+
+jobs:
+  release-android:
+    name: Verify, package and publish Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout Android beta branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Exiger compilation, tests téléphone/tablette, vidéos et réseaux sociaux
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TESTED_SHA="$(git log -1 --format=%H -- android/)"
+          test -n "$TESTED_SHA"
+          echo "Version du code Android : $TESTED_SHA"
+          VERSION="$(sed -nE 's/^[[:space:]]*versionName = "([^"]+)".*/\1/p' android/app/build.gradle.kts | head -n1)"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+-beta$ ]]; then
+            echo "Nom de version Android invalide : $VERSION"
+            exit 1
+          fi
+          echo "ANDROID_VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Release Android ciblée : android-v$VERSION"
+          validated=0
+          for attempt in $(seq 1 100); do
+            LATEST="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/feature/android-app" --jq '.object.sha')"
+            if [ "$LATEST" != "$GITHUB_SHA" ]; then
+              echo "Code Android modifié depuis le début des tests : ancienne publication annulée."
+              exit 1
+            fi
+            runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?per_page=100")"
+            validated=0
+            for name in "Build and test Android (beta)" "Android public video download checks" "Android social media video checks"; do
+              state="$(printf '%s' "$runs" | jq -r --arg name "$name" --arg sha "$TESTED_SHA" \
+                '[.workflow_runs[] | select(.name==$name and .head_sha==$sha)] | .[0].conclusion // "pending"')"
+              if [ "$state" = "failure" ] || [ "$state" = "cancelled" ]; then
+                echo "Suite Android non réussie : $name => $state"
+                exit 1
+              fi
+              if [ "$state" = "success" ]; then validated=$((validated + 1)); fi
+              if [ $((attempt % 5)) -eq 1 ]; then echo "$name : $state"; fi
+            done
+            if [ "$validated" = "3" ]; then
+              echo "Toutes les suites Android vérifiées pour $TESTED_SHA"
+              echo "ANDROID_VERIFIED_SHA=$TESTED_SHA" >> "$GITHUB_ENV"
+              break
+            fi
+            if [ "$attempt" = "100" ]; then
+              echo "Tests Android incomplets : aucune publication."
+              exit 1
+            fi
+            sleep 12
+          done
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Prepare Android SDK
+        run: |
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path "*/bin/sdkmanager" -type f | sort -V | tail -n 1)"
+          test -n "$SDKMANAGER"
+          "$SDKMANAGER" --install "platforms;android-35" "build-tools;35.0.0"
+      - name: Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Unit tests and APK build
+        run: gradle --no-daemon -p android :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease
+      - name: Sign with a permanent private Android release key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ] ||
+             [ -z "$ANDROID_KEY_ALIAS" ] || [ -z "$ANDROID_KEY_PASSWORD" ]; then
+            echo "::error::Configurez les 4 secrets Android Actions dans android/SIGNING.md. Publication bloquée : aucune APK de débogage ne sera diffusée."
+            exit 1
+          fi
+          if [ "$ANDROID_KEY_ALIAS" = "androiddebugkey" ]; then
+            echo "::error::La clé Android Debug est interdite pour une Release."
+            exit 1
+          fi
+          KEYSTORE="$RUNNER_TEMP/all-download-release.p12"
+          ALIGNED="$RUNNER_TEMP/all-download-aligned.apk"
+          trap 'rm -f "$KEYSTORE" "$ALIGNED"' EXIT
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+          chmod 600 "$KEYSTORE"
+          SRC="android/app/build/outputs/apk/release/app-release-unsigned.apk"
+          test -s "$SRC"
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -f -p 4 "$SRC" "$ALIGNED"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign \
+            --ks "$KEYSTORE" \
+            --ks-type PKCS12 \
+            --ks-key-alias "$ANDROID_KEY_ALIAS" \
+            --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
+            --key-pass env:ANDROID_KEY_PASSWORD \
+            --out android/app/build/outputs/apk/release/app-release-signed.apk \
+            "$ALIGNED"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs \
+            android/app/build/outputs/apk/release/app-release-signed.apk
+          echo "APK_SIGNING=stable" >> "$GITHUB_ENV"
+          echo "Signature Android permanente validée."
+      - name: Validate APK and prepare release file
+        run: |
+          set -euo pipefail
+          SRC="android/app/build/outputs/apk/release/app-release-signed.apk"
+          DEST="All-Download-Android-${ANDROID_VERSION}.apk"
+          test -s "$SRC"
+          unzip -tq "$SRC" >/dev/null
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$SRC"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SRC" | grep -E "^(package:|sdkVersion:|targetSdkVersion:)"
+          if ! "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SRC" | grep -q "versionName='${ANDROID_VERSION}'"; then
+            echo "Wrong Android version in the APK"
+            exit 1
+          fi
+          cp "$SRC" "$DEST"
+          sha256sum "$DEST" | tee "${DEST}.sha256"
+      - name: Write beta release notes
+        run: |
+          cat > android-release-notes.md <<'EOF'
+          ## All-Download Android 0.6.0 BÊTA
+
+          Téléchargement autonome Android (APK). **Ne remplace pas les versions Windows.**
+
+          - Android 7+ ; architecture ARM 32/64 bits et x86 32/64 bits.
+          - Mise à jour depuis l’application : téléchargement APK privé avec progression, contrôle SHA-256 et vérification du paquet, puis ouverture de l’installateur Android sans navigateur.
+          - Identité All-Download conservée dans le lanceur, le splash et les mises à jour ; aucun bandeau de marque permanent dans les pages.
+          - Écrans compacts : actions réorganisées en colonne si nécessaire, boutons de 52 dp minimum, marges régulières et libellés longs lisibles.
+          - File : ajout immédiatement visible et parcours Copier → Coller, Réessayer et Supprimer contrôlés sur téléphone et tablette.
+          - Réglages : contrôle des préférences enregistrées et limite cohérente des champs avancés.
+          - YouTube : vérification de disponibilité des formats avant sélection, avec conservation de la qualité demandée.
+          - Barre de contrôle Liquid Glass : quatre icônes vectorielles, capsule violette translucide sur téléphone et navigation latérale sur tablette ou pliable ouvert.
+          - Navigation sécurisée : zones tactiles lisibles, respect des barres système Android, adaptation automatique au clavier, sans capture d'écran ni flou GPU coûteux.
+          - Logo Android original violet dédié (média, téléchargement et AD) : icône, splash et fenêtre de mise à jour, source conservée dans android/branding/.
+          - UI carrée proche de Windows : icônes vectorielles cohérentes, onglets lisibles, cartes et boutons natifs adaptés au tactile.
+          - Les versions Windows et leur logo restent inchangés.
+          - Optimisation RAM : logo original redimensionné à la compilation (PNG 192 × 192), sans toucher au fichier Windows.
+          - Fluidité : mises à jour de l'interface uniquement quand l'activité est visible, moins de re-dessins, pagination des tâches (24 à la fois) et explorateur de dossiers asynchrone (50 fichiers à la fois).
+          - Démarrage optimisé : contrôles avancés de l'application construits seulement à l'ouverture des Réglages, avec leur état sauvegardé.
+          - Fiabilité : tests de non-régression sur les contrôles, réduction des allocations et suppression sûre des fichiers temporaires associés aux tâches effacées.
+          - Autonomie : notifications et progression yt-dlp limitées en fréquence, écritures persistantes regroupées, moteur yt-dlp/FFmpeg initialisé une seule fois.
+          - Données et batterie : GitHub utilise le cache HTTP ETag et évite les vérifications en économie d'énergie, yt-dlp ne s'actualise pas automatiquement sur réseau facturé au volume.
+          - Fonctionnel : trois onglets de réglages Téléchargement / Application / Réseau comme Windows, lien copiable depuis la file, suppression des fichiers privés partiels à la suppression d'une tâche.
+          - Classement : vidéos et clips Twitch dans TWITCH, VOD en qualité native 1080p puis 720p.
+          - Interface native : Accueil, File d'attente, Dossiers et Paramètres ; navigation latérale automatique sur tablette et pliable ouvert.
+          - Accueil enrichi : aperçu compact de la file comme Windows, collage URL, raccourcis GIF/playlist/Twitch, effacement ciblé de la file.
+          - Android 15 : marges système et découpes d'écran adaptées (tests API 35), APK annulable et installation reprenable après rotation.
+          - Bannière de mise à jour animée en haut comme Kovelyx : numéro de version, progression, détails, action Installer/Plus tard. Cache privé, contrôle SHA-256, signature identique et installation système Android, sans navigateur.
+          - Paramètres Windows adaptés : MP4/MKV et remux, qualité MP3, miniatures, métadonnées, sous-titres, SponsorBlock, proxy, User-Agent, réseau et notifications.
+          - Thèmes Sombre, Clair et OLED, persistants ; paramètres yt-dlp et cookies locaux.
+          - File d'attente persistante : lancement en série, progression, pause/reprise best-effort et relance en cas d'erreur.
+          - Explorateur intégré des sept dossiers et ouverture des médias par MediaStore/FileProvider.
+          - Téléchargements vidéo MP4/WebM/HLS, clips Twitch, audio MP3/M4A/FLAC, GIF, playlists et chaînes.
+          - Moteur yt-dlp et FFmpeg intégrés, mise à jour yt-dlp facultative pour les réseaux sociaux.
+          - Validation automatique sur Android 9, 14, 15 et tablette Android 14, avec contrôles de placement supplémentaires à 140 % de taille de texte. Les tests réseau ignorés pour restriction externe ne comptent pas comme des téléchargements réussis.
+          - Tests sociaux Android 14 : Reels Instagram, X, vidéos Pinterest, TikTok, Reels Facebook, Reddit HLS direct, Bluesky et Dailymotion validés sur des liens publics.
+          - Reddit (publication classique) et certaines vidéos Facebook exigent un accès ou un extracteur compatible ; Vimeo non confirmé. YouTube anti-bot, VOD Twitch protégées et DRM non garantis.
+          - Import facultatif de cookies Netscape de votre propre compte autorisé ; stockage privé local, effacement possible dans l'application.
+
+          **Signature :** clé privée de publication permanente, conservée hors du dépôt.
+          Si une ancienne bêta a une signature debug différente, une dernière désinstallation peut être nécessaire ; les futures mises à jour signées avec la même clé s'installent par-dessus via le programme d'installation Android.
+          Les fichiers exportés dans Téléchargements restent disponibles, mais les données privées de l'application peuvent être supprimées par une désinstallation.
+          Conservez et sauvegardez la clé privée pour toutes les futures versions.
+          N'importez pas de sessions sensibles dans cette version de test.
+          Ne désactivez pas les protections Android. Installation à vos risques pour cette préversion.
+          Les versions Windows Portable/Classique restent sur les Releases stables.
+
+          **Fichier :** APK Android et empreinte SHA-256 joints aux assets de cette Release.
+          EOF
+          sed -i "s/0\.6\.0/${ANDROID_VERSION}/g" android-release-notes.md
+      - name: Publish separate Android prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="android-v${ANDROID_VERSION}"
+          APK="All-Download-Android-${ANDROID_VERSION}.apk"
+          LATEST="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/feature/android-app" --jq '.object.sha')"
+          if [ "$LATEST" != "$GITHUB_SHA" ]; then
+            echo "Publication refusée : la branche Android a changé."
+            exit 1
+          fi
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            previous="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq '.target_commitish')"
+            previous_source="$(git log -1 --format=%H "$previous" -- android/)"
+            if [ "$previous_source" != "$ANDROID_VERIFIED_SHA" ]; then
+              echo "La version $TAG existe déjà pour un autre code. Incrémenter versionCode et versionName avant une nouvelle release."
+              exit 1
+            fi
+            echo "APK Android déjà publié pour le même code : fichier et empreinte conservés."
+          else
+            gh release create "$TAG" "$APK" "${APK}.sha256" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "All-Download Android ${ANDROID_VERSION}" \
+              --notes-file android-release-notes.md \
+              --prerelease
+          fi
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --json url,isPrerelease,assets --jq '{url,isPrerelease,assets:[.assets[].name]}'
+          test "$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq .isPrerelease)" = "true"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' | grep -Fx "$APK"

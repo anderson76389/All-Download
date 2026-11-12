@@ -1,0 +1,73 @@
+name: Android public video download checks
+on:
+  push:
+    paths:
+      - "android/**"
+      - ".github/workflows/test-android-public-videos.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: android-public-video-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  public-videos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Activer KVM
+        run: |
+          if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+      - name: Vidéos publiques externes sur Android 14
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
+          script: gradle --no-daemon -p android :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.alldownload.android.PublicVideoDownloadTest
+      - name: Résumé détaillé des tests publics
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+          files = glob.glob("android/app/build/outputs/androidTest-results/**/*.xml", recursive=True)
+          if not files:
+              print("Aucun rapport XML produit.")
+          for path in files:
+              try:
+                  root = ET.parse(path).getroot()
+              except Exception as exc:
+                  print(path, exc)
+                  continue
+              for case in root.iter("testcase"):
+                  name = case.get("name", "?")
+                  if not case.get("classname", "").endswith("PublicVideoDownloadTest"):
+                      continue
+                  failure = case.find("failure")
+                  skipped = case.find("skipped")
+                  if failure is not None:
+                      print(f"FAIL {name}: {failure.get('message', '')[:2000]}\\n{(failure.text or '')[:2000]}")
+                  elif skipped is not None:
+                      print(f"SKIP {name}: {(skipped.get('message') or skipped.text or 'Restriction externe')[:1000]}")
+                  else:
+                      print(f"PASS {name}")
+          PY
+      - name: Journaux et rapports des téléchargements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-public-video-results
+          path: |
+            android/app/build/outputs/androidTest-results/
+            android/app/build/reports/androidTests/connected/
+          if-no-files-found: ignore

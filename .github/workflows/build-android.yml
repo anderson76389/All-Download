@@ -1,0 +1,114 @@
+name: Build and test Android (beta)
+on:
+  push:
+    paths:
+      - "android/**"
+      - ".github/workflows/build-android.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: android-ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Préparer le SDK Android
+        run: |
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path "*/bin/sdkmanager" -type f | sort -V | tail -n 1)"
+          test -n "$SDKMANAGER"
+          "$SDKMANAGER" --install "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Tests unitaires et compilation APK
+        run: gradle --no-daemon -p android :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest
+      # Debug APK is private to emulator/unit tests; release builds use only the permanent signing key.
+      - name: Rapports tests JVM
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-unit-test-results
+          path: android/app/build/test-results/testDebugUnitTest/
+          if-no-files-found: ignore
+
+  test-on-emulator:
+    name: Android emulator API ${{ matrix.api }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [28, 34, 35]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Activer KVM
+        run: |
+          if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+      - name: Installer l'APK et lancer les tests sur Android
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
+          script: trap 'if [ ! -d android-ui-audit ]; then adb pull /sdcard/Download/All-Download/AUTRES android-ui-audit || true; fi' EXIT; gradle --no-daemon -p android :app:assembleDebug :app:assembleDebugAndroidTest && ( [ "${{ matrix.api }}" != "28" ] || ( adb install -r android/app/build/outputs/apk/debug/app-debug.apk && adb shell pm grant com.alldownload.android android.permission.WRITE_EXTERNAL_STORAGE && adb shell pm grant com.alldownload.android android.permission.READ_EXTERNAL_STORAGE && adb shell dumpsys package com.alldownload.android | grep -E "WRITE_EXTERNAL_STORAGE|READ_EXTERNAL_STORAGE|granted=true" | head -25 && adb shell ls -ld /sdcard /sdcard/Download /storage/emulated/0 ) ) && gradle --no-daemon -p android :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.alldownload.android.AndroidSmokeTest,com.alldownload.android.DownloadEngineE2ETest && adb pull /sdcard/Download/All-Download/AUTRES android-ui-audit && ( [ "${{ matrix.api }}" != "35" ] || ( adb shell settings put system font_scale 1.4 && gradle --no-daemon -p android :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.alldownload.android.AndroidSmokeTest#compactActionRowsWrapWithoutClippingAndKeepTheirActions,com.alldownload.android.AndroidSmokeTest#captureMobilePagesForVisualReview && adb pull /sdcard/Download/All-Download/AUTRES android-ui-audit/large-text ) )
+      - name: Rapport tests émulateur
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-emulator-results-API-${{ matrix.api }}
+          path: |
+            android/app/build/outputs/androidTest-results/
+            android-ui-audit/
+          if-no-files-found: ignore
+
+  test-tablet-emulator:
+    name: Android tablet API 34
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Activer KVM
+        run: |
+          if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+      - name: Tester la navigation tablette et le moteur
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_c
+          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
+          script: trap 'if [ ! -d android-ui-audit ]; then adb pull /sdcard/Download/All-Download/AUTRES android-ui-audit || true; fi' EXIT; gradle --no-daemon -p android :app:assembleDebug :app:assembleDebugAndroidTest && gradle --no-daemon -p android :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.alldownload.android.AndroidSmokeTest,com.alldownload.android.DownloadEngineE2ETest && adb pull /sdcard/Download/All-Download/AUTRES android-ui-audit
+      - name: Rapport tests tablette
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-tablet-emulator-results-API-34
+          path: |
+            android/app/build/outputs/androidTest-results/
+            android-ui-audit/
+          if-no-files-found: ignore

@@ -1,0 +1,72 @@
+name: Android social media video checks
+on:
+  push:
+    paths:
+      - "android/**"
+      - ".github/workflows/test-android-social-videos.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: android-social-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  social-public-videos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Activer KVM
+        run: |
+          if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+      - name: Tester les vidéos de réseaux sociaux sur Android 14
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
+          script: gradle --no-daemon -p android :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.alldownload.android.SocialVideoDownloadTest
+      - name: Afficher le résultat par réseau social
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+          reports=glob.glob('android/app/build/outputs/androidTest-results/**/*.xml',recursive=True)
+          count = {'PASS': 0, 'SKIP': 0, 'FAIL': 0}
+          for name in reports:
+              try: root = ET.parse(name).getroot()
+              except Exception as e:
+                  print('XML error:', name, e)
+                  continue
+              for case in root.iter('testcase'):
+                  if not (case.get('classname') or '').endswith('SocialVideoDownloadTest'):
+                      continue
+                  failure = case.find('failure')
+                  skipped = case.find('skipped')
+                  state = 'FAIL' if failure is not None else 'SKIP' if skipped is not None else 'PASS'
+                  count[state]+=1
+                  detail = (failure.get('message') or failure.text or '') if failure is not None else (skipped.get('message') or skipped.text or '') if skipped is not None else ''
+                  if failure is not None and len(detail) < 20:
+                      detail = failure.text or detail
+                  print(f"{state} {case.get('name')}: {detail[:1700]}")
+          print('SUMMARY',count)
+          if sum(count.values())==0: raise SystemExit('No social tests executed')
+          PY
+      - name: Journaux complets des tests sociaux
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-social-video-results
+          path: |
+            android/app/build/outputs/androidTest-results/
+            android/app/build/reports/androidTests/connected/
+          if-no-files-found: ignore
