@@ -1,4 +1,10 @@
-# All-Download Android — bêta 0.6.17
+# All-Download Android — bêta 0.6.18
+
+## Mises à jour : récupération de l'espace privé — 0.6.18
+
+- Après installation d'une mise à jour dans l'application, les anciennes APK All-Download et les fichiers `.apk.part` devenus obsolètes sont supprimés du cache privé.
+- Une APK plus récente encore en attente et les fichiers étrangers au système de mise à jour sont préservés. Les médias utilisateur, réglages, cookies et file d'attente ne sont jamais concernés.
+- Un test instrumenté Android vérifie explicitement la suppression de l'ancien cache sans perte d'autres fichiers.
 
 ## Alignement final des icônes et textes — 0.6.17
 
