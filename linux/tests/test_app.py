@@ -10,7 +10,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from linux.app import DownloaderAPI, category_for, inside_folder, is_twitch_vod_url, native_twitch_format, valid_url, video_format
+from linux.app import DownloaderAPI, category_for, inside_folder, is_twitch_vod_url, native_twitch_format, should_emit_progress, valid_url, video_format
 from linux.extract_ui import extract
 
 
@@ -73,6 +73,14 @@ class LinuxBackendTests(unittest.TestCase):
         self.assertIn("height<=?720", video_format("720p"))
         self.assertEqual("TWITCH", category_for({"url": "https://www.twitch.tv/videos/12345", "mode": "Vidéo"}))
         self.assertEqual("AUDIOS", category_for({"url": "https://youtu.be/test", "mode": "Audio"}))
+
+    def test_progress_notifications_throttled_without_losing_completion(self):
+        self.assertTrue(should_emit_progress(0.2, 1.0, -1, 0))
+        self.assertFalse(should_emit_progress(0.3, 1.1, 0.2, 1.0))
+        self.assertTrue(should_emit_progress(0.4, 1.6, 0.2, 1.0))
+        self.assertTrue(should_emit_progress(2.0, 1.1, 0.2, 1.0))
+        self.assertTrue(should_emit_progress(0.0, 1.1, 99.0, 1.0))
+        self.assertTrue(should_emit_progress(100.0, 1.1, 99.8, 1.0))
 
     def test_download_args_preserve_actual_mode_and_folders(self):
         bin_dir = self.root / "Donnees" / "bin"
