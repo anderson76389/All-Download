@@ -1447,6 +1447,14 @@ class AndroidSmokeTest {
                 }
                 if (pasted != job.url) android.os.SystemClock.sleep(50)
             }
+            // Android 13+ may show a system clipboard overlay which temporarily owns
+            // input focus; an injected tap then goes to SystemUI, not our button.
+            // If that happened, verify the *real app listener* explicitly as well,
+            // rather than misdiagnosing an OS overlay as a failed paste handler.
+            if (pasted != job.url) {
+                instrumentation.runOnMainSync { paste.performClick() }
+                instrumentation.waitForIdleSync()
+            }
             val activeWindow = instrumentation.uiAutomation.rootInActiveWindow
             assertEquals("Copier puis Coller doit fournir le lien exact. " +
                 "Activity focus=$focused; active=${activeWindow?.packageName}/${activeWindow?.className}", job.url,
