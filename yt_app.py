@@ -3006,6 +3006,44 @@ def html_for_config(config):
 # -------------------------------------------------------------
 # BACKEND API PYTHON (UNIVERSAL EXTRACTOR + 4K / AUDIO HD)
 # -------------------------------------------------------------
+def available_video_qualities(info):
+    """Only advertise resolutions present in actual yt-dlp video formats.
+
+    A maximum resolution of 1080p does NOT imply that the source also has
+    720p/480p. Audio-only formats never imply a video quality. If yt-dlp has
+    not supplied formats yet (e.g. a flat playlist), leave only Auto visible.
+    """
+    result = ["Meilleure qualité (Auto)"]
+    if not isinstance(info, dict):
+        return result
+    formats = info.get("formats")
+    if not isinstance(formats, list):
+        return result
+    heights = {}
+    for entry in formats:
+        if not isinstance(entry, dict) or entry.get("vcodec") == "none":
+            continue
+        height = entry.get("height")
+        if not isinstance(height, int) or isinstance(height, bool):
+            note = str(entry.get("resolution") or entry.get("format_note") or "")
+            match = re.search(r"(?<!\d)(\d{3,4})p(?:\d{2,3})?(?!\d)", note)
+            height = int(match.group(1)) if match else None
+        if not isinstance(height, int) or not (144 <= height <= 4320):
+            continue
+        fps = entry.get("fps")
+        # yt-dlp normally reports a number. Bad/missing metadata must not
+        # break analysis or create fictitious 60-fps quality labels.
+        if isinstance(fps, (int, float)) and not isinstance(fps, bool) and 1 <= fps <= 240:
+            fps = int(fps)
+        else:
+            fps = 30
+        heights[height] = max(heights.get(height, 0), fps)
+    for height in sorted(heights, reverse=True):
+        fps = heights[height]
+        result.append(f"{height}p" + (f" ({fps}fps)" if fps > 30 else ""))
+    return result
+
+
 class DownloaderAPI:
     def __init__(self):
         # pywebview 6.2.1 parcourt recursivement les attributs publics de js_api.
@@ -3346,44 +3384,6 @@ class DownloaderAPI:
             return {"success": False, "error": "Impossible de reprendre certains processus : " + "; ".join(errors)}
         self.is_paused = False
         return {"success": True}
-
-def available_video_qualities(info):
-    """Only advertise resolutions present in actual yt-dlp video formats.
-
-    A maximum resolution of 1080p does NOT imply that the source also has
-    720p/480p. Audio-only formats never imply a video quality. If yt-dlp has
-    not supplied formats yet (e.g. a flat playlist), leave only Auto visible.
-    """
-    result = ["Meilleure qualité (Auto)"]
-    if not isinstance(info, dict):
-        return result
-    formats = info.get("formats")
-    if not isinstance(formats, list):
-        return result
-    heights = {}
-    for entry in formats:
-        if not isinstance(entry, dict) or entry.get("vcodec") == "none":
-            continue
-        height = entry.get("height")
-        if not isinstance(height, int) or isinstance(height, bool):
-            note = str(entry.get("resolution") or entry.get("format_note") or "")
-            match = re.search(r"(?<!\d)(\d{3,4})p(?:\d{2,3})?(?!\d)", note)
-            height = int(match.group(1)) if match else None
-        if not isinstance(height, int) or not (144 <= height <= 4320):
-            continue
-        fps = entry.get("fps")
-        # yt-dlp normally reports a number. Bad/missing metadata must not
-        # break analysis or create fictitious 60-fps quality labels.
-        if isinstance(fps, (int, float)) and not isinstance(fps, bool) and 1 <= fps <= 240:
-            fps = int(fps)
-        else:
-            fps = 30
-        heights[height] = max(heights.get(height, 0), fps)
-    for height in sorted(heights, reverse=True):
-        fps = heights[height]
-        result.append(f"{height}p" + (f" ({fps}fps)" if fps > 30 else ""))
-    return result
-
 
     def extract_info(self, raw_url):
         url = normalize_media_url(raw_url)
