@@ -110,7 +110,20 @@ jobs:
       - name: Archive and checksum
         run: |
           tar -C stage -czf All-Download-Linux-x86_64.tar.gz All-Download
-          tar -C stage -cf - All-Download | xz -T2 -4 > All-Download-Linux-x86_64.tar.xz
+          # Compare compression settings using exactly the same staged binaries.
+          # Publish the smaller archive without deleting any runtime dependency.
+          BASELINE="$RUNNER_TEMP/all-download-xz4.tar.xz"
+          tar -C stage -cf - All-Download | xz -T2 -4 > "$BASELINE"
+          tar -C stage -cf - All-Download | xz -T2 -6 > All-Download-Linux-x86_64.tar.xz
+          OLD_BYTES="$(stat -c '%s' "$BASELINE")"
+          NEW_BYTES="$(stat -c '%s' All-Download-Linux-x86_64.tar.xz)"
+          if [ "$NEW_BYTES" -ge "$OLD_BYTES" ]; then
+            cp "$BASELINE" All-Download-Linux-x86_64.tar.xz
+            NEW_BYTES="$OLD_BYTES"
+          fi
+          echo "Linux xz -4 baseline: $OLD_BYTES bytes; published: $NEW_BYTES bytes; saving: $((OLD_BYTES - NEW_BYTES)) bytes" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "Largest bundled files:" >> "$GITHUB_STEP_SUMMARY"
+          find stage/All-Download -type f -printf '%s %p\n' | sort -nr | sed -n '1,15p' >> "$GITHUB_STEP_SUMMARY"
           sha256sum All-Download-Linux-x86_64.tar.gz > All-Download-Linux-x86_64.tar.gz.sha256
           sha256sum All-Download-Linux-x86_64.tar.xz > All-Download-Linux-x86_64.tar.xz.sha256
           stat -c "%n %s bytes" All-Download-Linux-x86_64.tar.gz All-Download-Linux-x86_64.tar.xz
@@ -178,7 +191,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG="linux-v0.1.4-beta"
+          TAG="linux-v0.1.5-beta"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Linux $TAG already exists; keeping verified assets intact."
             exit 0
@@ -191,6 +204,6 @@ jobs:
             All-Download-Linux-x86_64.tar.xz \
             All-Download-Linux-x86_64.tar.xz.sha256 \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "All-Download Linux 0.1.4-beta (x86_64)" \
-            --notes "Linux 0.1.4 : SponsorBlock limité aux vrais domaines YouTube, vérification des VOD Twitch sans faux 1080p, mêmes outils portables et tests Ubuntu 22.04 et 24.04. Mises à jour Linux manuelles, données conservées dans All-Download ; consulter linux/README.md." \
+            --title "All-Download Linux 0.1.5-beta (x86_64)" \
+            --notes "Linux 0.1.5 : arrêt des processus de téléchargement dès la fermeture Qt, réessais réseau bornés et compression xz mesurée contre la version précédente de l’algorithme. Archives SHA-256, tests Ubuntu 22.04 et 24.04 ; données locales et formats natifs Twitch conservés." \
             --prerelease
