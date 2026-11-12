@@ -196,6 +196,9 @@ internal object AndroidSettingsPanels {
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 includeFontPadding = false
                 setPadding(px(4), 0, px(4), 0)
+                // Centre the icon and caption together for horizontal phone
+                // tabs; stacked small-screen tabs remain centred vertically.
+                if (!stackedTabs) MobileIconLabel.centered(this, px(6))
                 isAllCaps = false
                 minHeight = px(if (stackedTabs) 60 else 48)
                 tabs.addView(this, LinearLayout.LayoutParams(
