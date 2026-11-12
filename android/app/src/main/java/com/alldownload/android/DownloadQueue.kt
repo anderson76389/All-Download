@@ -126,6 +126,42 @@ internal object DownloadQueue {
         })
     }
 
+    /** Persist foreground-service timeout before Android terminates the service. */
+    @Synchronized
+    fun pauseRunning(context: Context, reason: String) {
+        val jobs = snapshot(context)
+        if (jobs.none { it.status == RUNNING }) return
+        save(context, jobs.map {
+            if (it.status == RUNNING) it.copy(status = PAUSED, message = reason.take(400))
+            else it
+        })
+    }
+
+    /**
+     * Bounded idle cleanup: only UUID directories no longer referenced by the
+     * persistent queue, older than seven days. Never delete resumable work.
+     */
+    @Synchronized
+    fun cleanupOrphanWorkspaces(context: Context, now: Long = System.currentTimeMillis()): Int {
+        val root = context.getExternalFilesDir(null) ?: context.filesDir
+        val folder = java.io.File(root, "All-Download/Donnees/temporaires")
+        if (!folder.isDirectory) return 0
+        val canonicalParent = try { folder.canonicalFile } catch (_: IOException) { return 0 }
+        val referenced = snapshot(context).mapTo(HashSet()) { it.id }
+        val validId = Regex("^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$")
+        val cutoff = now - 7L * 24 * 60 * 60 * 1000
+        var removed = 0
+        for (child in folder.listFiles()?.take(128).orEmpty()) {
+            if (removed >= 8) break
+            if (!validId.matches(child.name) || child.name in referenced ||
+                !child.isDirectory || child.lastModified() >= cutoff) continue
+            val canonicalChild = try { child.canonicalFile } catch (_: IOException) { continue }
+            if (canonicalChild != java.io.File(canonicalParent, child.name)) continue
+            if (child.deleteRecursively()) removed++
+        }
+        return removed
+    }
+
     @Synchronized
     fun resumePaused(context: Context) {
         val jobs = snapshot(context)
