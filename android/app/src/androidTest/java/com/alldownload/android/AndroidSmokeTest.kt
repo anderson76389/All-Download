@@ -1532,6 +1532,81 @@ class AndroidSmokeTest {
         }
     }
 
+    @Test fun compactMobileIconsAreCenteredWithTheirLabelsAcrossPages() {
+        val activity = instrumentation.startActivitySync(
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        ) as MainActivity
+        instrumentation.waitForIdleSync()
+        try {
+            val density = activity.resources.displayMetrics.density
+            fun dp(n: Int) = (n * density + .5f).toInt()
+
+            fun verifyGroupedCenter(id: Int) {
+                val button = activity.findViewById<Button>(id)
+                val icon = button.compoundDrawablesRelative[0]
+                assertNotNull("Icône absente pour $id", icon)
+                assertTrue("Bouton non mesuré : $id", button.width > 0)
+                assertEquals("Icône/texte non alignés verticalement : $id",
+                    android.view.Gravity.CENTER_VERTICAL,
+                    button.gravity and android.view.Gravity.VERTICAL_GRAVITY_MASK)
+                assertTrue("Marge droite absente : $id", button.paddingEnd >= dp(6))
+                val groupWidth = icon!!.bounds.width() + button.compoundDrawablePadding +
+                    button.paint.measureText(button.text.toString())
+                if (groupWidth <= button.width - dp(16)) {
+                    val groupCenter = button.paddingStart + groupWidth / 2f
+                    assertTrue("Ensemble logo/texte décentré : $id " +
+                        "(centre=$groupCenter, attendu=${button.width / 2f})",
+                        kotlin.math.abs(groupCenter - button.width / 2f) <= dp(3))
+                } else {
+                    assertTrue("Icône hors de sa cellule : $id",
+                        button.paddingStart >= dp(6))
+                }
+            }
+
+            for (id in intArrayOf(
+                R.id.startButton, R.id.queueButton, R.id.pasteUrlButton,
+                R.id.quickVideoButton, R.id.quickAudioButton, R.id.quickGifButton,
+                R.id.quickPlaylistButton, R.id.quickTwitchButton
+            )) verifyGroupedCenter(id)
+
+            for (id in intArrayOf(R.id.homeTitleIcon, R.id.optionsTitleIcon,
+                R.id.homeQueueTitleIcon, R.id.queuePageTitleIcon, R.id.filesPageTitleIcon,
+                R.id.settingsPageTitleIcon, R.id.queueControlsTitleIcon,
+                R.id.queueCleanupTitleIcon)) {
+                val title = activity.findViewById<TextView>(id)
+                assertNotNull("Logo de section perdu : $id",
+                    title.compoundDrawablesRelative[0])
+                assertEquals("Titre et logo non alignés verticalement : $id",
+                    android.view.Gravity.CENTER_VERTICAL,
+                    title.gravity and android.view.Gravity.VERTICAL_GRAVITY_MASK)
+            }
+
+            instrumentation.runOnMainSync {
+                activity.findViewById<Button>(R.id.navSettings).performClick()
+            }
+            instrumentation.waitForIdleSync()
+            val stacked = activity.resources.configuration.screenWidthDp < 390 ||
+                activity.resources.configuration.fontScale > 1.2f
+            if (!stacked) {
+                for (id in intArrayOf(R.id.settingsTabDownload,
+                    R.id.settingsTabApplication, R.id.settingsTabNetwork)) {
+                    verifyGroupedCenter(id)
+                }
+            }
+            for (id in intArrayOf(R.id.importCookiesButton, R.id.removeCookiesButton)) {
+                val button = activity.findViewById<Button>(id)
+                assertEquals("Grande action alignée à gauche : $id",
+                    android.view.Gravity.START,
+                    button.gravity and android.view.Gravity.RELATIVE_HORIZONTAL_GRAVITY_MASK)
+                assertTrue("Gouttière gauche incohérente : $id",
+                    button.paddingStart >= dp(12))
+            }
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
+
     @Test fun captureMobilePagesForVisualReview() {
         val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)) as MainActivity

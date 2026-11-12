@@ -7,4 +7,6 @@
     <item type="id" name="settingsDownloadPanel"/>
     <item type="id" name="settingsApplicationPanel"/>
     <item type="id" name="settingsNetworkPanel"/>
+    <item type="id" name="iconLabelMinimumInset"/>
+    <item type="id" name="iconLabelListenerInstalled"/>
 </resources>
