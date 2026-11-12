@@ -4,7 +4,7 @@ import android.content.Intent
 
 /** Extract only validated HTTP(S) links from Android's sharesheet, never content:// files. */
 internal object SharedVideoLinks {
-    private val urlPattern = Regex("""https?://[^\\s<>"']+""", RegexOption.IGNORE_CASE)
+    private val urlPattern = Regex("""https?://[^\s<>"']+""", RegexOption.IGNORE_CASE)
 
     fun extract(intent: Intent?): String? {
         if (intent?.action != Intent.ACTION_SEND) return null
