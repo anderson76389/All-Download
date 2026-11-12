@@ -107,6 +107,9 @@ class MainActivity : Activity() {
     private lateinit var homeQueuePreview: LinearLayout
     private var queueVisible = 24
     private var queueCleanupExpanded = false
+    // Fallback only when Android's clipboard is inaccessible immediately after an in-app copy.
+    private var recentCopiedUrl = ""
+    private var recentCopiedAt = 0L
     private var lastDrawnState: DownloadService.UiState? = null
     private val fileExecutor = Executors.newSingleThreadExecutor()
     private var fileRequestId = 0
@@ -281,8 +284,14 @@ class MainActivity : Activity() {
         }
         findViewById<Button>(R.id.pasteUrlButton).setOnClickListener {
             val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            val value = clipboard.primaryClip?.getItemAt(0)?.coerceToText(this)?.toString()
-                .orEmpty().trim()
+            val systemValue = try {
+                clipboard.primaryClip?.getItemAt(0)?.coerceToText(this)?.toString()
+                    .orEmpty().trim()
+            } catch (_: SecurityException) { "" }
+            val age = android.os.SystemClock.elapsedRealtime() - recentCopiedAt
+            val value = if (DownloadRules.isValidVideoUrl(systemValue)) systemValue
+                else if (age in 0..60_000L && DownloadRules.isValidVideoUrl(recentCopiedUrl))
+                    recentCopiedUrl else ""
             if (DownloadRules.isValidVideoUrl(value)) {
                 urlInput.setText(value)
                 urlInput.setSelection(value.length)
@@ -699,8 +708,14 @@ class MainActivity : Activity() {
             appendAction("Copier", R.drawable.ic_copy) {
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE)
                     as ClipboardManager
-                clipboard.setPrimaryClip(ClipData.newPlainText("Lien All-Download", job.url))
-                Toast.makeText(this, "Lien copié.", Toast.LENGTH_SHORT).show()
+                try {
+                    clipboard.setPrimaryClip(ClipData.newPlainText("Lien All-Download", job.url))
+                    recentCopiedUrl = job.url
+                    recentCopiedAt = android.os.SystemClock.elapsedRealtime()
+                    Toast.makeText(this, "Lien copié.", Toast.LENGTH_SHORT).show()
+                } catch (_: SecurityException) {
+                    Toast.makeText(this, "Presse-papiers inaccessible.", Toast.LENGTH_LONG).show()
+                }
             }
             adaptActionRow(actions)
             footer.addView(actions)
