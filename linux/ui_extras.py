@@ -84,6 +84,6 @@ LINUX_SETTINGS_SCRIPT = r"""
 def inject_linux_controls(html: str) -> str:
     if not isinstance(html, str) or "</body>" not in html:
         raise ValueError("Interface Windows HTML invalide.")
-    if 'id="linuxExtraSettings"' in html:
+    if "section.id = 'linuxExtraSettings';" in html:
         return html
     return html.replace("</body>", LINUX_SETTINGS_SCRIPT + "\n</body>", 1)
