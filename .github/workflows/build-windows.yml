@@ -9,6 +9,10 @@ on:
       - ".github/release-notes/**"
       - ".github/workflows/release-retention.yml"
       - ".github/workflows/build-windows.yml"
+      # Builds based on Android/Linux changes waste Windows CI minutes and releases.
+      - "android/**"
+      - "linux/**"
+      - "scripts/**"
   workflow_dispatch:
 
 # Une seule publication a la fois : les boutons pointent toujours
