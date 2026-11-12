@@ -1598,7 +1598,7 @@ class AndroidSmokeTest {
                 val button = activity.findViewById<Button>(id)
                 assertEquals("Grande action alignée à gauche : $id",
                     android.view.Gravity.START,
-                    button.gravity and android.view.Gravity.HORIZONTAL_GRAVITY_MASK)
+                    button.gravity and android.view.Gravity.RELATIVE_HORIZONTAL_GRAVITY_MASK)
                 assertTrue("Gouttière gauche incohérente : $id",
                     button.paddingStart >= dp(12))
             }
