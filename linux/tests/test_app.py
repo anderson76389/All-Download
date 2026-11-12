@@ -145,6 +145,7 @@ class LinuxBackendTests(unittest.TestCase):
         self.assertIn("--extract-audio", command)
         self.assertIn("mp3", command)
         self.assertIn("--audio-quality", command)
+        self.assertEqual("0.5", command[command.index("--progress-delta") + 1])
         self.assertTrue(any("AUDIOS" in arg for arg in command))
         self.assertTrue(any("temporaires" in arg for arg in command))
         self.assertTrue(command[-1].startswith("https://"))
