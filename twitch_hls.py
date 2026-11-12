@@ -169,7 +169,13 @@ def resolve_hls(url, quality="1080p (60fps)", timeout=12, source_height_probe=No
         raise HLSUnavailable("Qualité Twitch invalide.")
     max_height = int(selected_match.group(1))
     failures = []
+    # The "chunked" profile may actually contain native 720p, even when
+    # Twitch also offers a proper 1080p variant. Defer that 720p source
+    # until every native 1080p candidate has been checked.
+    deferred_720 = None
     for name, candidate in manifest_candidates(preview, quality):
+        if deferred_720 is not None and name.startswith("720p"):
+            return deferred_720
         if name == "chunked" and source_height_probe is None:
             continue
         try:
@@ -184,10 +190,15 @@ def resolve_hls(url, quality="1080p (60fps)", timeout=12, source_height_probe=No
                 if height not in allowed:
                     failures.append(f"source: hauteur native {height or 'inconnue'}p")
                     continue
+                if height == 720 and max_height == 1080:
+                    deferred_720 = (candidate, "source native 720p", duration, count)
+                    continue
                 return candidate, f"source native {height}p", duration, count
             return candidate, name, duration, count
         except (HLSUnavailable, urllib.error.URLError, TimeoutError, OSError) as exc:
             failures.append(f"{name}: {str(exc)[:65]}")
+    if deferred_720 is not None:
+        return deferred_720
     raise HLSUnavailable(
         "Aucun flux Twitch natif disponible dans la qualité choisie (1080p ou 720p). "
         + "; ".join(failures[:2])
