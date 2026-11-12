@@ -174,9 +174,13 @@ def check_linux(folder: Path) -> None:
                 stream = tf.extractfile(member)
                 require(stream is not None and stream.read(4) == b"\x7fELF",
                         f"Non-Linux executable included: {executable}")
-            require(not any(n == "All-Download/Donnees/config.json" or
-                            n.startswith("All-Download/Donnees/cache/") for n in names),
-                    "Personal runtime state bundled in Linux archive")
+            runtime_files = sorted(
+                m.name for m in members
+                if m.isfile() and m.name.startswith("All-Download/Donnees/")
+                and not m.name.startswith("All-Download/Donnees/bin/")
+            )
+            require(not runtime_files,
+                    "Runtime files accidentally packaged: " + repr(runtime_files[:15]))
             manifests.append({m.name: (m.size, m.type, m.linkname) for m in members})
             print(f"  Linux {extension} verified: {len(members)} paths, portable layout, ELF binaries")
     require(manifests[0] == manifests[1],
