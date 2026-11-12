@@ -100,7 +100,7 @@ class LinuxDesktopUpdateTests(unittest.TestCase):
         self.assertIn("linuxCheckUpdates", html)
         self.assertIn("linuxInstallShortcut", html)
         self.assertIn("linuxRemoveShortcut", html)
-        self.assertEqual(1, html.count("id='linuxExtraSettings'"))
+        self.assertEqual(1, html.count("section.id = 'linuxExtraSettings';"))
         self.assertIn('id="setSectionAppli"', windows_html)
         self.assertNotIn("linuxExtraSettings", windows_html)
         self.assertEqual(html, inject_linux_controls(html))
