@@ -29,6 +29,31 @@ class ResourceShutdownTests(unittest.TestCase):
         self.assertEqual({call.args[0] for call in kill.call_args_list},
                          {14001, 14002})
 
+    @unittest.skipUnless(sys.platform == "win32", "Windows child process test")
+    def test_actual_windows_download_and_metadata_processes_exit(self):
+        processes = [
+            subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"],
+                             creationflags=subprocess.CREATE_NO_WINDOW)
+            for _ in range(2)
+        ]
+        try:
+            api = yt_app.DownloaderAPI.__new__(yt_app.DownloaderAPI)
+            api._active_download_process = processes[0]
+            api._metadata_process_lock = threading.Lock()
+            api._metadata_processes = {processes[1]}
+            api._suspended_download_pids = []
+            api.is_paused = False
+            api.is_cancelled = False
+            self.assertTrue(api.cancel_downloads())
+            for process in processes:
+                process.wait(timeout=8)
+                self.assertIsNotNone(process.returncode)
+        finally:
+            for process in processes:
+                if process.poll() is None:
+                    process.kill()
+                process.wait(timeout=8)
+
     def test_idle_cancel_is_safe_for_legacy_api_test_fixtures(self):
         api = yt_app.DownloaderAPI.__new__(yt_app.DownloaderAPI)
         api._active_download_process = None
