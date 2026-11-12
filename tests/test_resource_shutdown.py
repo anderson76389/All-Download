@@ -1,6 +1,8 @@
 """No media/network needed: real resource cancellation + closed-window lifecycle."""
 import ast
 from pathlib import Path
+import subprocess
+import sys
 import threading
 import unittest
 from unittest.mock import Mock, patch
