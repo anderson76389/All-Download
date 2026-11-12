@@ -151,6 +151,11 @@ jobs:
 
           - Android 7+ ; architecture ARM 32/64 bits et x86 32/64 bits.
           - Mise à jour depuis l’application : téléchargement APK privé avec progression, contrôle SHA-256 et vérification du paquet, puis ouverture de l’installateur Android sans navigateur.
+          - Partage natif : All-Download proposé dans le menu « Partager » pour les URL vidéo HTTP(S) ; lien prérempli sans téléchargement automatique.
+          - Notification « Fermer » en veille ou pendant un téléchargement ; processus arrêtés et file sauvegardée, sans service permanent inactif.
+          - Android 15 : expiration dataSync prise en charge et téléchargement en cours mis en pause pour reprise ultérieure.
+          - Sécurité des mises à jour : réserve d'espace vérifiée, checksum limité à 512 octets et suppression limitée aux anciens caches All-Download ; tests de récupération inclus sur téléphone/tablette.
+          - Réseau : réessais temporaires limités, conservation des fichiers partiels et nettoyage prudent des anciens dossiers orphelins.
           - Identité All-Download conservée dans le lanceur, le splash et les mises à jour ; aucun bandeau de marque permanent dans les pages.
           - Écrans compacts : actions réorganisées en colonne si nécessaire, boutons de 52 dp minimum, marges régulières et libellés longs lisibles.
           - File : ajout immédiatement visible et parcours Copier → Coller, Réessayer et Supprimer contrôlés sur téléphone et tablette.

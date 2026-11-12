@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.StatFs
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
@@ -15,6 +16,7 @@ import androidx.core.content.FileProvider
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
@@ -80,6 +82,36 @@ internal object AndroidApkInstaller {
         val match = Regex("^([a-fA-F0-9]{64})\\s+\\*?([A-Za-z0-9_.-]+)$")
             .matchEntire(value.trim()) ?: return null
         return match.groupValues[1].lowercase().takeIf { match.groupValues[2] == filename }
+    }
+
+    /** Accept at most one short checksum line even if HTTP Content-Length is absent. */
+    internal fun boundedChecksumLine(input: InputStream): String {
+        val result = StringBuilder()
+        while (result.length < 512) {
+            val byte = input.read()
+            if (byte == -1 || byte == 10) return result.toString().trimEnd('\r')
+            if (byte !in 32..126) throw IOException("Fichier SHA-256 invalide.")
+            result.append(byte.toChar())
+        }
+        throw IOException("Fichier SHA-256 trop grand.")
+    }
+
+    /** Don't start a 200 MB transfer that cannot fit in the private cache. */
+    internal fun sufficientStorage(availableBytes: Long, downloadBytes: Long): Boolean =
+        downloadBytes > 0L && availableBytes >= downloadBytes &&
+            availableBytes - downloadBytes >= 16L * 1024L * 1024L
+
+    /** Never delete unrelated private files or a newer pending update. */
+    internal fun cleanupOlderApks(folder: File, targetVersion: String, keep: Set<String>): Int {
+        val owned = Regex("^All-Download-Android-(\\d+\\.\\d+\\.\\d+-beta)\\.apk(?:\\.part)?$")
+        var removed = 0
+        for (item in folder.listFiles().orEmpty()) {
+            val version = owned.matchEntire(item.name)?.groupValues?.get(1) ?: continue
+            if (!item.isFile || item.name in keep ||
+                AndroidUpdates.compareVersions(version, targetVersion) > 0) continue
+            if (item.delete()) removed++
+        }
+        return removed
     }
 
     private fun assetName(release: AndroidUpdates.Release) =
@@ -185,16 +217,16 @@ internal object AndroidApkInstaller {
             try {
                 if (!destination.parentFile!!.exists() && !destination.parentFile!!.mkdirs())
                     throw IOException("Impossible de créer le cache privé.")
-                // Never accumulate multiple 200 MB updates.
-                destination.parentFile!!.listFiles()?.forEach { item ->
-                    if (item != destination && item != partial) item.delete()
-                }
+                // Only older All-Download update files: never touch unrelated cache
+                // or a newer APK the user might still be installing.
+                cleanupOlderApks(destination.parentFile!!, release.version,
+                    setOf(destination.name, partial.name))
                 val checksumUrl = release.apkUrl + ".sha256"
                 val checksumConnection = openAsset(checksumUrl)
                 val checksumLine = try {
                     if (checksumConnection.contentLengthLong > 4096)
                         throw IOException("Fichier SHA-256 trop grand.")
-                    checksumConnection.inputStream.bufferedReader().use { it.readLine() }
+                    checksumConnection.inputStream.buffered().use { boundedChecksumLine(it) }
                 } finally { checksumConnection.disconnect() }
                 val expected = readChecksum(checksumLine.orEmpty(), assetName(release))
                     ?: throw IOException("Empreinte officielle SHA-256 introuvable.")
@@ -203,6 +235,12 @@ internal object AndroidApkInstaller {
                     sha256(destination) == expected) {
                     // No additional download for a valid cached APK.
                 } else {
+                    // Check storage BEFORE deleting an older partial or opening
+                    // the expensive APK network transfer.
+                    if (!sufficientStorage(StatFs(destination.parentFile!!.absolutePath)
+                            .availableBytes, release.size)) {
+                        throw IOException("Stockage insuffisant pour télécharger et installer l'APK.")
+                    }
                     destination.delete()
                     partial.delete()
                     val connection = openAsset(release.apkUrl)
