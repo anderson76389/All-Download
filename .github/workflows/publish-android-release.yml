@@ -156,6 +156,7 @@ jobs:
           - Android 15 : expiration dataSync prise en charge et téléchargement en cours mis en pause pour reprise ultérieure.
           - Sécurité des mises à jour : réserve d'espace vérifiée, checksum limité à 512 octets et suppression limitée aux anciens caches All-Download ; tests de récupération inclus sur téléphone/tablette.
           - Réseau : réessais temporaires limités, conservation des fichiers partiels et nettoyage prudent des anciens dossiers orphelins.
+          - Dailymotion : certains HLS exigent une émulation Firefox/Chrome non disponible dans Android ; ces cas sont classés non conclusifs (SKIP) dans les tests, jamais considérés comme des téléchargements réussis.
           - Identité All-Download conservée dans le lanceur, le splash et les mises à jour ; aucun bandeau de marque permanent dans les pages.
           - Écrans compacts : actions réorganisées en colonne si nécessaire, boutons de 52 dp minimum, marges régulières et libellés longs lisibles.
           - File : ajout immédiatement visible et parcours Copier → Coller, Réessayer et Supprimer contrôlés sur téléphone et tablette.
