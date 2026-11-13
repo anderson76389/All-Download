@@ -1,5 +1,7 @@
 ## Android 0.6.22-beta — sécurité des mises à jour
 
+**Limite Dailymotion :** certains flux HLS exigent l'émulation TLS Firefox/Chrome (curl_cffi), qui n'est pas intégrée à l'APK Android. Si ce blocage externe apparaît en CI, le test est marqué *non concluant (SKIP)* avec la raison exacte, jamais « téléchargement réussi ». Les autres erreurs Dailymotion restent des échecs. Les sites compatibles et leurs qualités natives restent inchangés.
+
 - Vérification d'espace avant téléchargement de l'APK (réserve de 16 Mio), sans effacer de fichiers utilisateur.
 - Rejet des réponses checksum trop longues ; aucun chargement non borné en mémoire.
 - Seuls les anciens caches appartenant à All-Download sont éligibles au nettoyage ; les futures APK en attente sont préservées.
