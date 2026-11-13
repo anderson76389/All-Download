@@ -1,4 +1,6 @@
-# All-Download Linux 1.0.0 — édition stable
+# All-Download Linux 1.0.1 — édition stable
+
+**Version 1.0.1 :** meilleure qualité native par défaut, secours Twitch HLS sur les trois plateformes et réglages Android plus compacts.
 
 La 1.0 conserve l'interface Windows adaptée à Linux, la gestion native yt-dlp/FFmpeg, les données dans All-Download/ et les fragments .part après échec réseau. Mises à jour Linux volontairement manuelles, avec archive officielle et SHA-256. Les limitations de formats dépendent des sites externes ; Debian/Fedora et les tests physiques ne sont pas certifiés par la CI Ubuntu.
 
@@ -16,7 +18,7 @@ La version Linux reprend le **HTML/CSS/JS Windows à l'identique** (extrait auto
 
 ## Installer et démarrer
 
-1. Télécharger All-Download-Linux-x86_64.tar.xz (ou .tar.gz) depuis la Release Linux 1.0.0.
+1. Télécharger All-Download-Linux-x86_64.tar.xz (ou .tar.gz) depuis la Release Linux 1.0.1.
 2. Décompresser le dossier All-Download dans un emplacement où l'utilisateur peut écrire.
 3. Ouvrir ce dossier, puis lancer All-Download-Linux (pas besoin de sudo).
 4. Les médias sont stockés dans les sept dossiers VIDÉOS, AUDIOS, GIFS, TWITCH, PLAYLIST, CHAÎNES et AUTRES. Paramètres, cookies facultatifs et cache restent sous Donnees/.
@@ -33,7 +35,7 @@ La version Linux reprend le **HTML/CSS/JS Windows à l'identique** (extrait auto
 
 - Version Linux **x86_64 glibc** compilée et testée en CI sur Ubuntu 22.04, puis le paquet est lancé et testé sur Ubuntu 24.04. Qt WebEngine peut nécessiter des bibliothèques graphiques système selon la distribution.
 - Modes vidéo, audio MP3/M4A/FLAC, GIF, chaînes, playlists, qualités, miniatures, métadonnées, proxy, thèmes et boutons de file d'attente sont implémentés dans un backend Linux natif. Les résultats réels dépendent des sites.
-- yt-dlp Linux, FFmpeg et FFprobe sont inclus dans l'archive publiée. La version Linux n'exécute pas TwitchDownloaderCLI.exe : les Twitch VOD passent par yt-dlp et n'ont pas toutes les garanties du moteur spécialisé Windows.
+- yt-dlp Linux, FFmpeg et FFprobe sont inclus dans l'archive publiée. La version Linux n'exécute pas TwitchDownloaderCLI.exe : les VOD Twitch passent par yt-dlp puis, si nécessaire, par un secours HLS public. Auto choisit la meilleure source native disponible.
 - Pause/Reprise utilise des signaux de processus Linux; Annuler termine les processus de téléchargement. Certains services peuvent exiger un accès authentifié.
 - Certaines vidéos YouTube demandent Deno; le placer dans Donnees/bin/deno si nécessaire. Il n'est pas embarqué dans la première archive.
 - Pas encore d'installateur .deb/.rpm ni de mises à jour Linux automatiques. Le contrôle des Releases est manuel ; les APK Android et ZIP Windows restent indépendants.

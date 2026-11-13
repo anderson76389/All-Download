@@ -1,10 +1,12 @@
-# All-Download Android 1.0.0 — édition stable
+# All-Download Android 1.0.1 — édition stable
+
+**Version 1.0.1 :** meilleure qualité native par défaut, secours Twitch HLS sur les trois plateformes et réglages Android plus compacts.
 
 **Partage Android → All-Download :** depuis YouTube, Twitch, Reddit, Instagram, TikTok, Pinterest ou un navigateur, utiliser **Partager → All-Download**. Pour un lien HTTPS/HTTP, l'écran d'accueil est ouvert et l'URL est préremplie sans téléchargement automatique. Plusieurs liens partagés sont mis en attente.
 
 **Vidéos locales :** depuis Galerie ou Fichiers, partager une vidéo MP4, WebM, MKV, MOV et autres formats reconnus vers All-Download. L'application copie en flux jusqu'à 12 fichiers content:// dans Téléchargements/All-Download/VIDÉOS, sans supprimer les originaux et sans charger toute la vidéo en RAM. Une copie incomplète est supprimée en cas d'échec. Sur Android 7–9, l'autorisation de stockage peut être demandée.
 
-**Mises à jour :** versionCode 30, versionName 1.0.0 et même clé privée que 0.6.22. Le détecteur accepte les versions stables/bêta et donne priorité à la stable à numéros égaux. L'APK est vérifiée (SHA-256, signature) et l'installation requiert la confirmation du système Android. Les réglages et téléchargements doivent rester présents lors d'une installation par-dessus.
+**Mises à jour :** versionCode 31, versionName 1.0.1 et même clé privée que 0.6.22. Le détecteur accepte les versions stables/bêta et donne priorité à la stable à numéros égaux. L'APK est vérifiée (SHA-256, signature) et l'installation requiert la confirmation du système Android. Les réglages et téléchargements doivent rester présents lors d'une installation par-dessus.
 
 **Limites :** certains sites peuvent exiger une authentification, imposer des DRM, bloquer les téléchargements ou ne transmettre aucun fichier à Android. Les tests CI ne remplacent pas les essais sur appareil physique.
 
@@ -206,7 +208,7 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 - **Logo Android compact :** l'image Android dédiée est produite en PNG 192 × 192 pour l'interface et en PNG adaptatif 288 × 288 avec marges de sécurité Android. Les éléments Windows ne sont ni renommés ni supprimés.
 - **Accueil plus proche de Windows :** aperçu léger de la file (trois tâches au maximum), accès direct à la file complète, modes rapides vidéo/audio/GIF/playlist/Twitch, collage d’URL et nettoyage ciblé des tâches échouées ou en attente.
 - **Identité visuelle et commandes :** onglets de réglages **Téléchargement, Application, Réseau** fidèles à la navigation Windows, et réorganisation en barre latérale sur tablette et pliable ouvert. Seuls les réglages réellement implémentés par yt-dlp/Android sont activables.
-- **Twitch :** VODs et clips Twitch enregistrés dans le dossier **TWITCH** ; les exigences de résolution native 1080p/720p des VODs sont inchangées.
+- **Twitch :** VODs et clips Twitch enregistrés dans le dossier **TWITCH** ; la qualité Auto sélectionne la meilleure source native disponible.
 
 Ces mesures évitent les opérations superflues et limitent les allocations pendant l'utilisation, mais **une consommation chiffrée, la stabilité sur plusieurs jours et le rendu spécifique HONOR Magic V6 exigent encore des essais sur cet appareil réel**. Des téléchargements très longs ou des conversions vidéo/audio utilisent nécessairement de la batterie et du stockage temporaire.
 
@@ -231,7 +233,7 @@ Sur tablette et sur pliable ouvert (largeur Android d'au moins 720 dp), l'interf
 - Modes vidéo, audio MP3/M4A/FLAC, GIF (conversion), playlists et chaînes ; URL partagée depuis d'autres applis, annulation, progression et notification de téléchargement.
 - Téléchargement **dans l'espace privé temporaire** de l'appli, puis export (streaming) dans `Téléchargements/All-Download/<catégorie>/` via MediaStore sur Android 10+, et accès direct sur Android 7-9 (permission de stockage).
 - Répertoires catégorisés : `VIDÉOS`, `AUDIOS`, `TWITCH`, `GIFS`, `CHAÎNES`, `PLAYLIST`, `AUTRES`.
-- Pour une **VOD Twitch en mode vidéo**, le format yt-dlp est limité aux flux dont la résolution source est **exactement 1080**, sinon **exactement 720** ; pas d'upscaling, de 480p automatique ni de réencodage vidéo. 720p et 480p restent sélectionnables manuellement.
+- La qualité **Auto (meilleure)** est sélectionnée par défaut pour les vidéos, y compris Twitch : meilleure source native disponible, sans plafond à 1080p ni agrandissement artificiel. Les limites de résolution restent sélectionnables manuellement. En cas d’échec de l’extracteur Twitch, un secours HLS utilise le flux public disponible.
 
 ## Liens sociaux et comptes (bêta 0.4.0)
 
@@ -243,7 +245,7 @@ Sur tablette et sur pliable ouvert (largeur Android d'au moins 720 dp), l'interf
 
 ## Limites réelles
 
-Il s'agit d'une **bêta mobile**, pas encore de la parité fonctionnelle avec Windows. Le secours HLS Twitch indépendant de `TwitchDownloaderCLI.exe`, l'authentification Twitch avancée, les sous-titres non fournis par les plateformes, les outils Windows spécialisés, les journaux et historiques détaillés et certains réglages sont encore à porter. Les boutons de pause/reprise de la file Android utilisent les mécanismes disponibles de yt-dlp ; la reprise n'est pas garantie pour les serveurs non compatibles. TwitchDownloaderCLI Windows ne peut pas être exécuté tel quel sur Android. Certaines VOD Twitch peuvent encore échouer.
+La version mobile ne couvre pas encore toutes les fonctions Windows. L'authentification Twitch avancée, les sous-titres non fournis par les plateformes, les outils Windows spécialisés, les journaux et historiques détaillés et certains réglages sont encore à porter. Les boutons de pause/reprise de la file Android utilisent les mécanismes disponibles de yt-dlp ; la reprise n'est pas garantie pour les serveurs non compatibles. TwitchDownloaderCLI Windows ne peut pas être exécuté tel quel sur Android. Certaines VOD Twitch peuvent encore échouer.
 
 Les flux protégés/DRM, les contenus privés sans autorisation et les vidéos supprimées ne sont pas garantis. La résolution choisie correspond aux formats source, pas à une promesse de compatibilité de chaque plateforme. Le stockage Android impose un espace de travail temporaire privé avant l'export public ; aucun accès au système de fichiers racine ou permission « tous les fichiers » n'est demandé.
 
