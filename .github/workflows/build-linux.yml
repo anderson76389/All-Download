@@ -1,4 +1,4 @@
-name: Build and test Linux (beta)
+name: Build and test Linux (stable)
 
 on:
   push:
@@ -185,13 +185,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: All-Download-Linux-x86_64
-      - name: Publish separate Linux beta Release
+      - name: Publish separate Linux stable Release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          TAG="linux-v0.1.6-beta"
+          TAG="linux-v1.0.0"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Linux $TAG already exists; keeping verified assets intact."
             exit 0
@@ -204,6 +204,6 @@ jobs:
             All-Download-Linux-x86_64.tar.xz \
             All-Download-Linux-x86_64.tar.xz.sha256 \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "All-Download Linux 0.1.6-beta (x86_64)" \
-            --notes "Linux 0.1.6 : reprise des fragments après erreur réseau grâce aux espaces temporaires stables, nettoyage après réussite/annulation et conservation des contrôles d’arrêt Qt ; réessais bornés et compression xz mesurée contre la version précédente. Archives SHA-256, tests Ubuntu 22.04 et 24.04 ; données locales et formats natifs Twitch conservés." \
-            --prerelease
+            --title "All-Download Linux 1.0.0 (x86_64)" \
+            --notes "Linux 1.0.0 : reprise des fragments après erreur réseau grâce aux espaces temporaires stables, nettoyage après réussite/annulation et conservation des contrôles d’arrêt Qt ; réessais bornés et compression xz mesurée contre la version précédente. Archives SHA-256, tests Ubuntu 22.04 et 24.04 ; données locales et formats natifs Twitch conservés." \
+            --latest=false
