@@ -589,7 +589,8 @@ jobs:
           $portable = "release-archives/All-Download-Portable-Windows.zip"
           $classic = "release-archives/All-Download-Classique-Windows.zip"
           $notes = @"
-          All-Download Windows
+          All-Download Windows 1.0 stable : distribution Windows x64.
+          - Vérification CI complète avant publication, aucun remplacement destructeur des fichiers personnels.
           - Portable : executable autonome sans installation.
           - Classique : All-Download-Setup.exe, raccourcis Windows et desinstallation.
           - Les deux utilisent le moteur autonome compatible (aucun dossier _internal a distribuer).
@@ -604,7 +605,7 @@ jobs:
           - Deux empreintes SHA-256 officielles accompagnent les ZIP pour verifier leur integrite.
           - Application non signee : avertissement SmartScreen possible.
           "@
-          gh release create $tag $portable "$portable.sha256" $classic "$classic.sha256" --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title "All-Download Windows - Build $env:GITHUB_RUN_NUMBER" --notes "$notes" --latest
+          gh release create $tag $portable "$portable.sha256" $classic "$classic.sha256" --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title "All-Download Windows 1.0 stable - Build $env:GITHUB_RUN_NUMBER" --notes "$notes" --latest
           if ($LASTEXITCODE -ne 0) { throw "Publication de la Release impossible" }
           $publishedAssets = @(gh release view $tag --repo "$env:GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
           if ($LASTEXITCODE -ne 0) { throw "Impossible de verifier les quatre assets Windows" }
