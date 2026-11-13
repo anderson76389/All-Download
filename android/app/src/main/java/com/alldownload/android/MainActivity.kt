@@ -1616,7 +1616,7 @@ class MainActivity : Activity() {
             for (uri in uris) {
                 if (Thread.currentThread().isInterrupted) break
                 try {
-                    SharedVideoImporter.import(appContext, uri) {
+                    SharedVideoImporter.importVideo(appContext, uri) {
                         Thread.currentThread().isInterrupted
                     }
                     imported++
