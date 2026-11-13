@@ -9,10 +9,10 @@ import json
 import re
 from urllib.request import Request, urlopen
 
-CURRENT_LINUX_VERSION = "0.1.6-beta"
+CURRENT_LINUX_VERSION = "1.0.0"
 RELEASE_API = "https://api.github.com/repos/anderson76389/All-Download/releases?per_page=30"
 RELEASE_ROOT = "https://github.com/anderson76389/All-Download/releases"
-VERSION_PATTERN = re.compile(r"^linux-v([0-9]+)\.([0-9]+)\.([0-9]+)-beta$")
+VERSION_PATTERN = re.compile(r"^linux-v([0-9]+)\.([0-9]+)\.([0-9]+)(-beta)?$")
 REQUIRED_ASSET = "All-Download-Linux-x86_64.tar.gz"
 REQUIRED_CHECKSUM = REQUIRED_ASSET + ".sha256"
 COMPACT_ASSET = "All-Download-Linux-x86_64.tar.xz"
@@ -23,7 +23,9 @@ def parse_linux_version(value: str):
     if not isinstance(value, str):
         return None
     match = VERSION_PATTERN.fullmatch(value)
-    return tuple(map(int, match.groups())) if match else None
+    if match is None:
+        return None
+    return tuple(map(int, match.groups()[:3])) + (0 if match.group(4) else 1,)
 
 
 def check_linux_updates():
