@@ -41,7 +41,7 @@ class AndroidSmokeTest {
             val quality = activity.findViewById<Spinner>(R.id.qualitySpinner)
             assertEquals(7, mode.count)
             assertEquals(5, quality.count)
-            assertEquals(0, quality.selectedItemPosition)
+            assertEquals(3, quality.selectedItemPosition)
             assertEquals("Vidéo", mode.selectedItem.toString())
             // Évite le bug texte noir sur fond sombre de la première bêta.
             val selected = mode.selectedView as TextView
@@ -620,7 +620,7 @@ class AndroidSmokeTest {
                     activity.findViewById<Button>(R.id.quickTwitchButton).performClick()
                 }
                 instrumentation.waitForIdleSync()
-                assertEquals("Twitch doit conserver la qualité vidéo native", 0,
+                assertEquals("Twitch doit conserver la meilleure qualité native", 3,
                     activity.findViewById<Spinner>(R.id.qualitySpinner).selectedItemPosition)
             } else {
                 assertEquals("Tablettes larges : garder la barre compacte",
@@ -1830,7 +1830,10 @@ class AndroidSmokeTest {
             for (id in intArrayOf(R.id.settingsAppearanceTitleIcon,
                 R.id.settingsEngineTitleIcon, R.id.settingsCookiesTitleIcon)) {
                 val heading = activity.findViewById<TextView>(id)
-                assertEquals(View.TEXT_ALIGNMENT_VIEW_START, heading.textAlignment)
+                assertEquals(android.view.Gravity.START,
+                    heading.gravity and android.view.Gravity.RELATIVE_HORIZONTAL_GRAVITY_MASK)
+                assertTrue("Le titre doit commencer près de son logo.",
+                    heading.layout == null || heading.layout.getLineLeft(0) <= dp(2))
                 assertTrue("Logo trop éloigné du texte des réglages.",
                     heading.compoundDrawablePadding <= dp(8))
             }
@@ -2073,8 +2076,8 @@ class AndroidSmokeTest {
             instrumentation.waitForIdleSync()
             assertEquals("Twitch doit préparer un téléchargement vidéo.",
                 0, modes.selectedItemPosition)
-            assertEquals("Twitch doit revenir à la qualité 1080p par défaut.",
-                0, quality.selectedItemPosition)
+            assertEquals("Twitch doit revenir à la meilleure qualité par défaut.",
+                3, quality.selectedItemPosition)
             assertEquals(View.VISIBLE, qualityGroup.visibility)
             assertFalse("Les raccourcis ne doivent pas lancer un transfert.",
                 DownloadService.state.busy)
