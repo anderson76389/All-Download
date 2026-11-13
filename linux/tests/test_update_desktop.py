@@ -56,8 +56,8 @@ class LinuxDesktopUpdateTests(unittest.TestCase):
         payload = [
             linux_release("android-v999.0.0-beta"),
             linux_release("linux-v9.9.9-beta", complete=False),
-            linux_release("linux-v0.1.8-beta", draft=True),
-            linux_release("linux-v0.1.7-beta", compact=True),
+            linux_release("linux-v1.0.2", draft=True),
+            linux_release("linux-v1.0.1-beta", compact=True),
             linux_release("linux-v0.1.2-beta"),
             linux_release("linux-v0.1.1-beta"),
         ]
@@ -65,12 +65,12 @@ class LinuxDesktopUpdateTests(unittest.TestCase):
             result = check_linux_updates()
         self.assertTrue(result["success"], result)
         self.assertTrue(result["available"])
-        self.assertEqual("0.1.7-beta", result["latest"])
+        self.assertEqual("1.0.1-beta", result["latest"])
         self.assertEqual("All-Download-Linux-x86_64.tar.xz", result["preferred_asset"])
         self.assertEqual("All-Download-Linux-x86_64.tar.xz.sha256", result["checksum_asset"])
         self.assertEqual(CURRENT_LINUX_VERSION, result["current"])
         self.assertEqual(
-            "https://github.com/anderson76389/All-Download/releases/tag/linux-v0.1.7-beta",
+            "https://github.com/anderson76389/All-Download/releases/tag/linux-v1.0.1-beta",
             result["url"],
         )
         self.assertEqual(8, mocked.call_args.kwargs["timeout"])
@@ -104,9 +104,11 @@ class LinuxDesktopUpdateTests(unittest.TestCase):
         self.assertIn("indisponible", result["error"])
 
     def test_version_parser_rejects_other_products_and_nonstandard_tags(self):
-        self.assertEqual((0, 1, 3), parse_linux_version("linux-v0.1.3-beta"))
+        self.assertEqual((0, 1, 3, 0), parse_linux_version("linux-v0.1.3-beta"))
+        self.assertEqual((1, 0, 0, 1), parse_linux_version("linux-v1.0.0"))
+        self.assertTrue(parse_linux_version("linux-v1.0.0") > parse_linux_version("linux-v1.0.0-beta"))
         for value in ("android-v0.1.2-beta", "linux-v0.1.2-beta-evil",
-                      "linux-v0.1.2", "../linux-v0.1.2-beta", "", None):
+                      "linux-v0.1.2-rc1", "../linux-v0.1.2-beta", "", None):
             self.assertIsNone(parse_linux_version(value))
 
     def test_html_linux_controls_only_add_to_settings(self):
