@@ -73,7 +73,7 @@ internal object SharedVideoImporter {
         output.flush()
     }
 
-    fun import(context: Context, uri: Uri, cancelled: () -> Boolean = { false }): String {
+    fun importVideo(context: Context, uri: Uri, cancelled: () -> Boolean = { false }): String {
         if (uri.scheme != "content" || uri.authority.isNullOrBlank())
             throw IOException("Un partage Android content:// valide est requis.")
         val (name, mime) = metadata(context, uri)
