@@ -112,6 +112,7 @@ class MainActivity : Activity() {
     private var recentCopiedAt = 0L
     private var lastDrawnState: DownloadService.UiState? = null
     private val fileExecutor = Executors.newSingleThreadExecutor()
+    private var pendingSharedVideos: List<Uri> = emptyList()
     private var fileRequestId = 0
     private val handler = Handler(Looper.getMainLooper())
     /** Refresh only while visible, and touch views only when state changed. */
@@ -345,7 +346,8 @@ class MainActivity : Activity() {
             qualitySpinner.setSelection(savedInstanceState.getInt("quality", 0))
             selectedTab = savedInstanceState.getInt("tab", 0).coerceIn(0, 3)
         }
-        processSharedUrl(intent)
+        // Avoid duplicate imports and repeated queue insertion on rotation.
+        if (savedInstanceState == null) processSharedUrl(intent)
         selectTab(selectedTab)
         if (Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
@@ -1560,16 +1562,78 @@ class MainActivity : Activity() {
     }
 
     private fun processSharedUrl(intent: Intent?) {
-        if (intent?.action != Intent.ACTION_SEND) return
-        val url = SharedVideoLinks.extract(intent)
-        if (url != null) {
+        if (intent?.action !in setOf(Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE)) return
+        val urls = SharedVideoLinks.extractAll(intent)
+        if (urls.isNotEmpty()) {
             selectedTab = 0
-            urlInput.setText(url)
-            urlInput.setSelection(url.length)
-        } else {
-            Toast.makeText(this,
-                "Partage le lien de la vidéo (HTTP/HTTPS), pas le fichier local.",
+            modeSpinner.setSelection(0)
+            urlInput.setText(urls.first())
+            urlInput.setSelection(urls.first().length)
+            if (urls.size > 1) {
+                var added = 0
+                try {
+                    for (url in urls.drop(1)) {
+                        DownloadQueue.enqueue(this, url, 0, 0)
+                        added++
+                    }
+                    lastHomeQueueRevision = -1L
+                    Toast.makeText(this, "$added autres liens ajoutés à la file.",
+                        Toast.LENGTH_LONG).show()
+                } catch (error: Exception) {
+                    Toast.makeText(this, "Partage multiple : $added liens ajoutés. " +
+                        (error.localizedMessage ?: "File pleine."), Toast.LENGTH_LONG).show()
+                }
+            }
+            // A shared link fills the input; user still starts the download.
+            return
+        }
+        val uris = SharedVideoFiles.extract(intent)
+        if (uris.isEmpty()) {
+            Toast.makeText(this, "Aucun lien ni fichier vidéo partageable détecté.",
                 Toast.LENGTH_LONG).show()
+            return
+        }
+        if (Build.VERSION.SDK_INT <= 28 &&
+            checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
+                PackageManager.PERMISSION_GRANTED) {
+            pendingSharedVideos = uris
+            requestPermissions(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE), 102)
+            return
+        }
+        importSharedVideos(uris)
+    }
+
+    private fun importSharedVideos(uris: List<Uri>) {
+        if (uris.isEmpty()) return
+        Toast.makeText(this, "Importation de ${uris.size} vidéo(s) vers All-Download…",
+            Toast.LENGTH_LONG).show()
+        val appContext = applicationContext
+        fileExecutor.execute {
+            var imported = 0
+            var rejected = 0
+            var reason = ""
+            for (uri in uris) {
+                if (Thread.currentThread().isInterrupted) break
+                try {
+                    SharedVideoImporter.importVideo(appContext, uri) {
+                        Thread.currentThread().isInterrupted
+                    }
+                    imported++
+                } catch (error: Exception) {
+                    rejected++
+                    reason = error.localizedMessage.orEmpty().take(130)
+                }
+            }
+            runOnUiThread {
+                if (!isFinishing && !isDestroyed) {
+                    if (imported > 0) selectTab(2)
+                    Toast.makeText(this, if (rejected == 0)
+                        "$imported vidéo(s) importée(s) dans Téléchargements/All-Download/VIDÉOS."
+                    else "$imported importée(s), $rejected refusée(s). $reason",
+                        Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 
@@ -1603,6 +1667,15 @@ class MainActivity : Activity() {
         requestCode: Int, permissions: Array<out String>, grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 102 && pendingSharedVideos.isNotEmpty()) {
+            val videos = pendingSharedVideos
+            pendingSharedVideos = emptyList()
+            if (grantResults.isNotEmpty() &&
+                grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                importSharedVideos(videos)
+            } else Toast.makeText(this, "Autorise le stockage pour importer les vidéos.",
+                Toast.LENGTH_LONG).show()
+        }
         if (requestCode == 103 && grantResults.firstOrNull() ==
             PackageManager.PERMISSION_GRANTED && !isFinishing) {
             DownloadService.showOpenNotification(this)

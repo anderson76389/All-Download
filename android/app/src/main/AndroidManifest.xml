@@ -27,6 +27,13 @@
                 <category android:name="android.intent.category.DEFAULT"/>
                 <data android:mimeType="text/plain"/>
             </intent-filter>
+            <!-- Multiple URL/video shares and native videos from Galleries/Files. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/plain"/>
+                <data android:mimeType="video/*"/>
+            </intent-filter>
             <!-- Some social apps share a video link with a video MIME type. -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND"/>
