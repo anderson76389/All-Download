@@ -24,7 +24,7 @@ import org.json.JSONArray
 import java.net.HttpURLConnection
 import java.net.URL
 
-/** Only GitHub Android beta releases, never the Windows "latest" release. */
+/** Only official Android releases, never the Windows "latest" release. */
 internal object AndroidUpdates {
     const val RELEASES_API =
         "https://api.github.com/repos/anderson76389/All-Download/releases?per_page=100"
@@ -44,7 +44,12 @@ internal object AndroidUpdates {
             val n2 = b.groupValues[i].toIntOrNull() ?: return 1
             if (n1 != n2) return n1.compareTo(n2)
         }
-        return 0
+        // A stable release wins over a beta with identical numbers.
+        return when {
+            first.endsWith("-beta") == second.endsWith("-beta") -> 0
+            first.endsWith("-beta") -> -1
+            else -> 1
+        }
     }
 
     fun findNewer(json: String, localVersion: String): Release? {
@@ -54,7 +59,7 @@ internal object AndroidUpdates {
             val obj = entries.optJSONObject(index) ?: continue
             if (obj.optBoolean("draft", false)) continue
             val tag = obj.optString("tag_name")
-            val version = Regex("^android-v(\\d+\\.\\d+\\.\\d+-beta)$")
+            val version = Regex("^android-v(\\d+\\.\\d+\\.\\d+(?:-beta)?)$")
                 .matchEntire(tag)?.groupValues?.get(1) ?: continue
             if (compareVersions(version, localVersion) <= 0) continue
             val page = obj.optString("html_url")
@@ -109,7 +114,7 @@ internal object AndroidUpdates {
             "releases/download/$tag/All-Download-Android-$version.apk"
         val expectedPage =
             "https://github.com/anderson76389/All-Download/releases/tag/$tag"
-        if (!Regex("^\\d+\\.\\d+\\.\\d+-beta$").matches(version) ||
+        if (!Regex("^\\d+\\.\\d+\\.\\d+(?:-beta)?$").matches(version) ||
             compareVersions(version, localVersion) <= 0 ||
             saved.optString("tag") != tag ||
             saved.optString("page") != expectedPage ||
