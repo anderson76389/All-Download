@@ -38,7 +38,7 @@ jobs:
           test -n "$TESTED_SHA"
           echo "Version du code Android : $TESTED_SHA"
           VERSION="$(sed -nE 's/^[[:space:]]*versionName = "([^"]+)".*/\1/p' android/app/build.gradle.kts | head -n1)"
-          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+-beta$ ]]; then
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-beta)?$ ]]; then
             echo "Nom de version Android invalide : $VERSION"
             exit 1
           fi
@@ -142,66 +142,38 @@ jobs:
           fi
           cp "$SRC" "$DEST"
           sha256sum "$DEST" | tee "${DEST}.sha256"
-      - name: Write beta release notes
+      - name: Write release notes
         run: |
           cat > android-release-notes.md <<'EOF'
-          ## All-Download Android 0.6.0 BÊTA
+          ## All-Download Android {{VERSION}} — édition stable
 
-          Téléchargement autonome Android (APK). **Ne remplace pas les versions Windows.**
+          **Version Android 1.0 :** partage natif depuis YouTube, Twitch, TikTok, Reddit, Instagram,
+          navigateurs et autres applications proposant une URL HTTP(S), avec lien prérempli
+          et démarrage volontaire du téléchargement. Partage multiple de liens : ajout à la file.
+          **Partage de fichiers vidéo locaux :** via Galerie/Fichiers/Partager, transfert en streaming
+          de un à douze fichiers vers Téléchargements/All-Download/VIDÉOS sans supprimer les originaux.
+          Import conservateur : formats vidéo reconnus, sources content:// uniquement,
+          copie en blocs de 64 Kio, nettoyage du fichier de sortie en cas d’échec.
 
-          - Android 7+ ; architecture ARM 32/64 bits et x86 32/64 bits.
-          - Mise à jour depuis l’application : téléchargement APK privé avec progression, contrôle SHA-256 et vérification du paquet, puis ouverture de l’installateur Android sans navigateur.
-          - Partage natif : All-Download proposé dans le menu « Partager » pour les URL vidéo HTTP(S) ; lien prérempli sans téléchargement automatique.
-          - Notification « Fermer » en veille ou pendant un téléchargement ; processus arrêtés et file sauvegardée, sans service permanent inactif.
-          - Android 15 : expiration dataSync prise en charge et téléchargement en cours mis en pause pour reprise ultérieure.
-          - Sécurité des mises à jour : réserve d'espace vérifiée, checksum limité à 512 octets et suppression limitée aux anciens caches All-Download ; tests de récupération inclus sur téléphone/tablette.
-          - Réseau : réessais temporaires limités, conservation des fichiers partiels et nettoyage prudent des anciens dossiers orphelins.
-          - Dailymotion : certains HLS exigent une émulation Firefox/Chrome non disponible dans Android ; ces cas sont classés non conclusifs (SKIP) dans les tests, jamais considérés comme des téléchargements réussis.
-          - Identité All-Download conservée dans le lanceur, le splash et les mises à jour ; aucun bandeau de marque permanent dans les pages.
-          - Écrans compacts : actions réorganisées en colonne si nécessaire, boutons de 52 dp minimum, marges régulières et libellés longs lisibles.
-          - File : ajout immédiatement visible et parcours Copier → Coller, Réessayer et Supprimer contrôlés sur téléphone et tablette.
-          - Réglages : contrôle des préférences enregistrées et limite cohérente des champs avancés.
-          - YouTube : vérification de disponibilité des formats avant sélection, avec conservation de la qualité demandée.
-          - Barre de contrôle Liquid Glass : quatre icônes vectorielles, capsule violette translucide sur téléphone et navigation latérale sur tablette ou pliable ouvert.
-          - Navigation sécurisée : zones tactiles lisibles, respect des barres système Android, adaptation automatique au clavier, sans capture d'écran ni flou GPU coûteux.
-          - Logo Android original violet dédié (média, téléchargement et AD) : icône, splash et fenêtre de mise à jour, source conservée dans android/branding/.
-          - UI carrée proche de Windows : icônes vectorielles cohérentes, onglets lisibles, cartes et boutons natifs adaptés au tactile.
-          - Les versions Windows et leur logo restent inchangés.
-          - Optimisation RAM : logo original redimensionné à la compilation (PNG 192 × 192), sans toucher au fichier Windows.
-          - Fluidité : mises à jour de l'interface uniquement quand l'activité est visible, moins de re-dessins, pagination des tâches (24 à la fois) et explorateur de dossiers asynchrone (50 fichiers à la fois).
-          - Démarrage optimisé : contrôles avancés de l'application construits seulement à l'ouverture des Réglages, avec leur état sauvegardé.
-          - Fiabilité : tests de non-régression sur les contrôles, réduction des allocations et suppression sûre des fichiers temporaires associés aux tâches effacées.
-          - Autonomie : notifications et progression yt-dlp limitées en fréquence, écritures persistantes regroupées, moteur yt-dlp/FFmpeg initialisé une seule fois.
-          - Données et batterie : GitHub utilise le cache HTTP ETag et évite les vérifications en économie d'énergie, yt-dlp ne s'actualise pas automatiquement sur réseau facturé au volume.
-          - Fonctionnel : trois onglets de réglages Téléchargement / Application / Réseau comme Windows, lien copiable depuis la file, suppression des fichiers privés partiels à la suppression d'une tâche.
-          - Classement : vidéos et clips Twitch dans TWITCH, VOD en qualité native 1080p puis 720p.
-          - Interface native : Accueil, File d'attente, Dossiers et Paramètres ; navigation latérale automatique sur tablette et pliable ouvert.
-          - Accueil enrichi : aperçu compact de la file comme Windows, collage URL, raccourcis GIF/playlist/Twitch, effacement ciblé de la file.
-          - Android 15 : marges système et découpes d'écran adaptées (tests API 35), APK annulable et installation reprenable après rotation.
-          - Bannière de mise à jour animée en haut comme Kovelyx : numéro de version, progression, détails, action Installer/Plus tard. Cache privé, contrôle SHA-256, signature identique et installation système Android, sans navigateur.
-          - Paramètres Windows adaptés : MP4/MKV et remux, qualité MP3, miniatures, métadonnées, sous-titres, SponsorBlock, proxy, User-Agent, réseau et notifications.
-          - Thèmes Sombre, Clair et OLED, persistants ; paramètres yt-dlp et cookies locaux.
-          - File d'attente persistante : lancement en série, progression, pause/reprise best-effort et relance en cas d'erreur.
-          - Explorateur intégré des sept dossiers et ouverture des médias par MediaStore/FileProvider.
-          - Téléchargements vidéo MP4/WebM/HLS, clips Twitch, audio MP3/M4A/FLAC, GIF, playlists et chaînes.
-          - Moteur yt-dlp et FFmpeg intégrés, mise à jour yt-dlp facultative pour les réseaux sociaux.
-          - Validation automatique sur Android 9, 14, 15 et tablette Android 14, avec contrôles de placement supplémentaires à 140 % de taille de texte. Les tests réseau ignorés pour restriction externe ne comptent pas comme des téléchargements réussis.
-          - Tests sociaux Android 14 : Reels Instagram, X, vidéos Pinterest, TikTok, Reels Facebook, Reddit HLS direct, Bluesky et Dailymotion validés sur des liens publics.
-          - Reddit (publication classique) et certaines vidéos Facebook exigent un accès ou un extracteur compatible ; Vimeo non confirmé. YouTube anti-bot, VOD Twitch protégées et DRM non garantis.
-          - Import facultatif de cookies Netscape de votre propre compte autorisé ; stockage privé local, effacement possible dans l'application.
+          - Windows et Linux inchangés par ce code Android.
+          - Android 7+, téléphone, tablette et écrans pliables.
+          - Boutons, thèmes Clair/Sombre/OLED, menus et file persistante conservés.
+          - Mise à jour intégrée : APK privée vérifiée SHA-256/signature et installateur officiel Android.
+          - Passage bêta → stable : versionCode croissant, signature de publication identique requise.
+          - Téléchargements YouTube/Twitch et qualité native selon formats réellement disponibles.
+          - La compatibilité de chaque site externe dépend du site et de ses protections.
+          - Certains médias TikTok peuvent changer de format et certains HLS Dailymotion
+            exigent une émulation Firefox/Chrome non incluse sur Android.
+          - Les échecs externes sont classés non concluants (SKIP) et jamais PASS sans média.
+          - Tests automatisés : Android 9, 14, 15, tablette Android 14, qualité des transferts
+            et paramètres/interaction/mises à jour.
+          - Aucune installation silencieuse : une autorisation du système peut être nécessaire.
+          - La clé privée de signature doit rester sauvegardée séparément du dépôt.
 
-          **Signature :** clé privée de publication permanente, conservée hors du dépôt.
-          Si une ancienne bêta a une signature debug différente, une dernière désinstallation peut être nécessaire ; les futures mises à jour signées avec la même clé s'installent par-dessus via le programme d'installation Android.
-          Les fichiers exportés dans Téléchargements restent disponibles, mais les données privées de l'application peuvent être supprimées par une désinstallation.
-          Conservez et sauvegardez la clé privée pour toutes les futures versions.
-          N'importez pas de sessions sensibles dans cette version de test.
-          Ne désactivez pas les protections Android. Installation à vos risques pour cette préversion.
-          Les versions Windows Portable/Classique restent sur les Releases stables.
-
-          **Fichier :** APK Android et empreinte SHA-256 joints aux assets de cette Release.
+          Consultez android/README.md et docs/MAINTENANCE.md pour les limites et la restauration.
           EOF
-          sed -i "s/0\.6\.0/${ANDROID_VERSION}/g" android-release-notes.md
-      - name: Publish separate Android prerelease
+          sed -i "s/{{VERSION}}/$ANDROID_VERSION/g" android-release-notes.md
+      - name: Publish Android release without replacing Windows latest
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -222,14 +194,17 @@ jobs:
             fi
             echo "APK Android déjà publié pour le même code : fichier et empreinte conservés."
           else
+            flags=(--latest=false)
+            if [[ "$ANDROID_VERSION" == *-beta ]]; then flags+=(--prerelease); fi
             gh release create "$TAG" "$APK" "${APK}.sha256" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
               --title "All-Download Android ${ANDROID_VERSION}" \
-              --notes-file android-release-notes.md \
-              --prerelease
+              --notes-file android-release-notes.md "${flags[@]}"
           fi
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
             --json url,isPrerelease,assets --jq '{url,isPrerelease,assets:[.assets[].name]}'
-          test "$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq .isPrerelease)" = "true"
+          expected_prerelease=false
+          if [[ "$ANDROID_VERSION" == *-beta ]]; then expected_prerelease=true; fi
+          test "$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq .isPrerelease)" = "$expected_prerelease"
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' | grep -Fx "$APK"
