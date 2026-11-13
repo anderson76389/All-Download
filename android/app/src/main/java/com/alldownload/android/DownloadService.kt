@@ -168,7 +168,7 @@ class DownloadService : Service() {
             ACTION_ADD_QUEUE, ACTION_START -> {
                 val url = intent.getStringExtra(EXTRA_URL).orEmpty()
                 val mode = intent.getIntExtra(EXTRA_MODE, 0).coerceIn(0, 6)
-                val quality = intent.getIntExtra(EXTRA_QUALITY, 3).coerceIn(0, 4)
+                val quality = intent.getIntExtra(EXTRA_QUALITY, 0).coerceIn(0, 4)
                 if (url.isBlank()) {
                     if (!active) {
                         state = UiState(false, 0, "Lien manquant.")
@@ -324,7 +324,8 @@ class DownloadService : Service() {
             } catch (initial: Exception) {
                 if (paused || cancelled || !DownloadRules.isTwitchVod(task.url)) throw initial
                 state = UiState(true, 0, "Vérification du flux Twitch public…")
-                val manifest = TwitchHls.resolve(task.url, task.quality) { paused || cancelled }
+                val manifest = TwitchHls.resolve(task.url, task.quality,
+                    sourceHeightProbe = { TwitchHls.probeHeight(this, it) { paused || cancelled } }) { paused || cancelled }
                 val fallbackWork = File(work, "twitch-source").apply {
                     check(isDirectory || mkdirs()) { "Dossier Twitch temporaire inaccessible." }
                 }

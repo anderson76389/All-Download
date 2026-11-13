@@ -52,7 +52,7 @@ class AndroidSmokeTest {
             val quality = activity.findViewById<Spinner>(R.id.qualitySpinner)
             assertEquals(7, mode.count)
             assertEquals(5, quality.count)
-            assertEquals(3, quality.selectedItemPosition)
+            assertEquals(0, quality.selectedItemPosition)
             assertEquals("Vidéo", mode.selectedItem.toString())
             // Évite le bug texte noir sur fond sombre de la première bêta.
             val selected = mode.selectedView as TextView
@@ -631,7 +631,7 @@ class AndroidSmokeTest {
                     activity.findViewById<Button>(R.id.quickTwitchButton).performClick()
                 }
                 instrumentation.waitForIdleSync()
-                assertEquals("Twitch doit conserver la meilleure qualité native", 3,
+                assertEquals("Twitch doit plafonner à 1080p", 0,
                     activity.findViewById<Spinner>(R.id.qualitySpinner).selectedItemPosition)
             } else {
                 assertEquals("Tablettes larges : garder la barre compacte",
@@ -2088,7 +2088,7 @@ class AndroidSmokeTest {
             assertEquals("Twitch doit préparer un téléchargement vidéo.",
                 0, modes.selectedItemPosition)
             assertEquals("Twitch doit revenir à la meilleure qualité par défaut.",
-                3, quality.selectedItemPosition)
+                0, quality.selectedItemPosition)
             assertEquals(View.VISIBLE, qualityGroup.visibility)
             assertFalse("Les raccourcis ne doivent pas lancer un transfert.",
                 DownloadService.state.busy)

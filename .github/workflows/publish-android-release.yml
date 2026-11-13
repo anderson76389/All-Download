@@ -156,7 +156,7 @@ jobs:
           copie en blocs de 64 Kio, nettoyage du fichier de sortie en cas d’échec.
 
           - Windows et Linux inchangés par ce code Android.
-          - Qualité automatique : meilleure source native disponible, sans plafond 1080p.
+          - Qualité par défaut : 1080p maximum, source native sans agrandissement artificiel. Les résolutions supérieures restent un choix manuel.
           - Twitch : secours HLS natif après un échec du moteur principal.
           - Réglages mobiles : logos et textes rapprochés et alignés au début de la ligne.
           - Android 7+, téléphone, tablette et écrans pliables.

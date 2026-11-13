@@ -127,7 +127,11 @@ class PublicVideoDownloadTest {
                     )
                 }
                 if (label == "Twitch VOD") {
-                    val manifest = TwitchHls.resolve(url, 3) { false }
+                    val manifest = TwitchHls.resolve(url, 0,
+                        sourceHeightProbe = { TwitchHls.probeHeight(context, it) { false } }) { false }
+                    val nativeHeight = TwitchHls.probeHeight(context, manifest) { false }
+                    assertTrue("Le secours Twitch doit vérifier une source native ≤ 1080p : $nativeHeight",
+                        nativeHeight != null && nativeHeight in 144..1080)
                     downloadShortExtractedVideo("Twitch HLS source", manifest, "bestvideo+bestaudio/best")
                     return
                 }

@@ -1,5 +1,7 @@
 package com.alldownload.android
 
+import android.content.Context
+import java.io.File
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URI
@@ -20,7 +22,7 @@ internal object TwitchHls {
             3 -> listOf("chunked", "2160p60", "1440p60", "1080p60", "1080p30",
                 "720p60", "720p30", "480p30", "360p30", "160p30")
             4 -> listOf("2160p60", "1440p60", "1080p60", "1080p30", "720p60", "720p30")
-            else -> listOf("1080p60", "1080p30", "720p60", "720p30")
+            else -> listOf("chunked", "1080p60", "1080p30", "720p60", "720p30")
         }
         return profiles.map { "https://${uri.host}/$path/$it/index-dvr.m3u8" }
     }
@@ -54,7 +56,45 @@ internal object TwitchHls {
         setRequestProperty("User-Agent", "All-Download-Android")
     }
 
-    fun resolve(url: String, quality: Int, interrupted: () -> Boolean): String {
+    fun probeHeight(context: Context, manifest: String, interrupted: () -> Boolean): Int? {
+        val output = File.createTempFile("twitch-probe-", ".json", context.cacheDir)
+        var process: Process? = null
+        try {
+            val native = context.applicationInfo.nativeLibraryDir
+            val packages = File(context.noBackupFilesDir, "youtubedl-android/packages")
+            val builder = ProcessBuilder(File(native, "libffprobe.so").absolutePath,
+                "-v", "error", "-rw_timeout", "8000000", "-select_streams", "v:0",
+                "-show_entries", "stream=height", "-of", "json", manifest)
+                .redirectOutput(output).redirectError(File("/dev/null"))
+            builder.environment()["LD_LIBRARY_PATH"] =
+                "$packages/python/usr/lib:$packages/ffmpeg/usr/lib:$native"
+            builder.environment()["TMPDIR"] = context.cacheDir.absolutePath
+            process = builder.start()
+            val deadline = System.nanoTime() + 25_000_000_000L
+            while (true) {
+                if (interrupted() || System.nanoTime() >= deadline) return null
+                val exit = try { process.exitValue() } catch (_: IllegalThreadStateException) { null }
+                if (exit != null) {
+                    if (exit != 0 || output.length() > 8192) return null
+                    val height = JSONObject(output.readText()).optJSONArray("streams")
+                        ?.optJSONObject(0)?.optInt("height") ?: return null
+                    return height.takeIf { it in 144..4320 }
+                }
+                Thread.sleep(100)
+            }
+        } catch (_: Exception) {
+            return null
+        } finally {
+            process?.destroy()
+            process?.inputStream?.close()
+            process?.errorStream?.close()
+            process?.outputStream?.close()
+            output.delete()
+        }
+    }
+
+    fun resolve(url: String, quality: Int, sourceHeightProbe: ((String) -> Int?)? = null,
+                interrupted: () -> Boolean): String {
         check(DownloadRules.isTwitchVod(url)) { "URL Twitch VOD invalide." }
         check(!interrupted()) { "Interrompu." }
         val id = URI(url).path.trimEnd('/').substringAfterLast('/')
@@ -73,15 +113,27 @@ internal object TwitchHls {
         } finally { connection.disconnect() }
         val preview = JSONObject(body).optJSONObject("data")?.optJSONObject("video")
             ?.optString("seekPreviewsURL").orEmpty()
+        var source720: String? = null
         for (candidate in candidates(preview, quality)) {
+            if (source720 != null && candidate.contains("/720p")) return source720
             check(!interrupted()) { "Interrompu." }
             try {
                 val manifest = read(connect(candidate), 2_000_000)
-                if (manifest.startsWith("#EXTM3U") && manifest.contains("#EXTINF:")) return candidate
+                if (manifest.startsWith("#EXTM3U") && manifest.contains("#EXTINF:")) {
+                    if (quality == 0 && candidate.contains("/chunked/")) {
+                        when (sourceHeightProbe?.invoke(candidate)) {
+                            1080 -> return candidate
+                            720 -> source720 = candidate
+                        }
+                        continue
+                    }
+                    return candidate
+                }
             } catch (error: Exception) {
                 if (interrupted()) throw error
             }
         }
+        if (source720 != null) return source720
         error("VOD Twitch supprimée, restreinte ou sans flux public dans cette qualité.")
     }
 }

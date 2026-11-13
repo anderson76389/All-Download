@@ -207,13 +207,13 @@ class MainActivity : Activity() {
             "720p", "480p", "Auto (meilleure)", "2160p")
         modeSpinner.adapter = spinnerAdapter(modes)
         qualitySpinner.adapter = spinnerAdapter(qualities)
-        if (!settings.getBoolean("native_best_quality_default_v1", false)) {
-            settings.edit().putInt("last_quality", 3)
-                .putBoolean("native_best_quality_default_v1", true).apply()
+        if (!settings.getBoolean("native_1080_quality_default_v2", false)) {
+            settings.edit().putInt("last_quality", 0)
+                .putBoolean("native_1080_quality_default_v2", true).apply()
         }
         if (savedInstanceState == null) {
             modeSpinner.setSelection(settings.getInt("last_mode", 0).coerceIn(0, 6))
-            qualitySpinner.setSelection(settings.getInt("last_quality", 3).coerceIn(0, 4))
+            qualitySpinner.setSelection(settings.getInt("last_quality", 0).coerceIn(0, 4))
         }
         modeSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onNothingSelected(parent: AdapterView<*>?) {}
@@ -317,7 +317,7 @@ class MainActivity : Activity() {
             R.id.quickTwitchButton to 0).forEach { (buttonId, mode) ->
             findViewById<Button>(buttonId).setOnClickListener {
                 modeSpinner.setSelection(mode)
-                if (buttonId == R.id.quickTwitchButton) qualitySpinner.setSelection(3)
+                if (buttonId == R.id.quickTwitchButton) qualitySpinner.setSelection(0)
                 selectTab(0)
                 urlInput.requestFocus()
             }

@@ -191,7 +191,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG="linux-v1.0.1"
+          TAG="linux-v1.0.2"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Linux $TAG already exists; keeping verified assets intact."
             exit 0
@@ -204,6 +204,6 @@ jobs:
             All-Download-Linux-x86_64.tar.xz \
             All-Download-Linux-x86_64.tar.xz.sha256 \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "All-Download Linux 1.0.1 (x86_64)" \
-            --notes "Linux 1.0.1 : reprise des fragments après erreur réseau grâce aux espaces temporaires stables, nettoyage après réussite/annulation et conservation des contrôles d’arrêt Qt ; réessais bornés et compression xz mesurée contre la version précédente. Archives SHA-256, tests Ubuntu 22.04 et 24.04 ; données locales et formats natifs Twitch conservés." \
+            --title "All-Download Linux 1.0.2 (x86_64)" \
+            --notes "Linux 1.0.2 : reprise des fragments après erreur réseau grâce aux espaces temporaires stables, nettoyage après réussite/annulation et conservation des contrôles d’arrêt Qt ; réessais bornés et compression xz mesurée contre la version précédente. Archives SHA-256, tests Ubuntu 22.04 et 24.04 ; données locales et formats natifs Twitch conservés." \
             --latest=false
