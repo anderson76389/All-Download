@@ -31,7 +31,8 @@ internal object SharedVideoFiles {
     } catch (_: RuntimeException) { emptyList() }
 
     fun extract(intent: Intent?): List<Uri> {
-        if (intent?.action !in setOf(Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE)) {
+        val shared = intent ?: return emptyList()
+        if (shared.action !in setOf(Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE)) {
             return emptyList()
         }
         val result = LinkedHashSet<Uri>()
@@ -39,9 +40,9 @@ internal object SharedVideoFiles {
             if (uri?.scheme == "content" && uri.authority?.isNotBlank() == true &&
                 result.size < MAX_FILES) result.add(uri)
         }
-        if (intent.action == Intent.ACTION_SEND) add(stream(intent))
-        else streams(intent).take(MAX_FILES).forEach(::add)
-        val clip = intent.clipData
+        if (shared.action == Intent.ACTION_SEND) add(stream(shared))
+        else streams(shared).take(MAX_FILES).forEach(::add)
+        val clip = shared.clipData
         if (clip != null) {
             for (i in 0 until minOf(clip.itemCount, MAX_FILES)) {
                 add(clip.getItemAt(i).uri)
