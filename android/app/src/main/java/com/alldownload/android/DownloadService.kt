@@ -168,7 +168,7 @@ class DownloadService : Service() {
             ACTION_ADD_QUEUE, ACTION_START -> {
                 val url = intent.getStringExtra(EXTRA_URL).orEmpty()
                 val mode = intent.getIntExtra(EXTRA_MODE, 0).coerceIn(0, 6)
-                val quality = intent.getIntExtra(EXTRA_QUALITY, 0).coerceIn(0, 4)
+                val quality = intent.getIntExtra(EXTRA_QUALITY, 3).coerceIn(0, 4)
                 if (url.isBlank()) {
                     if (!active) {
                         state = UiState(false, 0, "Lien manquant.")
@@ -269,6 +269,7 @@ class DownloadService : Service() {
         val root = getExternalFilesDir(null) ?: filesDir
         val work = File(root, "All-Download/Donnees/temporaires/" + task.id)
         var exported = 0
+        var exportRoot = work
         try {
             check(!paused && !cancelled) { "Interrompu." }
             if (!work.isDirectory && !work.mkdirs())
@@ -287,7 +288,8 @@ class DownloadService : Service() {
             lastQueueSave = 0L
             lastNotification = 0L
             state = UiState(true, task.progress, "Téléchargement en cours…")
-            YoutubeDL.getInstance().execute(request, PROCESS_ID, false) { progress, eta, _ ->
+            fun transfer(mediaRequest: YoutubeDLRequest) {
+              YoutubeDL.getInstance().execute(mediaRequest, PROCESS_ID, false) { progress, eta, _ ->
                 if (!paused && !cancelled) {
                     val percent = progress.toInt().coerceIn(0, 100)
                     val now = SystemClock.elapsedRealtime()
@@ -316,9 +318,25 @@ class DownloadService : Service() {
                     }
                 }
             }
+            }
+            try {
+                transfer(request)
+            } catch (initial: Exception) {
+                if (paused || cancelled || !DownloadRules.isTwitchVod(task.url)) throw initial
+                state = UiState(true, 0, "Vérification du flux Twitch public…")
+                val manifest = TwitchHls.resolve(task.url, task.quality) { paused || cancelled }
+                val fallbackWork = File(work, "twitch-source").apply {
+                    check(isDirectory || mkdirs()) { "Dossier Twitch temporaire inaccessible." }
+                }
+                val fallback = buildRequest(task.url, task.mode, task.quality, fallbackWork, manifest)
+                val id = java.net.URI(task.url).path.trimEnd('/').substringAfterLast('/')
+                fallback.addOption("--output", File(fallbackWork, "Twitch_$id.%(ext)s").absolutePath)
+                transfer(fallback)
+                exportRoot = fallbackWork
+            }
             check(!paused && !cancelled) { "Interrompu." }
             val category = DownloadRules.categoryFor(task.url, task.mode)
-            val files = work.walkTopDown().filter { it.isFile &&
+            val files = exportRoot.walkTopDown().filter { it.isFile &&
                 !it.name.endsWith(".part") && !it.name.endsWith(".ytdl") }.toList()
             check(files.isNotEmpty()) { "Aucun fichier final créé par le moteur." }
             for ((index, file) in files.withIndex()) {
@@ -391,8 +409,9 @@ class DownloadService : Service() {
             ?: error.javaClass.simpleName).take(280)
     }
 
-    private fun buildRequest(url: String, mode: Int, quality: Int, work: File): YoutubeDLRequest {
-        val request = YoutubeDLRequest(url)
+    private fun buildRequest(url: String, mode: Int, quality: Int, work: File,
+                             mediaUrl: String = url): YoutubeDLRequest {
+        val request = YoutubeDLRequest(mediaUrl)
         // YouTube may advertise media URLs that return 403. Probe candidates
         // before selection while retaining the requested quality and container.
         if (DownloadRules.isYoutubeHost(url)) request.addOption("--check-formats")

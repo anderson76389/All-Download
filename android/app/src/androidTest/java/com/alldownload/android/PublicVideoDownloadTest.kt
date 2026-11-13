@@ -126,12 +126,10 @@ class PublicVideoDownloadTest {
                         false
                     )
                 }
-                if (label == "Twitch VOD" &&
-                    details.contains("subscriber-only", ignoreCase = true)) {
-                    org.junit.Assume.assumeTrue(
-                        "VOD réservée aux abonnés : non téléchargeable sans accès autorisé.",
-                        false
-                    )
+                if (label == "Twitch VOD") {
+                    val manifest = TwitchHls.resolve(url, 3) { false }
+                    downloadShortExtractedVideo("Twitch HLS source", manifest, "bestvideo+bestaudio/best")
+                    return
                 }
                 fail("$label : téléchargement d'un extrait réel impossible : $details")
             }

@@ -151,6 +151,8 @@ def category_for(item: dict) -> str:
 
 def native_twitch_format(quality: str) -> str:
     """Sélection native sans interpolation ni montée artificielle en résolution."""
+    if not quality or str(quality).startswith("Meilleure qualité"):
+        return "bestvideo+bestaudio/best"
     match = re.search(r"(\d{3,4})p", str(quality))
     if match:
         height = int(match.group(1))
@@ -158,7 +160,7 @@ def native_twitch_format(quality: str) -> str:
             raise ValueError("Pour les VOD Twitch : 1080p ou 720p natif uniquement.")
         if height == 720:
             return "bestvideo[height=720]+bestaudio/best[height=720]"
-    # "1080p" is the default preferred quality for Twitch; if the actual
+    # A manually selected "1080p" prefers that tier; if the actual
     # source has no 1080p, request native 720p rather than failing or
     # upscaling a 720p stream. No 480p and no artificial conversion.
     return ("bestvideo[height=1080]+bestaudio/best[height=1080]/"
@@ -598,6 +600,37 @@ class DownloaderAPI:
                     pass
             return {"success": True}
 
+    def _run_transfer(self, cmd, index, total):
+        proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                text=True, errors="replace", bufsize=1,
+                                env=self._env(), start_new_session=True)
+        with self._lock:
+            self._current = proc
+            if self._cancel:
+                self._terminate()
+            elif self._paused:
+                os.killpg(proc.pid, signal.SIGSTOP)
+        reason = ""
+        previous_pct, previous_at = -1.0, 0.0
+        if proc.stdout is not None:
+            with proc.stdout:
+                for line in proc.stdout:
+                    if "ERROR:" in line:
+                        reason = line.strip()[-280:]
+                    match = re.search(r"\[download\]\s+(\d+(?:\.\d+)?)%", line)
+                    if match:
+                        percent = float(match.group(1))
+                        now = time.monotonic()
+                        if should_emit_progress(percent, now, previous_pct, previous_at):
+                            self._js("updateDownloadProgress", percent,
+                                     f"[{index}/{total}] {line.strip()[:160]}")
+                            previous_pct, previous_at = percent, now
+        exit_code = proc.wait()
+        with self._lock:
+            self._current = None
+        return exit_code, reason
+
     def _worker(self, items):
         completed = 0
         total = len(items)
@@ -613,34 +646,20 @@ class DownloaderAPI:
                 succeeded = False
                 try:
                     cmd = self._command(item, workspace)
-                    proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
-                                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                            text=True, errors="replace", bufsize=1,
-                                            env=self._env(), start_new_session=True)
-                    with self._lock:
-                        self._current = proc
-                        if self._cancel:
-                            self._terminate()
-                        elif self._paused:
-                            os.killpg(proc.pid, signal.SIGSTOP)
-                    reason = ""
-                    previous_pct, previous_at = -1.0, 0.0
-                    if proc.stdout is not None:
-                        with proc.stdout:
-                            for line in proc.stdout:
-                                if "ERROR:" in line:
-                                    reason = line.strip()[-280:]
-                                match = re.search(r"\[download\]\s+(\d+(?:\.\d+)?)%", line)
-                                if match:
-                                    percent = float(match.group(1))
-                                    now = time.monotonic()
-                                    if should_emit_progress(percent, now, previous_pct, previous_at):
-                                        self._js("updateDownloadProgress", percent,
-                                                 f"[{index}/{total}] {line.strip()[:160]}")
-                                        previous_pct, previous_at = percent, now
-                    exit_code = proc.wait()
-                    with self._lock:
-                        self._current = None
+                    exit_code, reason = self._run_transfer(cmd, index, total)
+                    if exit_code and not self._cancel and is_twitch_vod_url(url):
+                        from twitch_hls import resolve_hls, probe_native_height
+                        self._js("updateDownloadProgress", 0, "Vérification du flux Twitch public…")
+                        manifest, _, _, _ = resolve_hls(url,
+                            item.get("selectedQuality") or "Meilleure qualité (Auto)",
+                            source_height_probe=lambda source: probe_native_height(
+                                self._tool("ffprobe"), source))
+                        if not self._cancel:
+                            fallback = self._command(item, workspace)
+                            fallback[-1] = manifest
+                            vod_id = urlsplit(url).path.rstrip("/").rsplit("/", 1)[-1]
+                            fallback[fallback.index("-o") + 1] = f"Twitch_{vod_id}.%(ext)s"
+                            exit_code, reason = self._run_transfer(fallback, index, total)
                     if exit_code == 0 and not self._cancel:
                         succeeded = True
                         completed += 1

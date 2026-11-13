@@ -2129,18 +2129,7 @@ HTML_PAGE = """<!DOCTYPE html>
   }
 
   function defaultVideoQuality(item) {
-    const formats = Array.isArray(item.formats) ? item.formats : [];
-    const isTwitchVod = /^https?:\/\/(?:www\.|m\.)?twitch\.tv\/videos\/\d{5,20}\/?(?:[?#].*)?$/i.test(item.url || '');
-    if (isTwitchVod) {
-      // Priorité 1080p, puis 720p ; les autres sites conservent "Auto".
-      for (const tier of ['1080p', '720p']) {
-        const found = formats.find(f => f === tier || f.startsWith(tier + ' ('));
-        if (found) return found;
-      }
-      const other = formats.find(f => /^\d{3,4}p(?:\s*\(\d{2,3}fps\))?$/.test(f));
-      return other || '1080p (60fps)';
-    }
-    return formats[0] || 'Meilleure qualité (Auto)';
+    return 'Meilleure qualité (Auto)';
   }
 
   function selectGlobalMode(mode, e) {

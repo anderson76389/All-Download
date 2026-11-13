@@ -86,7 +86,11 @@ def manifest_candidates(preview_url, quality):
         raise HLSUnavailable("Format des aperçus de cette VOD non compatible.")
     selected = selected_quality_to_cli(quality)
     if not selected:
-        selected = "1080p60"
+        names = ["chunked", "2160p60", "1440p60", "1080p60", "1080p30",
+                 "720p60", "720p30", "480p30", "360p30", "160p30"]
+        return [(name, urllib.parse.urlunsplit(("https", parsed.netloc,
+            "/" + storyboard_match.group(1) + "/" + name + "/index-dvr.m3u8", "", "")))
+            for name in names]
     match = re.fullmatch(r"(\d{3,4})p(\d{2,3})?", selected)
     if not match:
         raise HLSUnavailable("Qualité Twitch non reconnue.")
@@ -163,7 +167,8 @@ def resolve_hls(url, quality="1080p (60fps)", timeout=12, source_height_probe=No
     preview = meta.get("seekPreviewsURL")
     if not preview:
         raise HLSUnavailable("Twitch ne fournit pas de storyboard pour cette VOD.")
-    selected = selected_quality_to_cli(quality) or "1080p60"
+    automatic = selected_quality_to_cli(quality) is None
+    selected = selected_quality_to_cli(quality) or "4320p60"
     selected_match = re.fullmatch(r"(\d{3,4})p(\d{2,3})?", selected)
     if not selected_match:
         raise HLSUnavailable("Qualité Twitch invalide.")
@@ -176,13 +181,15 @@ def resolve_hls(url, quality="1080p (60fps)", timeout=12, source_height_probe=No
     for name, candidate in manifest_candidates(preview, quality):
         if deferred_720 is not None and name.startswith("720p"):
             return deferred_720
-        if name == "chunked" and source_height_probe is None:
+        if name == "chunked" and source_height_probe is None and not automatic:
             continue
         try:
             count, duration = read_public_manifest(candidate, timeout=timeout)
             if name == "chunked":
                 # Le nom « source » ne prouve ni 1080p ni 720p : FFprobe doit
                 # confirmer la résolution native avant tout téléchargement.
+                if automatic:
+                    return candidate, "source native", duration, count
                 if source_height_probe is None:
                     continue
                 height = source_height_probe(candidate)

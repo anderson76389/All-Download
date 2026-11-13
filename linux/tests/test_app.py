@@ -42,6 +42,19 @@ class LinuxBackendTests(unittest.TestCase):
         self.assertFalse(bad["success"])
         self.assertEqual(str(self.root.resolve()), self.api.get_download_folder())
 
+    def test_twitch_failure_retries_native_source_then_marks_success(self):
+        url = "https://www.twitch.tv/videos/2919531847"
+        manifest = "https://public.cloudfront.net/source/chunked/index-dvr.m3u8"
+        self.api._js = mock.Mock()
+        with mock.patch.object(self.api, "_command", side_effect=lambda *_: ["yt-dlp", "-o", "out.mp4", url]), \
+             mock.patch.object(self.api, "_run_transfer", side_effect=[(1, "403"), (0, "")]) as transfer, \
+             mock.patch("twitch_hls.resolve_hls", return_value=(manifest, "source", 10, 1)):
+            self.api._worker([{"url": url, "mode": "Vidéo"}])
+        self.assertEqual(transfer.call_count, 2)
+        self.assertEqual(transfer.call_args.args[0][-1], manifest)
+        self.api._js.assert_any_call("markDownloadSuccess", url)
+        self.assertFalse(self.api._running)
+
     def test_saved_settings_are_reloaded(self):
         settings = self.api.get_app_settings()
         settings["theme"] = "dark_pure"
@@ -64,7 +77,8 @@ class LinuxBackendTests(unittest.TestCase):
         self.assertFalse(self.api.save_quick_selector_value("format", "AVI")["success"])
 
     def test_twitch_has_real_1080_then_720_only(self):
-        native = native_twitch_format("Meilleure qualité (Auto)")
+        self.assertEqual("bestvideo+bestaudio/best", native_twitch_format("Meilleure qualité (Auto)"))
+        native = native_twitch_format("1080p")
         self.assertIn("height=1080", native)
         self.assertIn("height=720", native)
         self.assertNotIn("480", native)
@@ -77,7 +91,7 @@ class LinuxBackendTests(unittest.TestCase):
     def test_twitch_selected_1080_falls_back_to_real_native_720(self):
         # The quality preselected after metadata extraction was "1080p".
         # Previously that path had no 720p fallback even when Auto did.
-        for selected in ("1080p", "1080p (60fps)", "Meilleure qualité (Auto)"):
+        for selected in ("1080p", "1080p (60fps)"):
             fmt = native_twitch_format(selected)
             self.assertIn("height=1080", fmt)
             self.assertIn("height=720", fmt)
@@ -223,7 +237,7 @@ class LinuxBackendTests(unittest.TestCase):
             ("https://www.twitch.tv.evil.example/videos/123456789", False)
         ):
             cmd = self.api._command(
-                {"url": url, "mode": "Vidéo", "selectedQuality": "Meilleure qualité (Auto)"},
+                {"url": url, "mode": "Vidéo", "selectedQuality": "1080p"},
                 self.api.temp / "vod")
             chosen = cmd[cmd.index("--format") + 1]
             self.assertEqual("height=1080" in chosen, twitch)

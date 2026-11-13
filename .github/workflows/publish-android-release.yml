@@ -2,7 +2,7 @@ name: Publish All-Download Android beta
 
 on:
   push:
-    branches: [feature/android-app]
+    branches: [main, feature/android-app]
     paths:
       - "android/app/src/main/**"
       - "android/app/src/androidTest/**"
@@ -46,7 +46,7 @@ jobs:
           echo "Release Android ciblée : android-v$VERSION"
           validated=0
           for attempt in $(seq 1 100); do
-            LATEST="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/feature/android-app" --jq '.object.sha')"
+            LATEST="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/${{ github.ref_name }}" --jq '.object.sha')"
             if [ "$LATEST" != "$GITHUB_SHA" ]; then
               echo "Code Android modifié depuis le début des tests : ancienne publication annulée."
               exit 1
@@ -156,6 +156,9 @@ jobs:
           copie en blocs de 64 Kio, nettoyage du fichier de sortie en cas d’échec.
 
           - Windows et Linux inchangés par ce code Android.
+          - Qualité automatique : meilleure source native disponible, sans plafond 1080p.
+          - Twitch : secours HLS natif après un échec du moteur principal.
+          - Réglages mobiles : logos et textes rapprochés et alignés au début de la ligne.
           - Android 7+, téléphone, tablette et écrans pliables.
           - Boutons, thèmes Clair/Sombre/OLED, menus et file persistante conservés.
           - Mise à jour intégrée : APK privée vérifiée SHA-256/signature et installateur officiel Android.
@@ -180,7 +183,7 @@ jobs:
           set -euo pipefail
           TAG="android-v${ANDROID_VERSION}"
           APK="All-Download-Android-${ANDROID_VERSION}.apk"
-          LATEST="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/feature/android-app" --jq '.object.sha')"
+          LATEST="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/${{ github.ref_name }}" --jq '.object.sha')"
           if [ "$LATEST" != "$GITHUB_SHA" ]; then
             echo "Publication refusée : la branche Android a changé."
             exit 1

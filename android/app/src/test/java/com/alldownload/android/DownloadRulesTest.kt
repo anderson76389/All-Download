@@ -64,13 +64,26 @@ class DownloadRulesTest {
             assertTrue(host, DownloadRules.needsFreshExtractor("https://$host/watch?v=test"))
         }
         for (host in listOf("youtube.com.evil.example", "notyoutube.com",
-            "twitch.tv", "clips.twitch.tv", "example.com", "youtu.be.fake.test")) {
+            "example.com", "youtu.be.fake.test")) {
             assertFalse(host, DownloadRules.isYoutubeHost("https://$host/video"))
             assertFalse(host, DownloadRules.needsFreshExtractor("https://$host/video"))
         }
         assertTrue(DownloadRules.needsFreshExtractor("https://www.instagram.com/reel/test"))
         assertFalse(DownloadRules.needsFreshExtractor("https://attacker@youtube.com/video"))
         assertFalse(DownloadRules.needsFreshExtractor("javascript:alert(1)"))
+    }
+
+    @Test fun automaticQualityKeepsNativeSourceAndTwitchFallbackChecksHosts() {
+        assertEquals("bestvideo+bestaudio/best",
+            DownloadRules.videoFormat("https://twitch.tv/videos/2919531847", 3))
+        assertTrue(DownloadRules.needsFreshExtractor("https://twitch.tv/videos/2919531847"))
+        val preview = "https://d3stzm2eumvgb4.cloudfront.net/" +
+            "c80b0f31f889fc5c54c7_aminematue_318199683938_1793818942/storyboards/2919531847-info.json"
+        val auto = TwitchHls.candidates(preview, 3)
+        assertTrue(auto.first().endsWith("/chunked/index-dvr.m3u8"))
+        assertTrue(auto.any { it.contains("2160p60") })
+        assertTrue(TwitchHls.candidates(preview, 1).all { it.contains("720p") })
+        assertTrue(TwitchHls.candidates(preview.replace(".cloudfront.net", ".cloudfront.net.evil.test"), 3).isEmpty())
     }
 
     @Test fun foldersDoNotEscapeAllDownloadAndStayClassified() {

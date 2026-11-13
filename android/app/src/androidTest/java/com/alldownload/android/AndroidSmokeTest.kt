@@ -16,6 +16,7 @@ import android.widget.TextView
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.*
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.ByteArrayInputStream
@@ -29,6 +30,16 @@ class AndroidSmokeTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context get() = instrumentation.targetContext
 
+    @Before fun grantNotificationPermissionForUiTests() {
+        // Keep the system permission dialog from hiding the interface under test.
+        if (Build.VERSION.SDK_INT >= 33 &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            instrumentation.uiAutomation.grantRuntimePermission(
+                context.packageName, Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
     @Test fun appLaunchesAndShowsReadableModes() {
         val intent = Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
@@ -41,7 +52,7 @@ class AndroidSmokeTest {
             val quality = activity.findViewById<Spinner>(R.id.qualitySpinner)
             assertEquals(7, mode.count)
             assertEquals(5, quality.count)
-            assertEquals(0, quality.selectedItemPosition)
+            assertEquals(3, quality.selectedItemPosition)
             assertEquals("Vidéo", mode.selectedItem.toString())
             // Évite le bug texte noir sur fond sombre de la première bêta.
             val selected = mode.selectedView as TextView
@@ -620,7 +631,7 @@ class AndroidSmokeTest {
                     activity.findViewById<Button>(R.id.quickTwitchButton).performClick()
                 }
                 instrumentation.waitForIdleSync()
-                assertEquals("Twitch doit conserver la qualité vidéo native", 0,
+                assertEquals("Twitch doit conserver la meilleure qualité native", 3,
                     activity.findViewById<Spinner>(R.id.qualitySpinner).selectedItemPosition)
             } else {
                 assertEquals("Tablettes larges : garder la barre compacte",
@@ -1827,6 +1838,16 @@ class AndroidSmokeTest {
                 activity.findViewById<Button>(R.id.navSettings).performClick()
             }
             instrumentation.waitForIdleSync()
+            for (id in intArrayOf(R.id.settingsAppearanceTitleIcon,
+                R.id.settingsEngineTitleIcon, R.id.settingsCookiesTitleIcon)) {
+                val heading = activity.findViewById<TextView>(id)
+                assertEquals(android.view.Gravity.START,
+                    heading.gravity and android.view.Gravity.RELATIVE_HORIZONTAL_GRAVITY_MASK)
+                assertTrue("Le titre doit commencer près de son logo.",
+                    heading.layout == null || heading.layout.getLineLeft(0) <= dp(2))
+                assertTrue("Logo trop éloigné du texte des réglages.",
+                    heading.compoundDrawablePadding <= dp(8))
+            }
             val stacked = activity.resources.configuration.screenWidthDp < 390 ||
                 activity.resources.configuration.fontScale > 1.2f
             if (!stacked) {
@@ -2066,8 +2087,8 @@ class AndroidSmokeTest {
             instrumentation.waitForIdleSync()
             assertEquals("Twitch doit préparer un téléchargement vidéo.",
                 0, modes.selectedItemPosition)
-            assertEquals("Twitch doit revenir à la qualité 1080p par défaut.",
-                0, quality.selectedItemPosition)
+            assertEquals("Twitch doit revenir à la meilleure qualité par défaut.",
+                3, quality.selectedItemPosition)
             assertEquals(View.VISIBLE, qualityGroup.visibility)
             assertFalse("Les raccourcis ne doivent pas lancer un transfert.",
                 DownloadService.state.busy)

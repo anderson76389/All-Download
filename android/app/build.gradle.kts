@@ -14,8 +14,8 @@ android {
         applicationId = "com.alldownload.android"
         minSdk = 24
         targetSdk = 35
-        versionCode = 30
-        versionName = "1.0.0"
+        versionCode = 31
+        versionName = "1.0.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
