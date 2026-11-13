@@ -75,20 +75,25 @@ données privées exportées ; il n'installe pas les logiciels sur ton appareil.
 - Les protections contre les changements de YouTube/Twitch nécessitent de la
   maintenance future ; aucune application n'a de compatibilité garantie à vie.
 
-## Conditions de sortie de la bêta (version 1.0)
+## Vérifications complémentaires après la sortie stable 1.0
 
-La 1.0 doit attendre une restauration hors ligne vérifiée, un parcours de mise
-à jour N-1 → N validé pour les trois plateformes, l'absence de régression
-bloquante, des rapports de charge sur les appareils physiques, la sauvegarde de
-la clé Android, le contrôle de l'intégrité des binaires et un guide de rollback.
-Ce sont des critères de validation, pas une garantie absolue.
+La 1.0 peut être publiée après les suites automatisées Windows/Android/Linux et les
+vérifications de signature/intégrité. **Stable ne veut pas dire vérifiée sur chaque
+appareil ni sur chaque site distant.** La validation N-1 → N sur un HONOR Magic V6,
+les tests d'endurance RAM/CPU/batterie et une restauration complète sur machine
+physique doivent être documentés séparément dans l'issue #60 ; ils ne sont pas
+attestés par les émulateurs.
+
+Avant toute mise à jour risquée, conserver une version de secours, les données
+portables et la clé Android dans un coffre chiffré. Les sites tiers évoluent :
+leur compatibilité ne peut pas être garantie à vie.
 
 ## Vérifier une archive téléchargée sans réseau
 
 Conserver l'archive de Release et son fichier .sha256 au même endroit.
 
     python scripts/verify_release_asset.py All-Download-Portable-Windows.zip
-    python scripts/verify_release_asset.py All-Download-Android-0.6.22-beta.apk
+    python scripts/verify_release_asset.py All-Download-Android-1.0.0.apk
     python scripts/verify_release_asset.py All-Download-Linux-x86_64.tar.xz
 
 Le contrôle refuse les fichiers altérés, les checksums associés à un autre nom et
