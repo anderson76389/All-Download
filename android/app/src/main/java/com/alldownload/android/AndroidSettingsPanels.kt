@@ -97,13 +97,14 @@ internal object AndroidSettingsPanels {
             title.textSize = 16f
             title.setTextColor(color)
             title.setTypeface(title.typeface, Typeface.BOLD)
-            title.gravity = Gravity.CENTER_VERTICAL
+            title.gravity = Gravity.START or Gravity.CENTER_VERTICAL
+            title.textAlignment = View.TEXT_ALIGNMENT_VIEW_START
             title.minHeight = px(40)
             title.includeFontPadding = false
             title.maxLines = 2
             title.ellipsize = android.text.TextUtils.TruncateAt.END
             title.setCompoundDrawablesRelative(sectionGlyph(iconId), null, null, null)
-            title.compoundDrawablePadding = px(11)
+            title.compoundDrawablePadding = px(8)
         }
 
         fun decorateLegacyCard(id: Int, iconId: Int): LinearLayout {
@@ -191,6 +192,7 @@ internal object AndroidSettingsPanels {
                     if (stackedTabs) null else image,
                     if (stackedTabs) image else null, null, null)
                 compoundDrawablePadding = px(if (stackedTabs) 4 else 7)
+                textAlignment = View.TEXT_ALIGNMENT_GRAVITY
                 gravity = android.view.Gravity.CENTER
                 setSingleLine(true)
                 ellipsize = android.text.TextUtils.TruncateAt.END
@@ -435,7 +437,8 @@ internal object AndroidSettingsPanels {
                     setBounds(0, 0, px(19), px(19))
                 }
                 setCompoundDrawablesRelative(image, null, null, null)
-                compoundDrawablePadding = px(10)
+                compoundDrawablePadding = px(8)
+                textAlignment = View.TEXT_ALIGNMENT_VIEW_START
                 gravity = Gravity.CENTER_VERTICAL or Gravity.START
                 setPadding(px(15), px(10), px(12), px(10))
                 background = if (primary)

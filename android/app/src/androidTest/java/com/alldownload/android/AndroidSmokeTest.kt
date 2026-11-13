@@ -1827,6 +1827,13 @@ class AndroidSmokeTest {
                 activity.findViewById<Button>(R.id.navSettings).performClick()
             }
             instrumentation.waitForIdleSync()
+            for (id in intArrayOf(R.id.settingsAppearanceTitleIcon,
+                R.id.settingsEngineTitleIcon, R.id.settingsCookiesTitleIcon)) {
+                val heading = activity.findViewById<TextView>(id)
+                assertEquals(View.TEXT_ALIGNMENT_VIEW_START, heading.textAlignment)
+                assertTrue("Logo trop éloigné du texte des réglages.",
+                    heading.compoundDrawablePadding <= dp(8))
+            }
             val stacked = activity.resources.configuration.screenWidthDp < 390 ||
                 activity.resources.configuration.fontScale > 1.2f
             if (!stacked) {

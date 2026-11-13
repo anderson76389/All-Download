@@ -34,7 +34,7 @@ internal object DownloadRules {
 
     /** YouTube uses rapidly changing yt-dlp extractors and JS challenges.
      * Refresh on unmetered connections just as for other social extractors;
-     * do not update for Twitch or for invalid/spoofed YouTube hostnames.
+     * refresh Twitch too, while rejecting invalid/spoofed hostnames.
      */
     fun isYoutubeHost(url: String): Boolean {
         val host = uri(url)?.host?.lowercase() ?: return false
@@ -44,7 +44,7 @@ internal object DownloadRules {
     }
 
     fun needsFreshExtractor(url: String): Boolean =
-        isYoutubeHost(url) || isSocialVideoHost(url)
+        isYoutubeHost(url) || isSocialVideoHost(url) || isTwitchContentHost(url)
 
     fun isTwitchVod(url: String): Boolean {
         val parsed = uri(url) ?: return false
@@ -81,6 +81,8 @@ internal object DownloadRules {
      */
     fun videoFormat(url: String, quality: Int): String {
         if (isTwitchVod(url)) return when (quality) {
+            3 -> "bestvideo+bestaudio/best"
+            4 -> "bestvideo[height<=2160]+bestaudio/best[height<=?2160]"
             1 -> "bestvideo[height=720]+bestaudio/best[height=720]"
             2 -> "bestvideo[height=480]+bestaudio/best[height=480]"
             else -> "bestvideo[height=1080]+bestaudio/best[height=1080]/bestvideo[height=720]+bestaudio/best[height=720]"

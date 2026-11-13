@@ -48,25 +48,19 @@ TWITCH_VIDEO_QUALITIES = [
 
 
 
-TWITCH_DEFAULT_QUALITY = "1080p (60fps)"
+TWITCH_DEFAULT_QUALITY = "Meilleure qualité (Auto)"
 
 
 def preferred_twitch_quality(formats):
-    """1080p en priorité, puis 720p si la carte connaît déjà les formats.
-
-    Sans métadonnées fiables, proposer 1080p ; HLS tentera 720p au moment
-    du téléchargement, sans requêtes répétées sur Twitch pour afficher le menu.
-    """
+    """Keep Auto uncapped; rank native resolution/fps when Auto is absent."""
     options = [value for value in (formats or []) if isinstance(value, str)]
-    for height in (1080, 720):
-        found = next((
-            value for value in options
-            if re.fullmatch(rf"{height}p(?:\s*\(\d{{2,3}}fps\))?", value)
-        ), None)
-        if found:
-            return found
-    return next((value for value in options if re.fullmatch(r"\d{3,4}p(?:\s*\(\d{2,3}fps\))?", value)),
-                TWITCH_DEFAULT_QUALITY)
+    if "Meilleure qualité (Auto)" in options or not options:
+        return TWITCH_DEFAULT_QUALITY
+    def rank(value):
+        match = re.fullmatch(r"(\d{3,4})p(?:\s*\((\d{2,3})fps\))?", value)
+        return (int(match[1]), int(match[2] or 0)) if match else (0, 0)
+    return max(options, key=rank) if any(rank(v)[0] for v in options) else TWITCH_DEFAULT_QUALITY
+
 
 
 def fallback_metadata(url, formats=None):
