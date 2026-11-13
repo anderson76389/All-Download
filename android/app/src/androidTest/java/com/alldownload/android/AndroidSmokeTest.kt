@@ -103,6 +103,149 @@ class AndroidSmokeTest {
         assertNull(SharedVideoLinks.extract(Intent(Intent.ACTION_VIEW)))
     }
 
+    @Test fun sharesheetSupportsMultipleLinksAndFilesWithoutUntrustedFilePaths() {
+        val u1 = "https://www.youtube.com/watch?v=123"
+        val u2 = "https://www.twitch.tv/videos/2919531847"
+        val shared = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+            type = "text/plain"
+            clipData = android.content.ClipData.newPlainText("URLs", "$u1, $u2")
+        }
+        assertEquals(listOf(u1, u2), SharedVideoLinks.extractAll(shared))
+        val first = android.net.Uri.parse("content://example.gallery/videos/1")
+        val second = android.net.Uri.parse("content://example.gallery/videos/2")
+        val files = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+            type = "video/mp4"
+            putParcelableArrayListExtra(Intent.EXTRA_STREAM,
+                arrayListOf(first, second, first, android.net.Uri.parse("file:///sdcard/private.mp4")))
+        }
+        assertEquals(listOf(first, second), SharedVideoFiles.extract(files))
+        val single = Intent(Intent.ACTION_SEND).apply {
+            type = "video/mp4"
+            putExtra(Intent.EXTRA_STREAM, first)
+        }
+        assertEquals(listOf(first), SharedVideoFiles.extract(single))
+        assertNull(SharedVideoLinks.extract(single))
+        val chooser = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+            type = "video/mp4"
+            setPackage(context.packageName)
+            addCategory(Intent.CATEGORY_DEFAULT)
+        }
+        assertTrue("All-Download absent du partage multiple vidéo",
+            context.packageManager.queryIntentActivities(chooser,
+                android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+                .any { it.activityInfo.name.endsWith(".MainActivity") })
+    }
+
+    @Test fun shareImporterRejectsUnsafeNamesAndNeverAcceptsFileScheme() {
+        assertEquals("video.mp4", SharedVideoImporter.safeName("../../video.mp4", "video/mp4"))
+        assertEquals("Vidéo.mp4", SharedVideoImporter.safeName("Vidéo", "video/mp4"))
+        try {
+            SharedVideoImporter.safeName("malware.apk", "video/mp4")
+            fail("An executable should never be disguised as a video.")
+        } catch (_: IOException) {}
+        try {
+            SharedVideoImporter.importVideo(context, android.net.Uri.parse("file:///etc/passwd"))
+            fail("file:// outside provider must not be read.")
+        } catch (_: IOException) {}
+    }
+
+    @Test fun sharedLocalVideoStreamsIntoAllDownloadAndOriginalIsPreserved() {
+        val id = UUID.randomUUID().toString().take(8)
+        val original = File(File(context.cacheDir, "updates").apply { mkdirs() },
+            "share-test-$id.mp4")
+        val bytes = ByteArray(1024 * 512) { (it % 199).toByte() }
+        original.writeBytes(bytes)
+        val source = androidx.core.content.FileProvider.getUriForFile(context,
+            context.packageName + ".files", original)
+        try {
+            val name = SharedVideoImporter.importVideo(context, source)
+            assertEquals(original.name, name)
+            assertArrayEquals(bytes, original.readBytes())
+            if (Build.VERSION.SDK_INT >= 29) {
+                val projection = arrayOf(MediaStore.MediaColumns._ID,
+                    MediaStore.MediaColumns.DISPLAY_NAME)
+                val selection = MediaStore.MediaColumns.RELATIVE_PATH + "=? AND " +
+                    MediaStore.MediaColumns.DISPLAY_NAME + "=?"
+                val arguments = arrayOf(Environment.DIRECTORY_DOWNLOADS +
+                    "/All-Download/VIDÉOS/", name)
+                var found = false
+                context.contentResolver.query(MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                    projection, selection, arguments, null)?.use { cursor ->
+                    while (cursor.moveToNext()) {
+                        val uri = android.content.ContentUris.withAppendedId(
+                            MediaStore.Downloads.EXTERNAL_CONTENT_URI, cursor.getLong(0))
+                        try {
+                            assertArrayEquals(bytes,
+                                context.contentResolver.openInputStream(uri)!!.use { it.readBytes() })
+                            found = true
+                        } finally {
+                            context.contentResolver.delete(uri, null, null)
+                        }
+                    }
+                }
+                assertTrue("Vidéo reçue depuis Partager absente des Téléchargements", found)
+            } else {
+                @Suppress("DEPRECATION")
+                val stored = File(Environment.getExternalStoragePublicDirectory(
+                    Environment.DIRECTORY_DOWNLOADS), "All-Download/VIDÉOS/" + name)
+                assertArrayEquals(bytes, stored.readBytes())
+                stored.delete()
+            }
+        } finally { original.delete() }
+    }
+
+    @Test fun cancelledVideoShareDoesNotCreatePublicMedia() {
+        val name = "cancel-share-" + UUID.randomUUID().toString().take(8) + ".mp4"
+        val original = File(File(context.cacheDir, "updates").apply { mkdirs() }, name)
+        original.writeBytes(ByteArray(4096) { 42 })
+        try {
+            val source = androidx.core.content.FileProvider.getUriForFile(context,
+                context.packageName + ".files", original)
+            try {
+                SharedVideoImporter.importVideo(context, source) { true }
+                fail("Cancelled transfer should fail instead of publishing a partial.")
+            } catch (_: IOException) { }
+            assertTrue("Shared source must remain intact after cancellation", original.isFile)
+            if (Build.VERSION.SDK_INT >= 29) {
+                context.contentResolver.query(MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                    arrayOf(MediaStore.MediaColumns._ID),
+                    MediaStore.MediaColumns.DISPLAY_NAME + "=? AND " +
+                        MediaStore.MediaColumns.RELATIVE_PATH + "=?",
+                    arrayOf(name, Environment.DIRECTORY_DOWNLOADS +
+                        "/All-Download/VIDÉOS/"), null)?.use { cursor ->
+                    assertEquals("Cancelled partial video incorrectly published", 0, cursor.count)
+                }
+            }
+        } finally { original.delete() }
+    }
+
+    @Test fun stableAndroidReleasesRemainUpdatableFromOlderBetas() {
+        assertTrue(AndroidUpdates.compareVersions("1.0.0", "1.0.0-beta") > 0)
+        assertTrue(AndroidUpdates.compareVersions("1.0.1-beta", "1.0.0") > 0)
+        assertEquals(0, AndroidUpdates.compareVersions("1.0.0", "1.0.0"))
+        val v = "1.0.0"
+        val tag = "android-v$v"
+        val page = "https://github.com/anderson76389/All-Download/releases/tag/$tag"
+        val url = "https://github.com/anderson76389/All-Download/releases/download/" +
+            "$tag/All-Download-Android-$v.apk"
+        val release = AndroidUpdates.Release(v, tag, "Android stable", "Stable", page, url, 200000000)
+        assertEquals(v, AndroidUpdates.decodeCandidate(
+            AndroidUpdates.encodeCandidate(release), "0.6.22-beta")?.version)
+        assertNull(AndroidUpdates.decodeCandidate(
+            AndroidUpdates.encodeCandidate(release), "1.0.0"))
+        val releases = org.json.JSONArray().put(org.json.JSONObject().apply {
+            put("tag_name", tag)
+            put("html_url", page)
+            put("name", "Android stable")
+            put("assets", org.json.JSONArray().put(org.json.JSONObject().apply {
+                put("name", "All-Download-Android-$v.apk")
+                put("browser_download_url", url)
+                put("size", 200000000L)
+            }))
+        })
+        assertEquals(v, AndroidUpdates.findNewer(releases.toString(), "0.6.22-beta")?.version)
+    }
+
     @Test fun downloadServiceIsPrivateWithUserTriggeredShutdown() {
         val component = android.content.ComponentName(context, DownloadService::class.java)
         val info = context.packageManager.getServiceInfo(component, 0)

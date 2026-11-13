@@ -45,7 +45,7 @@ internal object AndroidApkInstaller {
     ) {
         if (busy.get()) return
         val folder = File(context.cacheDir, "updates")
-        val owned = Regex("^All-Download-Android-(\\d+\\.\\d+\\.\\d+-beta)\\.apk(?:\\.part)?$")
+        val owned = Regex("^All-Download-Android-(\\d+\\.\\d+\\.\\d+(?:-beta)?)\\.apk(?:\\.part)?$")
         folder.listFiles()?.forEach { file ->
             if (!file.isFile) return@forEach
             val version = owned.matchEntire(file.name)?.groupValues?.get(1)
@@ -55,7 +55,7 @@ internal object AndroidApkInstaller {
         }
         val prefs = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
         val pending = prefs.getString("version", "").orEmpty()
-        if (Regex("^\\d+\\.\\d+\\.\\d+-beta$").matches(pending) &&
+        if (Regex("^\\d+\\.\\d+\\.\\d+(?:-beta)?$").matches(pending) &&
             AndroidUpdates.compareVersions(pending, installedVersion) <= 0) {
             // Installation completed: don't reopen a stale package installer.
             prefs.edit().clear().apply()
@@ -103,7 +103,7 @@ internal object AndroidApkInstaller {
 
     /** Never delete unrelated private files or a newer pending update. */
     internal fun cleanupOlderApks(folder: File, targetVersion: String, keep: Set<String>): Int {
-        val owned = Regex("^All-Download-Android-(\\d+\\.\\d+\\.\\d+-beta)\\.apk(?:\\.part)?$")
+        val owned = Regex("^All-Download-Android-(\\d+\\.\\d+\\.\\d+(?:-beta)?)\\.apk(?:\\.part)?$")
         var removed = 0
         for (item in folder.listFiles().orEmpty()) {
             val version = owned.matchEntire(item.name)?.groupValues?.get(1) ?: continue
@@ -118,7 +118,7 @@ internal object AndroidApkInstaller {
         "All-Download-Android-${release.version}.apk"
 
     private fun validRelease(release: AndroidUpdates.Release): Boolean {
-        if (!Regex("^\\d+\\.\\d+\\.\\d+-beta$").matches(release.version)) return false
+        if (!Regex("^\\d+\\.\\d+\\.\\d+(?:-beta)?$").matches(release.version)) return false
         val name = assetName(release)
         val prefix = "https://github.com/anderson76389/All-Download/releases/download/"
         return release.tag == "android-v${release.version}" &&
@@ -360,7 +360,7 @@ internal object AndroidApkInstaller {
         val name = preferences.getString("pending", "").orEmpty()
         val version = preferences.getString("version", "").orEmpty()
         val hash = preferences.getString("sha", "").orEmpty()
-        if (!Regex("^All-Download-Android-\\d+\\.\\d+\\.\\d+-beta\\.apk$")
+        if (!Regex("^All-Download-Android-\\d+\\.\\d+\\.\\d+(?:-beta)?\\.apk$")
                 .matches(name)) return
         val file = File(File(activity.cacheDir, "updates"), name)
         if (!file.isFile || hash.length != 64) {

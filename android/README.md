@@ -1,4 +1,17 @@
+# All-Download Android 1.0.0 — édition stable
+
+**Partage Android → All-Download :** depuis YouTube, Twitch, Reddit, Instagram, TikTok, Pinterest ou un navigateur, utiliser **Partager → All-Download**. Pour un lien HTTPS/HTTP, l'écran d'accueil est ouvert et l'URL est préremplie sans téléchargement automatique. Plusieurs liens partagés sont mis en attente.
+
+**Vidéos locales :** depuis Galerie ou Fichiers, partager une vidéo MP4, WebM, MKV, MOV et autres formats reconnus vers All-Download. L'application copie en flux jusqu'à 12 fichiers content:// dans Téléchargements/All-Download/VIDÉOS, sans supprimer les originaux et sans charger toute la vidéo en RAM. Une copie incomplète est supprimée en cas d'échec. Sur Android 7–9, l'autorisation de stockage peut être demandée.
+
+**Mises à jour :** versionCode 30, versionName 1.0.0 et même clé privée que 0.6.22. Le détecteur accepte les versions stables/bêta et donne priorité à la stable à numéros égaux. L'APK est vérifiée (SHA-256, signature) et l'installation requiert la confirmation du système Android. Les réglages et téléchargements doivent rester présents lors d'une installation par-dessus.
+
+**Limites :** certains sites peuvent exiger une authentification, imposer des DRM, bloquer les téléchargements ou ne transmettre aucun fichier à Android. Les tests CI ne remplacent pas les essais sur appareil physique.
+
+---
 ## Android 0.6.22-beta — sécurité des mises à jour
+
+**Limite Dailymotion :** certains flux HLS exigent l'émulation TLS Firefox/Chrome (curl_cffi), qui n'est pas intégrée à l'APK Android. Si ce blocage externe apparaît en CI, le test est marqué *non concluant (SKIP)* avec la raison exacte, jamais « téléchargement réussi ». Les autres erreurs Dailymotion restent des échecs. Les sites compatibles et leurs qualités natives restent inchangés.
 
 - Vérification d'espace avant téléchargement de l'APK (réserve de 16 Mio), sans effacer de fichiers utilisateur.
 - Rejet des réponses checksum trop longues ; aucun chargement non borné en mémoire.
@@ -240,4 +253,4 @@ Le workflow `Build and test Android (beta)` compile et exécute les tests en mod
 
 En local : Android SDK plateforme 35, JDK 17 et Gradle 8.9, puis `gradle -p android :app:assembleDebug`.
 
-**Important :** APK non testé sur appareil réel à cette étape ; ne pas considérer cette branche comme une version stable et ne pas fusionner sans validation Android (YouTube, Twitch, GIF, playlists, MediaStore, annulation, orientation, arrière-plan).
+**Important :** la version 1.0 reste à valider sur des appareils physiques et différents réseaux ; les tests CI valident uniquement les parcours automatisés (YouTube, Twitch, GIF, playlists, MediaStore, annulation, orientation, arrière-plan).
