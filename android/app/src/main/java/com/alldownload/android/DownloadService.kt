@@ -269,6 +269,7 @@ class DownloadService : Service() {
         val root = getExternalFilesDir(null) ?: filesDir
         val work = File(root, "All-Download/Donnees/temporaires/" + task.id)
         var exported = 0
+        var exportRoot = work
         try {
             check(!paused && !cancelled) { "Interrompu." }
             if (!work.isDirectory && !work.mkdirs())
@@ -324,14 +325,18 @@ class DownloadService : Service() {
                 if (paused || cancelled || !DownloadRules.isTwitchVod(task.url)) throw initial
                 state = UiState(true, 0, "Vérification du flux Twitch public…")
                 val manifest = TwitchHls.resolve(task.url, task.quality) { paused || cancelled }
-                val fallback = buildRequest(task.url, task.mode, task.quality, work, manifest)
+                val fallbackWork = File(work, "twitch-source").apply {
+                    check(isDirectory || mkdirs()) { "Dossier Twitch temporaire inaccessible." }
+                }
+                val fallback = buildRequest(task.url, task.mode, task.quality, fallbackWork, manifest)
                 val id = java.net.URI(task.url).path.trimEnd('/').substringAfterLast('/')
-                fallback.addOption("--output", File(work, "Twitch_$id.%(ext)s").absolutePath)
+                fallback.addOption("--output", File(fallbackWork, "Twitch_$id.%(ext)s").absolutePath)
                 transfer(fallback)
+                exportRoot = fallbackWork
             }
             check(!paused && !cancelled) { "Interrompu." }
             val category = DownloadRules.categoryFor(task.url, task.mode)
-            val files = work.walkTopDown().filter { it.isFile &&
+            val files = exportRoot.walkTopDown().filter { it.isFile &&
                 !it.name.endsWith(".part") && !it.name.endsWith(".ytdl") }.toList()
             check(files.isNotEmpty()) { "Aucun fichier final créé par le moteur." }
             for ((index, file) in files.withIndex()) {
