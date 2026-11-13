@@ -77,9 +77,11 @@ données privées exportées ; il n'installe pas les logiciels sur ton appareil.
 
 ## Vérifications complémentaires après la sortie stable 1.0
 
-La 1.0 peut être publiée après les suites automatisées Windows/Android/Linux et les
-vérifications de signature/intégrité. **Stable ne veut pas dire vérifiée sur chaque
-appareil ni sur chaque site distant.** La validation N-1 → N sur un HONOR Magic V6,
+Les Releases stables Windows Build 192, Android 1.0.0 et Linux 1.0.0 x86_64
+ont été publiées le 13 novembre 2026. Leur publication et les tests CI
+ne remplacent **pas** les essais sur appareils physiques ni une restauration
+hors ligne. **Stable ne veut pas dire vérifiée sur chaque appareil ni sur
+chaque site distant.** La validation N-1 → N sur un HONOR Magic V6,
 les tests d'endurance RAM/CPU/batterie et une restauration complète sur machine
 physique doivent être documentés séparément dans l'issue #60 ; ils ne sont pas
 attestés par les émulateurs.
@@ -109,3 +111,43 @@ Aucun téléchargement de média, aucune compilation, aucune PR automatique et
 aucune mise à jour silencieuse. Les versions sont affichées dans le résumé
 GitHub Actions et doivent être examinées humainement. La surveillance est
 conditionnée à la disponibilité de GitHub Actions.
+
+
+## Sécuriser la branche principale et le cycle des Releases
+
+Au 13 novembre 2026, la branche `main` n'est pas protégée : cette configuration
+**doit être effectuée dans les paramètres GitHub du dépôt**. La présence d'une CI
+ou d'un fichier CODEOWNERS n'impose pas de protection à elle seule.
+
+1. Dans GitHub, ouvrir **Settings → Rules → Rulesets** (ou **Settings → Branches**),
+   créer une règle active pour la branche `main`.
+2. Exiger une pull request avant modification de `main` ; refuser la suppression
+   et les pushes forcés. Pour un dépôt géré seul, ne pas imposer une approbation
+   par un autre utilisateur si cela empêche toutes les fusions.
+3. Exiger le statut **Python safety checks (no media/network)** du workflow
+   `Fast pre-merge safety (no release)` (toujours lancé sur chaque PR vers
+   `main`). Ne pas imposer les builds Windows/Android/Linux comme statuts
+   obligatoires sur chaque PR : leurs déclenchements sont conditionnés aux
+   fichiers modifiés et pourraient bloquer les corrections de documentation.
+4. Si un changement touche réellement une plateforme, vérifier également ses
+   compilations et ses tests fonctionnels dans la PR, puis fusionner seulement
+   quand les résultats nécessaires sont verts. Ne pas contourner les échecs.
+5. L'audit publié `Ultimate three-platform release audit` est déclenché après
+   les workflows de compilation/publication réussis pour la plateforme concernée.
+   Il doit valider les archives **réellement publiées**, dont leurs SHA-256.
+   Un rapport d'audit échoué impose enquête ; les logiciels déjà publiés ne sont
+   pas automatiquement retirés.
+
+Conserver hors de GitHub l'archive Git complète, les fichiers de Release
+officiels et leurs SHA-256, les paramètres locaux, ainsi que la clé Android
+`.p12` et son mot de passe dans un coffre **chiffré et distinct**. Sur Android,
+l'installation de la version suivante doit utiliser le même certificat et un
+`versionCode` supérieur ; les essais réels sur HONOR Magic V6 restent à
+renseigner dans l'issue #60.
+
+**Limites à ne pas masquer :** la compilation Linux 1.0.0 couvre x86_64 et non
+toutes les architectures Linux ; aucun installateur `.deb`/`.rpm` n'est
+certifié. La présence d'une empreinte SHA-256 ne prouve pas, seule, l'identité
+d'un éditeur Windows ; la signature de code Windows nécessiterait un certificat
+approprié. Aucun rapport automatisé ne peut certifier zéro fuite de mémoire
+ou de batterie sur tous les matériels.

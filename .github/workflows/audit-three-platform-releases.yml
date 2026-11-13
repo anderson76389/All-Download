@@ -2,15 +2,25 @@ name: Ultimate three-platform release audit
 
 on:
   workflow_dispatch:
+  # workflow_run also fires for releases created with GITHUB_TOKEN, unlike
+  # a plain release:published trigger; check only the platform just built.
+  workflow_run:
+    workflows:
+      - Build All-Download (Windows)
+      - Publish All-Download Android beta
+      - Build and test Linux (stable)
+    types: [completed]
   pull_request:
     paths:
       - ".github/scripts/audit_release_assets.py"
       - ".github/workflows/audit-three-platform-releases.yml"
+      - "tests/test_published_release_audit.py"
   push:
     branches: [main]
     paths:
       - ".github/scripts/audit_release_assets.py"
       - ".github/workflows/audit-three-platform-releases.yml"
+      - "tests/test_published_release_audit.py"
 
 permissions:
   contents: read
@@ -22,15 +32,34 @@ concurrency:
 jobs:
   published-release-integrity:
     name: Validate published ${{ matrix.platform }} release
+    # An unsuccessful build is not permission to mark its published assets valid.
+    if: >-
+      ${{
+        github.event_name != 'workflow_run' ||
+        (github.event.workflow_run.conclusion == 'success' &&
+          ((github.event.workflow_run.name == 'Publish All-Download Android beta' &&
+            github.event.workflow_run.head_branch == 'feature/android-app') ||
+           (github.event.workflow_run.head_branch == 'main' &&
+            (github.event.workflow_run.name == 'Build All-Download (Windows)' ||
+             github.event.workflow_run.name == 'Build and test Linux (stable)'))))
+      }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
-        platform: [windows, android, linux]
+        # On a new successful build, validate only its OS (avoid costly
+        # re-downloading the other two platforms). Manual/PR checks test all.
+        platform: ${{ fromJSON(
+          github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Build All-Download (Windows)' && '["windows"]' ||
+          github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Publish All-Download Android beta' && '["android"]' ||
+          github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Build and test Linux (stable)' && '["linux"]' ||
+          '["windows","android","linux"]') }}
     steps:
       - name: Check out independent release auditor
         uses: actions/checkout@v4
+      - name: Regression-test auditor guards before downloading release assets
+        run: python3 -m unittest discover -s tests -p test_published_release_audit.py -v
       - name: Select published release for requested platform
         id: release
         env:
@@ -64,7 +93,7 @@ jobs:
           set -euo pipefail
           mkdir -p "release-assets/$PLATFORM"
           case "$PLATFORM" in
-            windows) PATTERN="All-Download-*-Windows.zip" ;;
+            windows) PATTERN="All-Download-*-Windows.zip*" ;;
             android) PATTERN="All-Download-Android-*.apk*" ;;
             linux) PATTERN="All-Download-Linux-x86_64.*" ;;
           esac

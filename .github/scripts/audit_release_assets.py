@@ -70,6 +70,7 @@ def check_windows(folder: Path) -> None:
     ):
         archive = folder / name
         require(archive.is_file(), f"Windows ZIP missing: {name}")
+        verify_checksum(archive)
         with zipfile.ZipFile(archive) as zf:
             names = zf.namelist()
             require(len(names) == len(set(names)), f"Duplicate archive names: {name}")
@@ -101,7 +102,7 @@ def check_windows(folder: Path) -> None:
 
 
 def check_android(folder: Path, tag: str) -> None:
-    require(bool(re.fullmatch(r"android-v\d+\.\d+\.\d+-beta", tag)),
+    require(bool(re.fullmatch(r"android-v\d+\.\d+\.\d+(?:-beta)?", tag)),
             f"Invalid Android release tag: {tag}")
     apk = folder / f"All-Download-Android-{tag.removeprefix('android-v')}.apk"
     verify_checksum(apk)

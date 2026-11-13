@@ -1,0 +1,38 @@
+name: Fast pre-merge safety (no release)
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: all-download-premerge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  safety-smoke-tests:
+    name: Python safety checks (no media/network)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout proposed change
+        uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile portable Python sources (without importing native dependencies)
+        run: |
+          python -m py_compile yt_app.py twitch_hls.py twitch_vod.py deno_runtime.py
+          python -m py_compile scripts/offline_backup.py scripts/monitor_upstreams.py scripts/verify_release_asset.py
+          python -m py_compile .github/scripts/audit_release_assets.py
+      - name: Release checksums, Android tags and archive integrity regression tests
+        run: python -m unittest discover -s tests -p "test_published_release_audit.py" -v
+      - name: Offline backups and safe restoration tests
+        run: python -m unittest discover -s tests -p "test_offline_backup.py" -v
+      - name: Asset integrity and metadata-only upstream monitoring tests
+        run: |
+          python -m unittest discover -s tests -p "test_release_asset_integrity.py" -v
+          python -m unittest discover -s tests -p "test_monitor_upstreams.py" -v
