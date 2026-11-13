@@ -1,6 +1,10 @@
+# All-Download Linux 1.0.0 — édition stable
+
+La 1.0 conserve l'interface Windows adaptée à Linux, la gestion native yt-dlp/FFmpeg, les données dans All-Download/ et les fragments .part après échec réseau. Mises à jour Linux volontairement manuelles, avec archive officielle et SHA-256. Les limitations de formats dépendent des sites externes ; Debian/Fedora et les tests physiques ne sont pas certifiés par la CI Ubuntu.
+
 **Version 0.1.6-beta :** reprise des fragments yt-dlp après erreur réseau : un même lien et les mêmes options réutilisent leur dossier temporaire privé. Les fragments restent disponibles après échec ; ils sont nettoyés après réussite/annulation et les anciens espaces temporaires sont purgés avec prudence après sept jours. La reprise dépend du site et de la compatibilité des fragments ; elle n'est pas garantie pour les liens expirés ou les flux protégés.
 
-# All-Download Linux x86_64 — bêta
+# All-Download Linux x86_64 — historique des bêtas
 
 **Version 0.1.5-beta :** fermeture de la fenêtre Qt suivie de l'arrêt des téléchargements et de leurs sous-processus, reprise réseau yt-dlp best-effort (`--continue` et réessais limités), compression xz choisie après comparaison des tailles réelles dans GitHub Actions. La reprise après arrêt complet de Linux n'est pas garantie : les fichiers temporaires d'une tâche en cours peuvent être supprimés.
 
@@ -12,7 +16,7 @@ La version Linux reprend le **HTML/CSS/JS Windows à l'identique** (extrait auto
 
 ## Installer et démarrer
 
-1. Télécharger All-Download-Linux-x86_64.tar.xz (ou .tar.gz) depuis la Release Linux 0.1.6-beta.
+1. Télécharger All-Download-Linux-x86_64.tar.xz (ou .tar.gz) depuis la Release Linux 1.0.0.
 2. Décompresser le dossier All-Download dans un emplacement où l'utilisateur peut écrire.
 3. Ouvrir ce dossier, puis lancer All-Download-Linux (pas besoin de sudo).
 4. Les médias sont stockés dans les sept dossiers VIDÉOS, AUDIOS, GIFS, TWITCH, PLAYLIST, CHAÎNES et AUTRES. Paramètres, cookies facultatifs et cache restent sous Donnees/.
