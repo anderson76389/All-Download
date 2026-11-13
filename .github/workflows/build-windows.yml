@@ -9,6 +9,11 @@ on:
       - ".github/release-notes/**"
       - ".github/workflows/release-retention.yml"
       - ".github/workflows/build-windows.yml"
+      # Release audits and safety docs must never create a new Windows binary.
+      - ".github/workflows/audit-three-platform-releases.yml"
+      - ".github/workflows/premerge-safety.yml"
+      - ".github/scripts/audit_release_assets.py"
+      - "tests/test_published_release_audit.py"
       # Builds based on Android/Linux changes waste Windows CI minutes and releases.
       - "android/**"
       - "linux/**"
