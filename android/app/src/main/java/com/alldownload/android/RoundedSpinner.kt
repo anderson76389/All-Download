@@ -20,7 +20,7 @@ import android.widget.TextView
 class RoundedSpinner @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null,
     defStyleAttr: Int = android.R.attr.spinnerStyle
-) : Spinner(context, attrs, defStyleAttr) {
+) : Spinner(context, attrs, defStyleAttr, Spinner.MODE_DIALOG) {
     internal var selectionDialog: Dialog? = null
         private set
     private fun px(value: Int) = (value * resources.displayMetrics.density).toInt()
@@ -68,6 +68,7 @@ class RoundedSpinner @JvmOverloads constructor(
                 minimumHeight = px(52)
                 setPadding(px(16), px(12), px(16), px(12))
                 isSelected = position == selectedItemPosition
+                backgroundTintList = null
                 background = shape(if (isSelected) purple else panel, 16)
                 setTextColor(if (isSelected) Color.WHITE else foreground)
                 stateListAnimator = null
