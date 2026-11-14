@@ -439,7 +439,10 @@ class DownloadService : Service() {
                     else "0"
                 request.addOption("--audio-quality", qualitySetting)
             }
-            4 -> request.addOption("--recode-video", "gif")
+            4 -> {
+                request.addOption("--format", DownloadRules.videoFormat(url, 0))
+                request.addOption("--recode-video", "gif")
+            }
             else -> {
                 request.addOption("--format", DownloadRules.videoFormat(url, quality))
                 val container = if (DownloadOptions.get(this)

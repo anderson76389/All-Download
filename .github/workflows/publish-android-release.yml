@@ -158,7 +158,9 @@ jobs:
           - Windows et Linux inchangés par ce code Android.
           - Qualité par défaut : 1080p maximum, source native sans agrandissement artificiel. Les résolutions supérieures restent un choix manuel.
           - Twitch : secours HLS natif après un échec du moteur principal.
-          - Réglages mobiles : logos et textes rapprochés et alignés au début de la ligne.
+          - Réglages mobiles : logos et textes regroupés, menus de choix arrondis.
+          - Twitch : raccourci actif visible et indication VOD/clip.
+          - Formats cohérents : résumé de sortie par type, qualité vidéo masquée pour audio/GIF.
           - Android 7+, téléphone, tablette et écrans pliables.
           - Boutons, thèmes Clair/Sombre/OLED, menus et file persistante conservés.
           - Mise à jour intégrée : APK privée vérifiée SHA-256/signature et installateur officiel Android.

@@ -1,5 +1,7 @@
 # All-Download Android 1.0.2 — édition stable
 
+**Interface mobile 1.0.2 :** sélecteurs arrondis communs à tous les formats, onglets des paramètres centrés comme un groupe icône/libellé, raccourci Twitch visiblement actif (VOD ou clip), et résumé du format de sortie pour chaque type de téléchargement. La résolution vidéo est masquée pour l’audio et les GIF.
+
 **Version 1.0.2 :** 1080p maximum par défaut, secours Twitch HLS sur les trois plateformes et réglages Android plus compacts.
 
 **Partage Android → All-Download :** depuis YouTube, Twitch, Reddit, Instagram, TikTok, Pinterest ou un navigateur, utiliser **Partager → All-Download**. Pour un lien HTTPS/HTTP, l'écran d'accueil est ouvert et l'URL est préremplie sans téléchargement automatique. Plusieurs liens partagés sont mis en attente.
