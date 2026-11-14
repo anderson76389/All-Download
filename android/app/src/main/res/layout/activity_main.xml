@@ -185,15 +185,15 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:tag="muted"
-                            android:text="Format"
+                            android:text="Type de téléchargement"
                             android:textColor="#A1A1AA"
                             android:textSize="12sp"/>
-                        <Spinner
+                        <com.alldownload.android.RoundedSpinner
                             android:id="@+id/modeSpinner"
                             android:layout_width="match_parent"
                             android:layout_height="48dp"
                             android:layout_marginTop="4dp"
-                            android:contentDescription="Format de téléchargement"
+                            android:contentDescription="Type de téléchargement"
                             android:tag="input"/>
                     </LinearLayout>
                     <LinearLayout
@@ -209,7 +209,7 @@
                             android:text="Qualité"
                             android:textColor="#A1A1AA"
                             android:textSize="12sp"/>
-                        <Spinner
+                        <com.alldownload.android.RoundedSpinner
                             android:id="@+id/qualitySpinner"
                             android:layout_width="match_parent"
                             android:layout_height="48dp"
@@ -218,6 +218,14 @@
                             android:tag="input"/>
                     </LinearLayout>
                 </LinearLayout>
+                <TextView
+                    android:id="@+id/downloadFormatSummary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:tag="muted"
+                    android:textColor="#A1A1AA"
+                    android:textSize="12sp"/>
                 <Button
                     android:id="@+id/cancelButton"
                     android:layout_width="match_parent"
@@ -638,7 +646,7 @@
                     android:tag="muted"
                     android:text="Choisissez un thème adapté à votre écran."
                     android:textColor="#A1A1AA"/>
-                <Spinner
+                <com.alldownload.android.RoundedSpinner
                     android:id="@+id/themeSpinner"
                     android:layout_width="match_parent"
                     android:layout_height="48dp"

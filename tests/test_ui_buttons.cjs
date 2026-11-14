@@ -290,16 +290,16 @@ async function run() {
   assert.equal(doc.querySelectorAll('#errList svg[onload]').length, 0, 'Log non échappé');
   assert.equal(win.__evil, undefined);
   win.clearQueue();
-  // Twitch : source native Auto sans plafond, choix manuel conservé.
+  // Twitch : 1080p maximum par défaut, choix manuel conservé.
   win.selectGlobalMode('Vidéo');
   input.value='https://www.twitch.tv/videos/1111111111';
   win.addVideo();
   await flush();
-  assert.equal(win.eval('queue[0].selectedQuality'),'Meilleure qualité (Auto)');
+  assert.equal(win.eval('queue[0].selectedQuality'),'1080p');
   assert.match(doc.querySelector('.media-card').textContent,/TWITCH/);
   win.setCardMode(0,'Audio');
   win.setCardMode(0,'Vidéo');
-  assert.equal(win.eval('queue[0].selectedQuality'),'Meilleure qualité (Auto)');
+  assert.equal(win.eval('queue[0].selectedQuality'),'1080p');
   win.setCardQuality(0,'720p','720p (HD)');
   assert.equal(win.eval('queue[0].selectedQuality'),'720p');
   action('.media-card [title="Télécharger"]');
@@ -309,7 +309,7 @@ async function run() {
   input.value='https://www.twitch.tv/videos/2222222222';
   win.addVideo();
   await flush();
-  assert.equal(win.eval('queue[0].selectedQuality'),'Meilleure qualité (Auto)');
+  assert.equal(win.eval('queue[0].selectedQuality'),'720p');
   win.clearQueue();
 
   // Erreur d'extraction : boutons Cookies, Logs et Réessayer.

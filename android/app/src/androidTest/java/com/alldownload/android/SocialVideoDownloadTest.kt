@@ -134,6 +134,12 @@ class SocialVideoDownloadTest {
                             conciseError(details), false
                     )
                 }
+                if (platform == "Instagram" && details.contains(
+                        "You have exceeded the rate-limit for accessing posts anonymously",
+                        ignoreCase = true)) {
+                    Assume.assumeTrue("Instagram : limite des accès anonymes sur le réseau CI ; " +
+                        "téléchargement non validé : " + conciseError(details), false)
+                }
                 if (platform == "Instagram" &&
                     details.contains("Instagram sent an empty media response", ignoreCase = true)) {
                     // L'URL a renvoyé une réponse vide sur le réseau GitHub CI.

@@ -49,6 +49,20 @@ internal object MobileIconLabel {
         button.requestLayout()
     }
 
+    fun stacked(button: Button, minimumInsetPx: Int) {
+        button.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+        button.includeFontPadding = false
+        button.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            val icon = button.compoundDrawablesRelative[1] ?: return@addOnLayoutChangeListener
+            val textHeight = button.layout?.height ?: button.paint.fontSpacing.roundToInt()
+            val contentHeight = icon.bounds.height() + button.compoundDrawablePadding + textHeight
+            val top = ((button.height - contentHeight) / 2).coerceAtLeast(minimumInsetPx)
+            if (button.paddingTop != top || button.paddingBottom != minimumInsetPx)
+                button.setPadding(button.paddingLeft, top, button.paddingRight, minimumInsetPx)
+        }
+        button.requestLayout()
+    }
+
     fun leading(button: Button, startPx: Int, endPx: Int) {
         button.setTag(R.id.iconLabelMinimumInset, null)
         button.gravity = Gravity.START or Gravity.CENTER_VERTICAL

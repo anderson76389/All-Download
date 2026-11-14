@@ -1,12 +1,14 @@
-# All-Download Android 1.0.1 — édition stable
+# All-Download Android 1.0.2 — édition stable
 
-**Version 1.0.1 :** meilleure qualité native par défaut, secours Twitch HLS sur les trois plateformes et réglages Android plus compacts.
+**Interface mobile 1.0.2 :** sélecteurs arrondis communs à tous les formats, onglets des paramètres centrés comme un groupe icône/libellé, raccourci Twitch visiblement actif (VOD ou clip), et résumé du format de sortie pour chaque type de téléchargement. La résolution vidéo est masquée pour l’audio et les GIF.
+
+**Version 1.0.2 :** 1080p maximum par défaut, secours Twitch HLS sur les trois plateformes et réglages Android plus compacts.
 
 **Partage Android → All-Download :** depuis YouTube, Twitch, Reddit, Instagram, TikTok, Pinterest ou un navigateur, utiliser **Partager → All-Download**. Pour un lien HTTPS/HTTP, l'écran d'accueil est ouvert et l'URL est préremplie sans téléchargement automatique. Plusieurs liens partagés sont mis en attente.
 
 **Vidéos locales :** depuis Galerie ou Fichiers, partager une vidéo MP4, WebM, MKV, MOV et autres formats reconnus vers All-Download. L'application copie en flux jusqu'à 12 fichiers content:// dans Téléchargements/All-Download/VIDÉOS, sans supprimer les originaux et sans charger toute la vidéo en RAM. Une copie incomplète est supprimée en cas d'échec. Sur Android 7–9, l'autorisation de stockage peut être demandée.
 
-**Mises à jour :** versionCode 31, versionName 1.0.1 et même clé privée que 0.6.22. Le détecteur accepte les versions stables/bêta et donne priorité à la stable à numéros égaux. L'APK est vérifiée (SHA-256, signature) et l'installation requiert la confirmation du système Android. Les réglages et téléchargements doivent rester présents lors d'une installation par-dessus.
+**Mises à jour :** versionCode 32, versionName 1.0.2 et même clé privée que 0.6.22. Le détecteur accepte les versions stables/bêta et donne priorité à la stable à numéros égaux. L'APK est vérifiée (SHA-256, signature) et l'installation requiert la confirmation du système Android. Les réglages et téléchargements doivent rester présents lors d'une installation par-dessus.
 
 **Limites :** certains sites peuvent exiger une authentification, imposer des DRM, bloquer les téléchargements ou ne transmettre aucun fichier à Android. Les tests CI ne remplacent pas les essais sur appareil physique.
 
@@ -208,7 +210,7 @@ Nouvelle application Android **indépendante de Windows**, dans le dossier `andr
 - **Logo Android compact :** l'image Android dédiée est produite en PNG 192 × 192 pour l'interface et en PNG adaptatif 288 × 288 avec marges de sécurité Android. Les éléments Windows ne sont ni renommés ni supprimés.
 - **Accueil plus proche de Windows :** aperçu léger de la file (trois tâches au maximum), accès direct à la file complète, modes rapides vidéo/audio/GIF/playlist/Twitch, collage d’URL et nettoyage ciblé des tâches échouées ou en attente.
 - **Identité visuelle et commandes :** onglets de réglages **Téléchargement, Application, Réseau** fidèles à la navigation Windows, et réorganisation en barre latérale sur tablette et pliable ouvert. Seuls les réglages réellement implémentés par yt-dlp/Android sont activables.
-- **Twitch :** VODs et clips Twitch enregistrés dans le dossier **TWITCH** ; la qualité Auto sélectionne la meilleure source native disponible.
+- **Twitch :** VODs et clips Twitch enregistrés dans le dossier **TWITCH** ; le réglage par défaut privilégie une source native jusqu’à 1080p.
 
 Ces mesures évitent les opérations superflues et limitent les allocations pendant l'utilisation, mais **une consommation chiffrée, la stabilité sur plusieurs jours et le rendu spécifique HONOR Magic V6 exigent encore des essais sur cet appareil réel**. Des téléchargements très longs ou des conversions vidéo/audio utilisent nécessairement de la batterie et du stockage temporaire.
 
@@ -233,7 +235,7 @@ Sur tablette et sur pliable ouvert (largeur Android d'au moins 720 dp), l'interf
 - Modes vidéo, audio MP3/M4A/FLAC, GIF (conversion), playlists et chaînes ; URL partagée depuis d'autres applis, annulation, progression et notification de téléchargement.
 - Téléchargement **dans l'espace privé temporaire** de l'appli, puis export (streaming) dans `Téléchargements/All-Download/<catégorie>/` via MediaStore sur Android 10+, et accès direct sur Android 7-9 (permission de stockage).
 - Répertoires catégorisés : `VIDÉOS`, `AUDIOS`, `TWITCH`, `GIFS`, `CHAÎNES`, `PLAYLIST`, `AUTRES`.
-- La qualité **Auto (meilleure)** est sélectionnée par défaut pour les vidéos, y compris Twitch : meilleure source native disponible, sans plafond à 1080p ni agrandissement artificiel. Les limites de résolution restent sélectionnables manuellement. En cas d’échec de l’extracteur Twitch, un secours HLS utilise le flux public disponible.
+- La qualité **1080p** est sélectionnée par défaut pour les vidéos, y compris Twitch : meilleure source native disponible, avec un plafond de 1080p par défaut ni agrandissement artificiel. Les limites de résolution restent sélectionnables manuellement. En cas d’échec de l’extracteur Twitch, un secours HLS utilise le flux public disponible.
 
 ## Liens sociaux et comptes (bêta 0.4.0)
 

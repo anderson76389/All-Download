@@ -1478,7 +1478,7 @@ HTML_PAGE = """<!DOCTYPE html>
             <div class="bottom-v-separator"></div>
 
             <div class="pill-dropdown" id="globalQualPill" onclick="toggleDropdown('globalQualPopover', event)">
-              <span id="globalQualText">Meilleure qualité (Auto)</span>
+              <span id="globalQualText">1080p (Full HD)</span>
               <svg class="svg-icon" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
               <div class="dropdown-popover upward" id="globalQualPopover"></div>
             </div>
@@ -1883,7 +1883,7 @@ HTML_PAGE = """<!DOCTYPE html>
   let activeSavedTheme = document.body.classList.contains('theme-dark_pure') ? 'dark_pure'
     : document.body.classList.contains('theme-dark') ? 'dark' : 'light';
   let currentGlobalMode = 'Vidéo';
-  let currentGlobalQuality = 'Meilleure qualité (Auto)';
+  let currentGlobalQuality = '1080p (Full HD)';
   let currentQuickSettings = {};
   let toastHideTimer = null;
 
@@ -2129,7 +2129,12 @@ HTML_PAGE = """<!DOCTYPE html>
   }
 
   function defaultVideoQuality(item) {
-    return 'Meilleure qualité (Auto)';
+    const rank = value => {
+      const match = /^(\d{3,4})p(?:\s*\((\d{2,3})fps\))?$/.exec(value);
+      return match ? Number(match[1]) * 1000 + Number(match[2] || 0) : 0;
+    };
+    const formats = (item.formats || []).filter(value => rank(value) > 0 && rank(value) < 1081000);
+    return formats.sort((a, b) => rank(b) - rank(a))[0] || '1080p';
   }
 
   function selectGlobalMode(mode, e) {
@@ -2146,8 +2151,8 @@ HTML_PAGE = """<!DOCTYPE html>
       currentGlobalQuality = 'GIF';
       document.getElementById('globalQualText').innerText = 'GIF (Haute Qualité)';
     } else {
-      currentGlobalQuality = 'Meilleure qualité (Auto)';
-      document.getElementById('globalQualText').innerText = 'Meilleure qualité (Auto)';
+      currentGlobalQuality = '1080p (Full HD)';
+      document.getElementById('globalQualText').innerText = '1080p (Full HD)';
     }
 
     updateGlobalQualityDropdown();
@@ -4052,7 +4057,7 @@ class DownloaderAPI:
                             if h_match:
                                 h = h_match.group(1)
                                 cmd.extend([
-                                    "-f", f"bestvideo[height<=?{h}]+bestaudio/best[height<=?{h}]/best",
+                                    "-f", f"bestvideo[height<=?{h}]+bestaudio/best[height<=?{h}]",
                                     "--format-sort", f"res:{h},fps"
                                 ])
                             else:

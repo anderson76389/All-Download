@@ -516,7 +516,7 @@ class DownloaderAPI:
         else:
             cmd.append("--no-playlist")
         mode = item.get("mode", "Vidéo")
-        quality = str(item.get("selectedQuality") or "Meilleure qualité (Auto)")
+        quality = str(item.get("selectedQuality") or "1080p")
         if mode == "Audio":
             cmd += ["--extract-audio"]
             fmt = quality if quality in ("M4A", "FLAC", "MP3_320") else settings.get("audio_format", "FLAC")
@@ -651,7 +651,7 @@ class DownloaderAPI:
                         from twitch_hls import resolve_hls, probe_native_height
                         self._js("updateDownloadProgress", 0, "Vérification du flux Twitch public…")
                         manifest, _, _, _ = resolve_hls(url,
-                            item.get("selectedQuality") or "Meilleure qualité (Auto)",
+                            item.get("selectedQuality") or "1080p",
                             source_height_probe=lambda source: probe_native_height(
                                 self._tool("ffprobe"), source))
                         if not self._cancel:

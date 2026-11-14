@@ -48,18 +48,17 @@ TWITCH_VIDEO_QUALITIES = [
 
 
 
-TWITCH_DEFAULT_QUALITY = "Meilleure qualité (Auto)"
+TWITCH_DEFAULT_QUALITY = "1080p (60fps)"
 
 
 def preferred_twitch_quality(formats):
-    """Keep Auto uncapped; rank native resolution/fps when Auto is absent."""
+    """Prefer the best advertised native quality at or below 1080p."""
     options = [value for value in (formats or []) if isinstance(value, str)]
-    if "Meilleure qualité (Auto)" in options or not options:
-        return TWITCH_DEFAULT_QUALITY
     def rank(value):
         match = re.fullmatch(r"(\d{3,4})p(?:\s*\((\d{2,3})fps\))?", value)
         return (int(match[1]), int(match[2] or 0)) if match else (0, 0)
-    return max(options, key=rank) if any(rank(v)[0] for v in options) else TWITCH_DEFAULT_QUALITY
+    capped = [v for v in options if 0 < rank(v)[0] <= 1080]
+    return max(capped, key=rank) if capped else TWITCH_DEFAULT_QUALITY
 
 
 

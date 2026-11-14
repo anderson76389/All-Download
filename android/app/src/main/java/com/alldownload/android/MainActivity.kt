@@ -73,6 +73,7 @@ class MainActivity : Activity() {
     private lateinit var scroll: ScrollView
     private lateinit var content: LinearLayout
     private lateinit var urlInput: EditText
+    private var twitchShortcutSelected = false
     private lateinit var modeSpinner: Spinner
     private lateinit var qualitySpinner: Spinner
     private lateinit var themeSpinner: Spinner
@@ -203,22 +204,24 @@ class MainActivity : Activity() {
 
         val modes = listOf("Vidéo", "Audio MP3", "Audio M4A", "Audio FLAC",
             "GIF", "Playlist", "Chaîne")
-        val qualities = listOf("1080p (sinon 720p)",
+        val qualities = listOf("1080p maximum",
             "720p", "480p", "Auto (meilleure)", "2160p")
+        twitchShortcutSelected = savedInstanceState?.getBoolean("twitch_shortcut", false) ?: false
         modeSpinner.adapter = spinnerAdapter(modes)
         qualitySpinner.adapter = spinnerAdapter(qualities)
-        if (!settings.getBoolean("native_best_quality_default_v1", false)) {
-            settings.edit().putInt("last_quality", 3)
-                .putBoolean("native_best_quality_default_v1", true).apply()
+        if (!settings.getBoolean("native_1080_quality_default_v2", false)) {
+            settings.edit().putInt("last_quality", 0)
+                .putBoolean("native_1080_quality_default_v2", true).apply()
         }
         if (savedInstanceState == null) {
             modeSpinner.setSelection(settings.getInt("last_mode", 0).coerceIn(0, 6))
-            qualitySpinner.setSelection(settings.getInt("last_quality", 3).coerceIn(0, 4))
+            qualitySpinner.setSelection(settings.getInt("last_quality", 0).coerceIn(0, 4))
         }
         modeSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onNothingSelected(parent: AdapterView<*>?) {}
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 settings.edit().putInt("last_mode", position).apply()
+                if (position != 0) twitchShortcutSelected = false
                 styleQuickModes()
             }
         }
@@ -304,20 +307,29 @@ class MainActivity : Activity() {
                 Toast.LENGTH_SHORT).show()
         }
         findViewById<Button>(R.id.quickVideoButton).setOnClickListener {
+            twitchShortcutSelected = false
             modeSpinner.setSelection(0)
+            styleQuickModes()
             selectTab(0)
             urlInput.requestFocus()
         }
         findViewById<Button>(R.id.quickAudioButton).setOnClickListener {
+            twitchShortcutSelected = false
             modeSpinner.setSelection(1)
+            styleQuickModes()
             selectTab(0)
             urlInput.requestFocus()
         }
         listOf(R.id.quickGifButton to 4, R.id.quickPlaylistButton to 5,
             R.id.quickTwitchButton to 0).forEach { (buttonId, mode) ->
             findViewById<Button>(buttonId).setOnClickListener {
+                twitchShortcutSelected = buttonId == R.id.quickTwitchButton
                 modeSpinner.setSelection(mode)
-                if (buttonId == R.id.quickTwitchButton) qualitySpinner.setSelection(3)
+                if (twitchShortcutSelected) {
+                    qualitySpinner.setSelection(0)
+                    Toast.makeText(this, "Twitch : colle un lien de VOD ou de clip.", Toast.LENGTH_SHORT).show()
+                }
+                styleQuickModes()
                 selectTab(0)
                 urlInput.requestFocus()
             }
@@ -416,7 +428,7 @@ class MainActivity : Activity() {
         styleNavigation()
         // Show the compact progress dock only during an active transfer.
         updatePhoneStatusDock()
-        if (tab == 0) renderHomeQueue()
+        if (tab == 0) { renderHomeQueue(); styleQuickModes() }
         if (tab == 1) {
             lastQueueRevision = -1L
             queueVisible = 24
@@ -1208,7 +1220,19 @@ class MainActivity : Activity() {
         // Video resolutions do not apply to audio-only extraction. Keep the
         // setting saved, but never show an irrelevant 1080p selector for MP3/FLAC.
         findViewById<View>(R.id.downloadQualityGroup)?.visibility =
-            if (selected in 1..3) View.GONE else View.VISIBLE
+            if (selected in 1..4) View.GONE else View.VISIBLE
+        urlInput.hint = if (twitchShortcutSelected) "Lien Twitch (VOD ou clip)…" else "Coller une URL…"
+        val container = settings.getString("video_format", "MP4") ?: "MP4"
+        val mp3 = settings.getString("audio_quality", "0") ?: "0"
+        findViewById<TextView>(R.id.downloadFormatSummary).text = when (selected) {
+            1 -> "MP3 • " + if (mp3 == "0") "meilleure qualité disponible" else mp3.removeSuffix("K") + " kbit/s"
+            2 -> "M4A • audio uniquement"
+            3 -> "FLAC • audio uniquement, qualité selon la source"
+            4 -> "GIF animé • sans audio"
+            5 -> "Playlist • vidéos en $container"
+            6 -> "Chaîne • vidéos en $container"
+            else -> if (twitchShortcutSelected) "Twitch • VOD ou clip en $container" else "Vidéo • $container"
+        }
         val modes = listOf(R.id.quickVideoButton to 0, R.id.quickAudioButton to 1,
             R.id.quickGifButton to 4, R.id.quickPlaylistButton to 5,
             R.id.quickTwitchButton to -1)
@@ -1221,8 +1245,10 @@ class MainActivity : Activity() {
         )
         modes.forEach { (id, mode) ->
             val button = findViewById<Button>(id) ?: return@forEach
-            val active = mode == selected ||
-                (id == R.id.quickAudioButton && selected in 1..3)
+            val active = if (id == R.id.quickTwitchButton) twitchShortcutSelected
+                else (mode == selected && !(id == R.id.quickVideoButton && twitchShortcutSelected)) ||
+                    (id == R.id.quickAudioButton && selected in 1..3)
+            button.isSelected = active
             button.background = rounded(
                 if (active) purple else colors.input,
                 if (active) purple else colors.border, 18)
@@ -1646,6 +1672,7 @@ class MainActivity : Activity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putString("url", urlInput.text.toString())
+        outState.putBoolean("twitch_shortcut", twitchShortcutSelected)
         outState.putInt("mode", modeSpinner.selectedItemPosition)
         outState.putInt("quality", qualitySpinner.selectedItemPosition)
         outState.putInt("tab", selectedTab)

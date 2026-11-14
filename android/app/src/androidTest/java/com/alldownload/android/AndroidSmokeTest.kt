@@ -52,7 +52,7 @@ class AndroidSmokeTest {
             val quality = activity.findViewById<Spinner>(R.id.qualitySpinner)
             assertEquals(7, mode.count)
             assertEquals(5, quality.count)
-            assertEquals(3, quality.selectedItemPosition)
+            assertEquals(0, quality.selectedItemPosition)
             assertEquals("Vidéo", mode.selectedItem.toString())
             // Évite le bug texte noir sur fond sombre de la première bêta.
             val selected = mode.selectedView as TextView
@@ -631,7 +631,7 @@ class AndroidSmokeTest {
                     activity.findViewById<Button>(R.id.quickTwitchButton).performClick()
                 }
                 instrumentation.waitForIdleSync()
-                assertEquals("Twitch doit conserver la meilleure qualité native", 3,
+                assertEquals("Twitch doit plafonner à 1080p", 0,
                     activity.findViewById<Spinner>(R.id.qualitySpinner).selectedItemPosition)
             } else {
                 assertEquals("Tablettes larges : garder la barre compacte",
@@ -1898,7 +1898,62 @@ class AndroidSmokeTest {
                 MediaExporter.export(context, file, "AUTRES") { false }
                 file.delete()
             }
+            fun allViews(view: View): List<View> = listOf(view) +
+                if (view is android.view.ViewGroup) (0 until view.childCount)
+                    .flatMap { allViews(view.getChildAt(it)) } else emptyList()
+            for (settingsMenu in listOf(false, true)) {
+                instrumentation.runOnMainSync {
+                    activity.findViewById<Button>(if (settingsMenu) R.id.navSettings else R.id.navHome).performClick()
+                    if (settingsMenu) activity.findViewById<Button>(R.id.settingsTabDownload).performClick()
+                }
+                instrumentation.waitForIdleSync()
+                val selector = if (settingsMenu) allViews(activity.findViewById(R.id.settingsPage))
+                    .filterIsInstance<RoundedSpinner>().single { it.contentDescription == "Format vidéo" }
+                    else activity.findViewById<RoundedSpinner>(R.id.modeSpinner)
+                instrumentation.runOnMainSync { selector.performClick() }
+                instrumentation.waitForIdleSync()
+                android.os.SystemClock.sleep(250)
+                val bitmap = instrumentation.uiAutomation.takeScreenshot()
+                assertNotNull(bitmap)
+                val name = if (settingsMenu) "format-menu" else "type-menu"
+                val file = File(output, "ui-audit-${activity.resources.configuration.fontScale}-$name.png")
+                file.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+                bitmap.recycle()
+                MediaExporter.export(context, file, "AUTRES") { false }
+                file.delete()
+                instrumentation.runOnMainSync { selector.selectionDialog?.dismiss() }
+            }
         } finally { instrumentation.runOnMainSync { activity.finish() } }
+    }
+
+    @Test fun roundedChoiceMenusApplyEveryDownloadTypeAndDismissCleanly() {
+        val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)) as MainActivity
+        val spinner = activity.findViewById<RoundedSpinner>(R.id.modeSpinner)
+        val saved = spinner.selectedItemPosition
+        fun children(view: View): List<View> = listOf(view) +
+            if (view is android.view.ViewGroup) (0 until view.childCount)
+                .flatMap { children(view.getChildAt(it)) } else emptyList()
+        try {
+            for (index in 0 until spinner.count) {
+                instrumentation.runOnMainSync { assertTrue(spinner.performClick()) }
+                instrumentation.waitForIdleSync()
+                val dialog = spinner.selectionDialog
+                assertTrue(dialog?.isShowing == true)
+                val caption = spinner.getItemAtPosition(index).toString()
+                val option = children(dialog!!.window!!.decorView).filterIsInstance<Button>()
+                    .single { it.text.toString() == caption }
+                instrumentation.runOnMainSync { option.performClick() }
+                instrumentation.waitForIdleSync()
+                assertNull("Le menu doit se fermer après sélection", spinner.selectionDialog)
+                assertEquals(index, spinner.selectedItemPosition)
+                assertEquals(if (index in 1..4) View.GONE else View.VISIBLE,
+                    activity.findViewById<View>(R.id.downloadQualityGroup).visibility)
+                val summary = activity.findViewById<TextView>(R.id.downloadFormatSummary).text.toString()
+                val expected = listOf("Vidéo", "MP3", "M4A", "FLAC", "GIF", "Playlist", "Chaîne")[index]
+                assertTrue("Format incohérent : $summary", summary.contains(expected))
+            }
+        } finally { instrumentation.runOnMainSync { spinner.setSelection(saved); activity.finish() } }
     }
 
     @Test fun settingsSelectorsAndAdvancedFieldsPersistDisplayedValues() {
@@ -2072,7 +2127,7 @@ class AndroidSmokeTest {
                     expectedMode, modes.selectedItemPosition)
                 assertEquals("Le raccourci doit revenir à l'accueil.",
                     View.VISIBLE, activity.findViewById<View>(R.id.homePage).visibility)
-                assertEquals(if (expectedMode == 1) View.GONE else View.VISIBLE,
+                assertEquals(if (expectedMode in 1..4) View.GONE else View.VISIBLE,
                     qualityGroup.visibility)
             }
             instrumentation.runOnMainSync {
@@ -2088,8 +2143,15 @@ class AndroidSmokeTest {
             assertEquals("Twitch doit préparer un téléchargement vidéo.",
                 0, modes.selectedItemPosition)
             assertEquals("Twitch doit revenir à la meilleure qualité par défaut.",
-                3, quality.selectedItemPosition)
+                0, quality.selectedItemPosition)
             assertEquals(View.VISIBLE, qualityGroup.visibility)
+            assertTrue(activity.findViewById<Button>(R.id.quickTwitchButton).isSelected)
+            assertFalse(activity.findViewById<Button>(R.id.quickVideoButton).isSelected)
+            assertTrue(activity.findViewById<EditText>(R.id.urlInput).hint.contains("Twitch"))
+            instrumentation.runOnMainSync { activity.findViewById<Button>(R.id.quickVideoButton).performClick() }
+            instrumentation.waitForIdleSync()
+            assertFalse(activity.findViewById<Button>(R.id.quickTwitchButton).isSelected)
+            assertTrue(activity.findViewById<Button>(R.id.quickVideoButton).isSelected)
             assertFalse("Les raccourcis ne doivent pas lancer un transfert.",
                 DownloadService.state.busy)
         } finally {

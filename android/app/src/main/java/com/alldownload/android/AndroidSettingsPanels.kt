@@ -200,7 +200,8 @@ internal object AndroidSettingsPanels {
                 setPadding(px(4), 0, px(4), 0)
                 // Centre the icon and caption together for horizontal phone
                 // tabs; stacked small-screen tabs remain centred vertically.
-                if (!stackedTabs) MobileIconLabel.centered(this, px(6))
+                if (stackedTabs) MobileIconLabel.stacked(this, px(6))
+                else MobileIconLabel.centered(this, px(6))
                 isAllCaps = false
                 minHeight = px(if (stackedTabs) 60 else 48)
                 tabs.addView(this, LinearLayout.LayoutParams(
@@ -279,7 +280,7 @@ internal object AndroidSettingsPanels {
             panel.addView(label(title, 13.5f, true).apply {
                 setPadding(0, px(14), 0, px(7))
             })
-            val view = Spinner(activity).apply {
+            val view = RoundedSpinner(activity).apply {
                 minimumHeight = px(50)
                 contentDescription = title
                 background = surface(fieldColor, 12)
