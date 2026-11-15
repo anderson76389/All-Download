@@ -299,6 +299,36 @@ def ensure_ytdlp_ready():
             return True
         return safe_download_file(YTDLP_URL, YTDLP_PATH) and is_valid_windows_executable(YTDLP_PATH)
 
+def is_instagram_url(url):
+    """Trust only Instagram HTTPS/HTTP hosts, not spoofed domain suffixes."""
+    try:
+        parts = urllib.parse.urlsplit(str(url))
+        hostname = (parts.hostname or "").lower()
+        return (parts.scheme.lower() in ("http", "https") and
+                parts.username is None and
+                (hostname == "instagram.com" or hostname.endswith(".instagram.com")))
+    except (ValueError, TypeError):
+        return False
+
+
+def normalized_instagram_url(url):
+    """Convert only a single-reel /reels/<id>/ link to yt-dlp's /reel/ form."""
+    if not is_instagram_url(url):
+        return url
+    path = urllib.parse.urlsplit(url).path
+    if not re.fullmatch(r"/reels/[A-Za-z0-9_-]+/?", path, flags=re.IGNORECASE):
+        return url
+    return re.sub(r"/reels/", "/reel/", url, count=1, flags=re.IGNORECASE)
+
+
+def instagram_portrait_format(max_short_side):
+    """1080x1920 vertical reels are native 1080, not forbidden 1920p video."""
+    height = int(max_short_side)
+    return (f"bestvideo[width<={height}][height>{height}]+bestaudio/"
+            f"best[width<={height}][height>{height}]/"
+            f"bestvideo[height<={height}]+bestaudio/best[height<=?{height}]")
+
+
 # L'ancien repertoire servait aussi de dossier de developpement/test.
 # Ne plus enregistrer les nouveaux medias au milieu de yt_app.py, build, dist...
 LEGACY_DOWNLOAD_BASE = os.path.join(os.path.expanduser("~"), "Downloads", "MediaDownloader")
@@ -3032,7 +3062,7 @@ def html_for_config(config):
 # -------------------------------------------------------------
 # BACKEND API PYTHON (UNIVERSAL EXTRACTOR + 4K / AUDIO HD)
 # -------------------------------------------------------------
-def available_video_qualities(info):
+def available_video_qualities(info, instagram_portrait=False):
     """Only advertise resolutions present in actual yt-dlp video formats.
 
     A maximum resolution of 1080p does NOT imply that the source also has
@@ -3050,6 +3080,12 @@ def available_video_qualities(info):
         if not isinstance(entry, dict) or entry.get("vcodec") == "none":
             continue
         height = entry.get("height")
+        width = entry.get("width")
+        # For a vertical Reel, 1080 x 1920 is a native 1080 tier.
+        if (instagram_portrait and isinstance(height, int) and not isinstance(height, bool)
+                and isinstance(width, int) and not isinstance(width, bool)
+                and height > 0 and width > 0):
+            height = min(height, width)
         if not isinstance(height, int) or isinstance(height, bool):
             note = str(entry.get("resolution") or entry.get("format_note") or "")
             match = re.search(r"(?<!\d)(\d{3,4})p(?:\d{2,3})?(?!\d)", note)
@@ -3471,7 +3507,7 @@ class DownloaderAPI:
         if settings.get("proxy_toggle") and settings.get("proxy_url"):
             cmd.extend(["--proxy", settings.get("proxy_url")])
 
-        cmd.append(url)
+        cmd.append(normalized_instagram_url(url))
 
         proc = None
         try:
@@ -3518,7 +3554,7 @@ class DownloaderAPI:
             info = json.loads(stdout)
             
             # Report only source-confirmed video resolutions; never invent tiers.
-            sorted_formats = available_video_qualities(info)
+            sorted_formats = available_video_qualities(info, instagram_portrait=is_instagram_url(url))
 
             dur = info.get("duration")
             if dur is not None and isinstance(dur, (int, float)):
@@ -4056,17 +4092,18 @@ class DownloaderAPI:
                             h_match = re.search(r'(\d+)p?', str(quality))
                             if h_match:
                                 h = h_match.group(1)
-                                cmd.extend([
-                                    "-f", f"bestvideo[height<=?{h}]+bestaudio/best[height<=?{h}]",
-                                    "--format-sort", f"res:{h},fps"
-                                ])
+                                format_selector = (
+                                    instagram_portrait_format(h) if is_instagram_url(url)
+                                    else f"bestvideo[height<=?{h}]+bestaudio/best[height<=?{h}]"
+                                )
+                                cmd.extend(["-f", format_selector, "--format-sort", f"res:{h},fps"])
                             else:
                                 cmd.extend(["-f", "bestvideo+bestaudio/best"])
                         
                         if not settings.get("video_origin_stream", False):
                             cmd.extend(["--merge-output-format", target_ext])
 
-                    cmd.append(url)
+                    cmd.append(normalized_instagram_url(url))
                     proc = subprocess.Popen(
                         cmd,
                         stdin=subprocess.DEVNULL,

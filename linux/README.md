@@ -1,3 +1,10 @@
+# All-Download Linux 1.0.3 — compatibilité Instagram
+
+- Sur un Reel vertical 1080 × 1920, une qualité manuelle 1080p sélectionne maintenant sa résolution **native** à partir de la largeur de 1080 pixels (plutôt que de rejeter sa hauteur de 1920).
+- Les liens vers un Reel individuel `/reels/IDENTIFIANT/` sont normalisés en `/reel/IDENTIFIANT/` avant extraction ; la validation du véritable domaine Instagram évite les redirections vers des domaines ressemblants.
+- Les autres sites et leurs réglages de qualité sont inchangés. Certains Reels exigent une session connectée, un extracteur yt-dlp récent ou bloquent les téléchargements. **Authentification → Cookies** reste disponible. Ne communiquez jamais votre fichier de session.
+- Cette modification ne garantit pas l'accès à tous les contenus Instagram ; les restrictions de la plateforme demeurent applicables.
+
 # All-Download Linux 1.0.2 — édition stable
 
 **Version 1.0.2 :** 1080p maximum par défaut, secours Twitch HLS sur les trois plateformes et réglages Android plus compacts.
