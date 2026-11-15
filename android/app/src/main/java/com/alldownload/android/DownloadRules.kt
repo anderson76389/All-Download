@@ -121,6 +121,16 @@ internal object DownloadRules {
             2 -> "bestvideo[height=480]+bestaudio/best[height=480]"
             else -> "bestvideo[height=1080]+bestaudio/best[height=1080]/bestvideo[height=720]+bestaudio/best[height=720]"
         }
+        // An Instagram Reel is often portrait (1080 x 1920). Its 1920px
+        // HEIGHT is not a 1920p landscape tier: 1080px is the short side.
+        // If we filter only by height, yt-dlp incorrectly rejects its native
+        // 1080px-wide stream as >1080p. Keep the normal cap for all other sites.
+        if (isInstagramHost(url) && quality != 3) {
+            val cap = when (quality) { 1 -> 720; 2 -> 480; 4 -> 2160; else -> 1080 }
+            return "bestvideo[width<=$cap][height>$cap]+bestaudio/" +
+                "best[width<=$cap][height>$cap]/" +
+                "bestvideo[height<=$cap]+bestaudio/best[height<=?$cap]"
+        }
         return when (quality) {
             1 -> "bestvideo[height<=720]+bestaudio/best[height<=?720]"
             2 -> "bestvideo[height<=480]+bestaudio/best[height<=?480]"
