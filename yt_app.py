@@ -3062,7 +3062,7 @@ def html_for_config(config):
 # -------------------------------------------------------------
 # BACKEND API PYTHON (UNIVERSAL EXTRACTOR + 4K / AUDIO HD)
 # -------------------------------------------------------------
-def available_video_qualities(info):
+def available_video_qualities(info, instagram_portrait=False):
     """Only advertise resolutions present in actual yt-dlp video formats.
 
     A maximum resolution of 1080p does NOT imply that the source also has
@@ -3080,6 +3080,12 @@ def available_video_qualities(info):
         if not isinstance(entry, dict) or entry.get("vcodec") == "none":
             continue
         height = entry.get("height")
+        width = entry.get("width")
+        # For a vertical Reel, 1080 x 1920 is a native 1080 tier.
+        if (instagram_portrait and isinstance(height, int) and not isinstance(height, bool)
+                and isinstance(width, int) and not isinstance(width, bool)
+                and height > 0 and width > 0):
+            height = min(height, width)
         if not isinstance(height, int) or isinstance(height, bool):
             note = str(entry.get("resolution") or entry.get("format_note") or "")
             match = re.search(r"(?<!\d)(\d{3,4})p(?:\d{2,3})?(?!\d)", note)
@@ -3548,7 +3554,7 @@ class DownloaderAPI:
             info = json.loads(stdout)
             
             # Report only source-confirmed video resolutions; never invent tiers.
-            sorted_formats = available_video_qualities(info)
+            sorted_formats = available_video_qualities(info, instagram_portrait=is_instagram_url(url))
 
             dur = info.get("duration")
             if dur is not None and isinstance(dur, (int, float)):
