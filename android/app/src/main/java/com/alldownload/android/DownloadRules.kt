@@ -21,6 +21,17 @@ internal object DownloadRules {
         return host == "instagram.com" || host.endsWith(".instagram.com")
     }
 
+    /** Some shared Reel links use /reels/ but yt-dlp expects /reel/.
+     * Normalize only an exact Reel ID on the real Instagram domain.
+     */
+    fun normalizedInstagramUrl(url: String): String {
+        if (!isInstagramHost(url)) return url
+        val parsed = uri(url) ?: return url
+        if (!Regex("^/reels/[A-Za-z0-9_-]+/?$", RegexOption.IGNORE_CASE)
+                .matches(parsed.path.orEmpty())) return url
+        return url.replaceFirst(Regex("/reels/", RegexOption.IGNORE_CASE), "/reel/")
+    }
+
     /**
      * A failed Instagram extraction may be a login/rate-limit issue, not a broken
      * application. Give an actionable message without leaking session contents.
