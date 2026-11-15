@@ -3501,7 +3501,7 @@ class DownloaderAPI:
         if settings.get("proxy_toggle") and settings.get("proxy_url"):
             cmd.extend(["--proxy", settings.get("proxy_url")])
 
-        cmd.append(url)
+        cmd.append(normalized_instagram_url(url))
 
         proc = None
         try:
