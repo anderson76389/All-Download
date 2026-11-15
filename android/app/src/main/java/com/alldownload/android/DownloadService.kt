@@ -429,7 +429,9 @@ class DownloadService : Service() {
 
     private fun buildRequest(url: String, mode: Int, quality: Int, work: File,
                              mediaUrl: String = url): YoutubeDLRequest {
-        val request = YoutubeDLRequest(mediaUrl)
+        // Respect the original shared link, but send yt-dlp its canonical
+        // Instagram Reel URL when the sharesheet supplied /reels/<id>/.
+        val request = YoutubeDLRequest(DownloadRules.normalizedInstagramUrl(mediaUrl))
         // YouTube may advertise media URLs that return 403. Probe candidates
         // before selection while retaining the requested quality and container.
         if (DownloadRules.isYoutubeHost(url)) request.addOption("--check-formats")
