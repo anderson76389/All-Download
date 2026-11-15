@@ -99,4 +99,41 @@ class DownloadRulesTest {
         assertEquals("PLAYLIST", DownloadRules.categoryFor("https://youtu.be/id", 5))
         assertEquals("CHAÎNES", DownloadRules.categoryFor("https://youtu.be/id", 6))
     }
+    @Test fun instagramHostRecognitionRejectsLookalikes() {
+        for (url in listOf("https://instagram.com/reel/ABC/", "https://www.instagram.com/p/ABC/",
+                "https://m.instagram.com/reel/ABC/?igsh=abc")) {
+            assertTrue(url, DownloadRules.isInstagramHost(url))
+        }
+        for (url in listOf("https://notinstagram.com/reel/ABC/",
+                "https://instagram.com.evil.test/reel/ABC/",
+                "https://attacker@instagram.com/reel/ABC/", "javascript:alert(1)",
+                "https://twitch.tv/videos/2919531847")) {
+            assertFalse(url, DownloadRules.isInstagramHost(url))
+        }
+    }
+
+    @Test fun instagramAuthFailuresGiveUsefulLocalRecoveryAdvice() {
+        val blocked = "ERROR: [Instagram] ABC: Instagram sent an empty media response. " +
+            "Log in to access this content."
+        val withoutCookies = DownloadRules.instagramFailureMessage(blocked, false)
+        assertTrue(withoutCookies.contains("Instagram"))
+        assertTrue(withoutCookies.contains("cookies"))
+        assertTrue(withoutCookies.contains("Paramètres"))
+        val withCookies = DownloadRules.instagramFailureMessage(blocked, true)
+        assertTrue(withCookies.contains("réimporte"))
+        assertTrue(withCookies.contains("valides"))
+        assertFalse(withCookies.contains("Log in"))
+    }
+
+    @Test fun instagramErrorsDoNotPromiseUnavailableDownloadsOrModifyOthers() {
+        val extractorError = DownloadRules.instagramFailureMessage(
+            "ERROR: [Instagram] ABC: unsupported URL", false)
+        assertTrue(extractorError.contains("Actualise yt-dlp"))
+        assertTrue(extractorError.contains("connexion"))
+        val generic = "Erreur réseau temporaire"
+        assertEquals(generic, DownloadRules.instagramFailureMessage(generic, false))
+        assertEquals("X".repeat(280),
+            DownloadRules.instagramFailureMessage("X".repeat(500), false))
+    }
+
 }
