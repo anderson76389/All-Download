@@ -364,10 +364,13 @@ class DownloadService : Service() {
                     "Téléchargement annulé."
                 }
                 else -> {
-                    // URLs can contain private referral parameters: do not print them in logs.
-                    Log.e("AllDownloadVideo", "Échec du téléchargement", error)
+                    // Instagram share links can include referral parameters; avoid
+                    // logging the exception's full URL/cookies in application logs.
+                    val instagram = DownloadRules.isInstagramHost(task.url)
+                    if (instagram) Log.w("AllDownloadVideo", "Extraction Instagram refusée.")
+                    else Log.e("AllDownloadVideo", "Échec du téléchargement", error)
                     val details = error.localizedMessage ?: error.javaClass.simpleName
-                    val summary = if (DownloadRules.isInstagramHost(task.url))
+                    val summary = if (instagram)
                         DownloadRules.instagramFailureMessage(
                             details, CookieStore.existing(this) != null)
                     else errorSummary(error)
