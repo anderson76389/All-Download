@@ -99,4 +99,76 @@ class DownloadRulesTest {
         assertEquals("PLAYLIST", DownloadRules.categoryFor("https://youtu.be/id", 5))
         assertEquals("CHAÎNES", DownloadRules.categoryFor("https://youtu.be/id", 6))
     }
+    @Test fun instagramHostRecognitionRejectsLookalikes() {
+        for (url in listOf("https://instagram.com/reel/ABC/", "https://www.instagram.com/p/ABC/",
+                "https://m.instagram.com/reel/ABC/?igsh=abc")) {
+            assertTrue(url, DownloadRules.isInstagramHost(url))
+        }
+        for (url in listOf("https://notinstagram.com/reel/ABC/",
+                "https://instagram.com.evil.test/reel/ABC/",
+                "https://attacker@instagram.com/reel/ABC/", "javascript:alert(1)",
+                "https://twitch.tv/videos/2919531847")) {
+            assertFalse(url, DownloadRules.isInstagramHost(url))
+        }
+    }
+
+    @Test fun instagramAuthFailuresGiveUsefulLocalRecoveryAdvice() {
+        val blocked = "ERROR: [Instagram] ABC: Instagram sent an empty media response. " +
+            "Log in to access this content."
+        val withoutCookies = DownloadRules.instagramFailureMessage(blocked, false)
+        assertTrue(withoutCookies.contains("Instagram"))
+        assertTrue(withoutCookies.contains("cookies"))
+        assertTrue(withoutCookies.contains("Paramètres"))
+        val withCookies = DownloadRules.instagramFailureMessage(blocked, true)
+        assertTrue(withCookies.contains("réimporte"))
+        assertTrue(withCookies.contains("valides"))
+        assertFalse(withCookies.contains("Log in"))
+    }
+
+    @Test fun instagramErrorsDoNotPromiseUnavailableDownloadsOrModifyOthers() {
+        val extractorError = DownloadRules.instagramFailureMessage(
+            "ERROR: [Instagram] ABC: unsupported URL", false)
+        assertTrue(extractorError.contains("Actualise yt-dlp"))
+        assertTrue(extractorError.contains("connexion"))
+        val generic = "Erreur réseau temporaire"
+        assertEquals(generic, DownloadRules.instagramFailureMessage(generic, false))
+        assertEquals("X".repeat(280),
+            DownloadRules.instagramFailureMessage("X".repeat(500), false))
+    }
+
+    @Test fun instagramPortraitReelsUseNativeShortSideInsteadOfRejecting1080x1920() {
+        val reel = "https://www.instagram.com/reel/Chunk8-jurw/"
+        val automatic = DownloadRules.videoFormat(reel, 0)
+        assertTrue(automatic.contains("bestvideo[width<=1080][height>1080]+bestaudio"))
+        assertTrue(automatic.contains("best[width<=1080][height>1080]"))
+        assertTrue(automatic.contains("bestvideo[height<=1080]+bestaudio"))
+        assertTrue(automatic.endsWith("best[height<=?1080]"))
+        assertFalse(automatic.endsWith("/best"))
+        assertTrue(DownloadRules.videoFormat(reel, 1).contains("width<=720"))
+        assertTrue(DownloadRules.videoFormat(reel, 2).contains("width<=480"))
+        assertTrue(DownloadRules.videoFormat(reel, 4).contains("width<=2160"))
+        assertEquals("bestvideo+bestaudio/best", DownloadRules.videoFormat(reel, 3))
+        // Do not loosen the 1080p cap on other websites or spoofed domains.
+        assertEquals("bestvideo[height<=1080]+bestaudio/best[height<=?1080]",
+            DownloadRules.videoFormat("https://www.youtube.com/watch?v=test", 0))
+        assertEquals("bestvideo[height<=1080]+bestaudio/best[height<=?1080]",
+            DownloadRules.videoFormat("https://instagram.com.evil.test/reel/id", 0))
+    }
+
+    @Test fun instagramReelsShareLinksNormalizeOnlyRealInstagramDomains() {
+        assertEquals("https://www.instagram.com/reel/ABC123/?igsh=share123",
+            DownloadRules.normalizedInstagramUrl(
+                "https://www.instagram.com/reels/ABC123/?igsh=share123"))
+        assertEquals("https://m.instagram.com/reel/Abc-123_/",
+            DownloadRules.normalizedInstagramUrl("https://m.instagram.com/reels/Abc-123_/"))
+        for (url in listOf("https://www.instagram.com/reel/ABC123/",
+                "https://www.instagram.com/share/reel/ABC123/",
+                "https://www.instagram.com/reels/", 
+                "https://instagram.com.evil.example/reels/ABC123/",
+                "https://attacker@instagram.com/reels/ABC123/",
+                "https://example.com/path/reels/ABC123/")) {
+            assertEquals(url, DownloadRules.normalizedInstagramUrl(url))
+        }
+    }
+
 }

@@ -15,6 +15,51 @@ internal object DownloadRules {
     fun isValidVideoUrl(url: String): Boolean =
         url.length in 8..16384 && uri(url) != null
 
+    /** Instagram and its trusted subdomains only; do not match lookalikes. */
+    fun isInstagramHost(url: String): Boolean {
+        val host = uri(url)?.host?.lowercase() ?: return false
+        return host == "instagram.com" || host.endsWith(".instagram.com")
+    }
+
+    /** Some shared Reel links use /reels/ but yt-dlp expects /reel/.
+     * Normalize only an exact Reel ID on the real Instagram domain.
+     */
+    fun normalizedInstagramUrl(url: String): String {
+        if (!isInstagramHost(url)) return url
+        val parsed = uri(url) ?: return url
+        if (!Regex("^/reels/[A-Za-z0-9_-]+/?$", RegexOption.IGNORE_CASE)
+                .matches(parsed.path.orEmpty())) return url
+        return url.replaceFirst(Regex("/reels/", RegexOption.IGNORE_CASE), "/reel/")
+    }
+
+    /**
+     * A failed Instagram extraction may be a login/rate-limit issue, not a broken
+     * application. Give an actionable message without leaking session contents.
+     * A cookies file is optional; never claim the site is accessible with it.
+     */
+    fun instagramFailureMessage(details: String, cookiesImported: Boolean): String {
+        val reason = details.lowercase()
+        val accessDenied = listOf(
+            "empty media response", "rate-limit", "rate limit", "login required",
+            "log in", "sign in", "authentication required", "http error 401",
+            "http error 403", "forbidden", "access denied", "private account"
+        ).any { it in reason }
+        if (accessDenied) {
+            return if (cookiesImported)
+                "Instagram refuse l'accès au média. Vérifie qu'il est accessible dans ton " +
+                    "compte et réimporte des cookies Instagram valides dans Paramètres > Cookies."
+            else
+                "Instagram limite l'accès anonyme à ce média. Si tu y as accès dans " +
+                    "Instagram, importe tes cookies Instagram dans Paramètres > Cookies."
+        }
+        if (listOf("unsupported url", "unable to extract", "no video formats",
+                "unable to download webpage").any { it in reason }) {
+            return "Instagram : extraction impossible. Actualise yt-dlp dans " +
+                "Paramètres > Moteur, puis réessaie. Certains médias exigent une connexion."
+        }
+        return details.take(280)
+    }
+
     /**
      * N'actualiser automatiquement yt-dlp que pour les réseaux sociaux
      * dont les extracteurs changent fréquemment. Twitch reste inchangé.
@@ -86,6 +131,16 @@ internal object DownloadRules {
             1 -> "bestvideo[height=720]+bestaudio/best[height=720]"
             2 -> "bestvideo[height=480]+bestaudio/best[height=480]"
             else -> "bestvideo[height=1080]+bestaudio/best[height=1080]/bestvideo[height=720]+bestaudio/best[height=720]"
+        }
+        // An Instagram Reel is often portrait (1080 x 1920). Its 1920px
+        // HEIGHT is not a 1920p landscape tier: 1080px is the short side.
+        // If we filter only by height, yt-dlp incorrectly rejects its native
+        // 1080px-wide stream as >1080p. Keep the normal cap for all other sites.
+        if (isInstagramHost(url) && quality != 3) {
+            val cap = when (quality) { 1 -> 720; 2 -> 480; 4 -> 2160; else -> 1080 }
+            return "bestvideo[width<=$cap][height>$cap]+bestaudio/" +
+                "best[width<=$cap][height>$cap]/" +
+                "bestvideo[height<=$cap]+bestaudio/best[height<=?$cap]"
         }
         return when (quality) {
             1 -> "bestvideo[height<=720]+bestaudio/best[height<=?720]"

@@ -1,3 +1,14 @@
+## Correctif Instagram — Android 1.0.3
+
+- Le journal CI du 14 novembre a classé l'essai de Reel Instagram **SKIP**, et non PASS. Ce contrôle seul ne certifie pas un téléchargement réussi.
+- **Correctif de formats :** un Reel portrait 1080 × 1920 est désormais limité par sa largeur native (1080) plutôt que rejeté à tort parce que sa hauteur vaut 1920. La limitation horizontale reste de 1080p ; les autres domaines gardent leurs sélections précédentes.
+- Les liens Instagram d'un Reel individuel au format `instagram.com/reels/IDENTIFIANT/` sont convertis de manière sûre en `instagram.com/reel/IDENTIFIANT/` avant de les transmettre à yt-dlp. Les liens d'autres sites, les profils Instagram et les liens non reconnus ne sont pas réécrits.
+- Sur Wi-Fi non facturé et si la mise à jour automatique du moteur est activée, l'application vérifie la fraîcheur de yt-dlp chaque jour pour les URL Instagram (au lieu d'une semaine), avec au plus une tentative toutes les 6 heures et aucune tentative automatique en mode économie d'énergie / données mobiles.
+- Si Instagram refuse l'accès anonyme, l'erreur de file indique comment importer un fichier `cookies.txt` Netscape via **Paramètres → Cookies**. Le fichier reste dans le stockage privé Android, n'est pas publié dans GitHub et peut être effacé depuis l'application.
+- **Attention :** les cookies donnent accès à une session. Ne les envoie jamais dans un message, un ticket GitHub ou un rapport de bug. Vérifie que le Reel est réellement visible dans ton compte. Une session valide ne garantit pas qu'Instagram autorise l'extraction.
+- Sur Windows et Linux, le site peut également nécessiter une session : utiliser **Authentification → Cookies** (ou un navigateur connecté sur ordinateur) et un moteur yt-dlp à jour. Aucun extracteur ne peut garantir une compatibilité permanente avec Instagram.
+- Les vidéos Twitch, YouTube, les options de qualité, la file d'attente et les applications Windows/Linux ne sont pas modifiées par cette correction Android.
+
 # All-Download Android 1.0.2 — édition stable
 
 **Interface mobile 1.0.2 :** sélecteurs arrondis communs à tous les formats, onglets des paramètres centrés comme un groupe icône/libellé, raccourci Twitch visiblement actif (VOD ou clip), et résumé du format de sortie pour chaque type de téléchargement. La résolution vidéo est masquée pour l’audio et les GIF.
@@ -8,7 +19,7 @@
 
 **Vidéos locales :** depuis Galerie ou Fichiers, partager une vidéo MP4, WebM, MKV, MOV et autres formats reconnus vers All-Download. L'application copie en flux jusqu'à 12 fichiers content:// dans Téléchargements/All-Download/VIDÉOS, sans supprimer les originaux et sans charger toute la vidéo en RAM. Une copie incomplète est supprimée en cas d'échec. Sur Android 7–9, l'autorisation de stockage peut être demandée.
 
-**Mises à jour :** versionCode 32, versionName 1.0.2 et même clé privée que 0.6.22. Le détecteur accepte les versions stables/bêta et donne priorité à la stable à numéros égaux. L'APK est vérifiée (SHA-256, signature) et l'installation requiert la confirmation du système Android. Les réglages et téléchargements doivent rester présents lors d'une installation par-dessus.
+**Mises à jour :** versionCode 33, versionName 1.0.3 et même clé privée que 0.6.22. Le détecteur accepte les versions stables/bêta et donne priorité à la stable à numéros égaux. L'APK est vérifiée (SHA-256, signature) et l'installation requiert la confirmation du système Android. Les réglages et téléchargements doivent rester présents lors d'une installation par-dessus.
 
 **Limites :** certains sites peuvent exiger une authentification, imposer des DRM, bloquer les téléchargements ou ne transmettre aucun fichier à Android. Les tests CI ne remplacent pas les essais sur appareil physique.
 
