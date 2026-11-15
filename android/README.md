@@ -2,6 +2,7 @@
 
 - Le journal CI du 14 novembre a classé l'essai de Reel Instagram **SKIP**, et non PASS. Ce contrôle seul ne certifie pas un téléchargement réussi.
 - **Correctif de formats :** un Reel portrait 1080 × 1920 est désormais limité par sa largeur native (1080) plutôt que rejeté à tort parce que sa hauteur vaut 1920. La limitation horizontale reste de 1080p ; les autres domaines gardent leurs sélections précédentes.
+- Les liens Instagram d'un Reel individuel au format `instagram.com/reels/IDENTIFIANT/` sont convertis de manière sûre en `instagram.com/reel/IDENTIFIANT/` avant de les transmettre à yt-dlp. Les liens d'autres sites, les profils Instagram et les liens non reconnus ne sont pas réécrits.
 - Sur Wi-Fi non facturé et si la mise à jour automatique du moteur est activée, l'application vérifie la fraîcheur de yt-dlp chaque jour pour les URL Instagram (au lieu d'une semaine), avec au plus une tentative toutes les 6 heures et aucune tentative automatique en mode économie d'énergie / données mobiles.
 - Si Instagram refuse l'accès anonyme, l'erreur de file indique comment importer un fichier `cookies.txt` Netscape via **Paramètres → Cookies**. Le fichier reste dans le stockage privé Android, n'est pas publié dans GitHub et peut être effacé depuis l'application.
 - **Attention :** les cookies donnent accès à une session. Ne les envoie jamais dans un message, un ticket GitHub ou un rapport de bug. Vérifie que le Reel est réellement visible dans ton compte. Une session valide ne garantit pas qu'Instagram autorise l'extraction.
