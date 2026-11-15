@@ -155,4 +155,20 @@ class DownloadRulesTest {
             DownloadRules.videoFormat("https://instagram.com.evil.test/reel/id", 0))
     }
 
+    @Test fun instagramReelsShareLinksNormalizeOnlyRealInstagramDomains() {
+        assertEquals("https://www.instagram.com/reel/ABC123/?igsh=share123",
+            DownloadRules.normalizedInstagramUrl(
+                "https://www.instagram.com/reels/ABC123/?igsh=share123"))
+        assertEquals("https://m.instagram.com/reel/Abc-123_/",
+            DownloadRules.normalizedInstagramUrl("https://m.instagram.com/reels/Abc-123_/"))
+        for (url in listOf("https://www.instagram.com/reel/ABC123/",
+                "https://www.instagram.com/share/reel/ABC123/",
+                "https://www.instagram.com/reels/", 
+                "https://instagram.com.evil.example/reels/ABC123/",
+                "https://attacker@instagram.com/reels/ABC123/",
+                "https://example.com/path/reels/ABC123/")) {
+            assertEquals(url, DownloadRules.normalizedInstagramUrl(url))
+        }
+    }
+
 }
