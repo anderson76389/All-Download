@@ -171,6 +171,27 @@ def normalized_instagram_url(url: str) -> str:
     return re.sub(r"/reels/", "/reel/", url, count=1, flags=re.IGNORECASE)
 
 
+def available_video_heights(info: dict, instagram_portrait: bool = False) -> list[int]:
+    """Use native short-side tiers only for genuine vertical Instagram media."""
+    heights: set[int] = set()
+    formats = info.get("formats", []) if isinstance(info, dict) else []
+    if not isinstance(formats, list):
+        return []
+    for entry in formats:
+        if not isinstance(entry, dict):
+            continue
+        height = entry.get("height")
+        if not isinstance(height, int) or isinstance(height, bool):
+            continue
+        width = entry.get("width")
+        if (instagram_portrait and isinstance(width, int) and
+                not isinstance(width, bool) and width > 0):
+            height = min(height, width)
+        if height >= 144:
+            heights.add(height)
+    return sorted(heights, reverse=True)
+
+
 def native_twitch_format(quality: str) -> str:
     """Sélection native sans interpolation ni montée artificielle en résolution."""
     if not quality or str(quality).startswith("Meilleure qualité"):
@@ -491,7 +512,7 @@ class DownloaderAPI:
                 args.extend(["--flat-playlist", "--playlist-end", "1000"])
             else:
                 args.append("--no-playlist")
-            run = subprocess.run(args + [url], stdin=subprocess.DEVNULL,
+            run = subprocess.run(args + [normalized_instagram_url(url)], stdin=subprocess.DEVNULL,
                                  capture_output=True, text=True, errors="replace",
                                  timeout=75, env=self._env())
             if run.returncode:
@@ -499,9 +520,7 @@ class DownloaderAPI:
                     return {"success": True, "data": fallback_metadata(url)}
                 return {"success": False, "error": (run.stderr.strip() or "Extraction impossible.")[-400:]}
             info = json.loads(run.stdout)
-            heights = sorted({int(item["height"]) for item in info.get("formats", [])
-                              if isinstance(item, dict) and isinstance(item.get("height"), int)
-                              and item["height"] >= 144}, reverse=True)
+            heights = available_video_heights(info, is_instagram_url(url))
             formats = ["Meilleure qualité (Auto)"] + [f"{h}p" for h in heights]
             if twitch and preferred_twitch_quality:
                 preferred = preferred_twitch_quality(formats)
