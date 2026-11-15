@@ -15,6 +15,40 @@ internal object DownloadRules {
     fun isValidVideoUrl(url: String): Boolean =
         url.length in 8..16384 && uri(url) != null
 
+    /** Instagram and its trusted subdomains only; do not match lookalikes. */
+    fun isInstagramHost(url: String): Boolean {
+        val host = uri(url)?.host?.lowercase() ?: return false
+        return host == "instagram.com" || host.endsWith(".instagram.com")
+    }
+
+    /**
+     * A failed Instagram extraction may be a login/rate-limit issue, not a broken
+     * application. Give an actionable message without leaking session contents.
+     * A cookies file is optional; never claim the site is accessible with it.
+     */
+    fun instagramFailureMessage(details: String, cookiesImported: Boolean): String {
+        val reason = details.lowercase()
+        val accessDenied = listOf(
+            "empty media response", "rate-limit", "rate limit", "login required",
+            "log in", "sign in", "authentication required", "http error 401",
+            "http error 403", "forbidden", "access denied", "private account"
+        ).any { it in reason }
+        if (accessDenied) {
+            return if (cookiesImported)
+                "Instagram refuse l'accès au média. Vérifie qu'il est accessible dans ton " +
+                    "compte et réimporte des cookies Instagram valides dans Paramètres > Cookies."
+            else
+                "Instagram limite l'accès anonyme à ce média. Si tu y as accès dans " +
+                    "Instagram, importe tes cookies Instagram dans Paramètres > Cookies."
+        }
+        if (listOf("unsupported url", "unable to extract", "no video formats",
+                "unable to download webpage").any { it in reason }) {
+            return "Instagram : extraction impossible. Actualise yt-dlp dans " +
+                "Paramètres > Moteur, puis réessaie. Certains médias exigent une connexion."
+        }
+        return details.take(280)
+    }
+
     /**
      * N'actualiser automatiquement yt-dlp que pour les réseaux sociaux
      * dont les extracteurs changent fréquemment. Twitch reste inchangé.
