@@ -364,8 +364,14 @@ class DownloadService : Service() {
                     "Téléchargement annulé."
                 }
                 else -> {
-                    Log.e("AllDownloadVideo", "Échec du téléchargement " + task.url, error)
-                    val message = "Échec : " + errorSummary(error)
+                    // URLs can contain private referral parameters: do not print them in logs.
+                    Log.e("AllDownloadVideo", "Échec du téléchargement", error)
+                    val details = error.localizedMessage ?: error.javaClass.simpleName
+                    val summary = if (DownloadRules.isInstagramHost(task.url))
+                        DownloadRules.instagramFailureMessage(
+                            details, CookieStore.existing(this) != null)
+                    else errorSummary(error)
+                    val message = "Échec : " + summary
                     DownloadQueue.update(this, task.id, DownloadQueue.ERROR, message = message)
                     message
                 }
@@ -388,8 +394,16 @@ class DownloadService : Service() {
         val now = System.currentTimeMillis()
         val success = prefs.getLong("last_success_ms", 0L)
         val attempt = prefs.getLong("last_attempt_ms", 0L)
-        if (success > 0 && now - success in 0 until 7L * 24 * 3600 * 1000) return
-        if (attempt > 0 && now - attempt in 0 until 12L * 3600 * 1000) return
+        // Instagram changes its extractor endpoints rapidly. Refresh its
+        // available engine daily on unmetered Wi-Fi; never use mobile data or
+        // retry repeatedly when Instagram enforces its own rate limit.
+        val instagram = DownloadRules.isInstagramHost(url)
+        val successInterval = if (instagram) 24L * 3600 * 1000
+                              else 7L * 24 * 3600 * 1000
+        val attemptInterval = if (instagram) 6L * 3600 * 1000
+                              else 12L * 3600 * 1000
+        if (success > 0 && now - success in 0 until successInterval) return
+        if (attempt > 0 && now - attempt in 0 until attemptInterval) return
         prefs.edit().putLong("last_attempt_ms", now).apply()
         state = UiState(true, 0, "Actualisation de yt-dlp…")
         try {
