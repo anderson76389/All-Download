@@ -136,4 +136,23 @@ class DownloadRulesTest {
             DownloadRules.instagramFailureMessage("X".repeat(500), false))
     }
 
+    @Test fun instagramPortraitReelsUseNativeShortSideInsteadOfRejecting1080x1920() {
+        val reel = "https://www.instagram.com/reel/Chunk8-jurw/"
+        val automatic = DownloadRules.videoFormat(reel, 0)
+        assertTrue(automatic.contains("bestvideo[width<=1080][height>1080]+bestaudio"))
+        assertTrue(automatic.contains("best[width<=1080][height>1080]"))
+        assertTrue(automatic.contains("bestvideo[height<=1080]+bestaudio"))
+        assertTrue(automatic.endsWith("best[height<=?1080]"))
+        assertFalse(automatic.endsWith("/best"))
+        assertTrue(DownloadRules.videoFormat(reel, 1).contains("width<=720"))
+        assertTrue(DownloadRules.videoFormat(reel, 2).contains("width<=480"))
+        assertTrue(DownloadRules.videoFormat(reel, 4).contains("width<=2160"))
+        assertEquals("bestvideo+bestaudio/best", DownloadRules.videoFormat(reel, 3))
+        // Do not loosen the 1080p cap on other websites or spoofed domains.
+        assertEquals("bestvideo[height<=1080]+bestaudio/best[height<=?1080]",
+            DownloadRules.videoFormat("https://www.youtube.com/watch?v=test", 0))
+        assertEquals("bestvideo[height<=1080]+bestaudio/best[height<=?1080]",
+            DownloadRules.videoFormat("https://instagram.com.evil.test/reel/id", 0))
+    }
+
 }
