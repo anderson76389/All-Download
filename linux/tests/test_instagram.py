@@ -1,7 +1,8 @@
 """Linux Instagram native portrait selector and trusted URL regression tests."""
 import unittest
 
-from linux.app import is_instagram_url, normalized_instagram_url, video_format
+from linux.app import (available_video_heights, is_instagram_url,
+                       normalized_instagram_url, video_format)
 
 
 class InstagramFormatsLinuxTests(unittest.TestCase):
@@ -17,6 +18,14 @@ class InstagramFormatsLinuxTests(unittest.TestCase):
                     "https://www.instagram.com/share/reel/ABC/",
                     "https://instagram.com.evil.test/reels/ABC/"):
             self.assertEqual(url, normalized_instagram_url(url))
+
+    def test_instagram_metadata_shows_1080_tier_for_1080x1920(self):
+        media = {"formats": [{"vcodec": "h264", "width": 1080,
+                              "height": 1920}]}
+        self.assertEqual([1080], available_video_heights(media, True))
+        self.assertEqual([1920], available_video_heights(media))
+        self.assertEqual([], available_video_heights({"formats": []}, True))
+        self.assertEqual([], available_video_heights(None, True))
 
     def test_1080_portrait_format_preserves_native_short_side(self):
         expr = video_format("1080p", is_instagram=True)
