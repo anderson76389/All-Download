@@ -149,6 +149,28 @@ def category_for(item: dict) -> str:
     return "AUTRES"
 
 
+def is_instagram_url(url: str) -> bool:
+    """Only actual Instagram hosts; do not trust suffix lookalikes."""
+    try:
+        parsed = urlsplit(url)
+        host = (parsed.hostname or "").lower()
+        return (parsed.scheme.lower() in ("http", "https") and
+                parsed.username is None and
+                (host == "instagram.com" or host.endswith(".instagram.com")))
+    except (ValueError, TypeError):
+        return False
+
+
+def normalized_instagram_url(url: str) -> str:
+    """Normalize only individual /reels/<id>/ links (no arbitrary redirects)."""
+    if not is_instagram_url(url):
+        return url
+    if not re.fullmatch(r"/reels/[A-Za-z0-9_-]+/?", urlsplit(url).path,
+                        flags=re.IGNORECASE):
+        return url
+    return re.sub(r"/reels/", "/reel/", url, count=1, flags=re.IGNORECASE)
+
+
 def native_twitch_format(quality: str) -> str:
     """Sélection native sans interpolation ni montée artificielle en résolution."""
     if not quality or str(quality).startswith("Meilleure qualité"):
@@ -167,13 +189,20 @@ def native_twitch_format(quality: str) -> str:
             "bestvideo[height=720]+bestaudio/best[height=720]")
 
 
-def video_format(quality: str, is_twitch_vod: bool = False) -> str:
+def video_format(quality: str, is_twitch_vod: bool = False,
+                 is_instagram: bool = False) -> str:
     if is_twitch_vod:
         return native_twitch_format(quality)
     match = re.search(r"(\d{3,4})p", str(quality))
     if not match:
         return "bestvideo+bestaudio/best"
     height = int(match.group(1))
+    if is_instagram:
+        # The shorter edge is what 1080p means for a portrait Reel.
+        # 1080x1920 must not be rejected for being 1920px tall.
+        return (f"bestvideo[width<={height}][height>{height}]+bestaudio/"
+                f"best[width<={height}][height>{height}]/"
+                f"bestvideo[height<={height}]+bestaudio/best[height<=?{height}]")
     return (f"bestvideo[height<=?{height}]+bestaudio/"
             f"best[height<=?{height}]")
 
@@ -528,7 +557,8 @@ class DownloaderAPI:
             cmd += ["-f", "bestvideo+bestaudio/best", "--recode-video", "gif"]
         else:
             is_twitch = is_twitch_vod_url(url)
-            cmd += ["--format", video_format(quality, is_twitch)]
+            cmd += ["--format", video_format(quality, is_twitch,
+                is_instagram_url(url))]
             container = "mkv" if settings.get("video_format") == "MKV" else "mp4"
             if not settings.get("video_origin_stream"):
                 cmd += ["--merge-output-format", container]
@@ -555,7 +585,7 @@ class DownloaderAPI:
                     cmd += ["--sponsorblock-mark", "all"]
                 if settings.get("exact_cut"):
                     cmd.append("--force-keyframes-at-cuts")
-        return cmd + [url]
+        return cmd + [normalized_instagram_url(url)]
 
     def _terminate(self):
         proc = self._current
