@@ -488,9 +488,22 @@ class AndroidSmokeTest {
                 assertTrue("La dernière action est hors écran.",
                     nav.getChildAt(nav.childCount - 1).right <= nav.width)
                 assertNotNull("Aspect verre non installé.", bar.background)
+                for (id in actions) {
+                    val button = activity.findViewById<Button>(id)
+                    val density = activity.resources.displayMetrics.density
+                    assertTrue("Cible tactile trop basse", button.height >= 48 * density)
+                    assertTrue("Libellé ou icône coupé", button.height >=
+                        button.compoundPaddingTop + button.lineHeight + button.compoundPaddingBottom - 1)
+                    assertTrue(button.background is android.graphics.drawable.RippleDrawable)
+                }
             } else {
                 assertEquals(LinearLayout.VERTICAL, nav.orientation)
                 assertNotNull("Barre latérale transparente absente.", nav.parent?.parent)
+            }
+            for (id in actions) {
+                instrumentation.runOnMainSync { activity.findViewById<Button>(id).performClick() }
+                instrumentation.waitForIdleSync()
+                assertEquals(listOf(id), actions.filter { activity.findViewById<Button>(it).isSelected })
             }
             // The exact original listeners must remain wired after view reparenting.
             instrumentation.runOnMainSync {
