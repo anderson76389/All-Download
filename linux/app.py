@@ -595,6 +595,8 @@ class DownloaderAPI:
         # YouTube-only post-processing flags.
         host = (urlsplit(url).hostname or "").lower()
         youtube_host = host in ("youtube.com", "youtu.be") or host.endswith(".youtube.com")
+        if youtube_host:
+            cmd.append("--check-formats")
         if mode == "Vidéo" and youtube_host:
             if settings.get("sponsor_enable"):
                 remove = settings.get("sponsor_remove")

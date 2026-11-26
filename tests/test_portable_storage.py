@@ -194,10 +194,10 @@ class PortableStorageTests(unittest.TestCase):
         ), patch.object(yt_app.tempfile, "TemporaryFile",
                         side_effect=PermissionError("read-only")), patch.dict(
             os.environ, {"LOCALAPPDATA": self.legacy}
-        ), patch.object(yt_app.ctypes.windll.user32, "MessageBoxW", return_value=1) as dialog:
+        ), patch.object(yt_app.ctypes, "windll", create=True) as windll:
             with self.assertRaisesRegex(PermissionError, "All-Download"):
                 runpy.run_path(yt_app.__file__, run_name="all_download_read_only_test")
-            dialog.assert_called_once()
+            windll.user32.MessageBoxW.assert_called_once()
         self.assertFalse(os.path.exists(os.path.join(self.legacy, "AllMediaDownload")))
         self.assertFalse(os.path.exists(os.path.join(self.portable, "Donnees")))
 

@@ -1,3 +1,7 @@
+## Linux 1.0.4
+
+Deno est inclus dans Donnees/bin. Le moteur teste les formats YouTube avant le transfert.
+
 # All-Download Linux 1.0.3 — compatibilité Instagram
 
 - Sur un Reel vertical 1080 × 1920, une qualité manuelle 1080p sélectionne maintenant sa résolution **native** à partir de la largeur de 1080 pixels (plutôt que de rejeter sa hauteur de 1920).
@@ -25,7 +29,7 @@ La version Linux reprend le **HTML/CSS/JS Windows à l'identique** (extrait auto
 
 ## Installer et démarrer
 
-1. Télécharger All-Download-Linux-x86_64.tar.xz (ou .tar.gz) depuis la Release Linux 1.0.2.
+1. Télécharger All-Download-Linux-x86_64.tar.xz (ou .tar.gz) depuis la dernière Release Linux.
 2. Décompresser le dossier All-Download dans un emplacement où l'utilisateur peut écrire.
 3. Ouvrir ce dossier, puis lancer All-Download-Linux (pas besoin de sudo).
 4. Les médias sont stockés dans les sept dossiers VIDÉOS, AUDIOS, GIFS, TWITCH, PLAYLIST, CHAÎNES et AUTRES. Paramètres, cookies facultatifs et cache restent sous Donnees/.
@@ -44,7 +48,7 @@ La version Linux reprend le **HTML/CSS/JS Windows à l'identique** (extrait auto
 - Modes vidéo, audio MP3/M4A/FLAC, GIF, chaînes, playlists, qualités, miniatures, métadonnées, proxy, thèmes et boutons de file d'attente sont implémentés dans un backend Linux natif. Les résultats réels dépendent des sites.
 - yt-dlp Linux, FFmpeg et FFprobe sont inclus dans l'archive publiée. La version Linux n'exécute pas TwitchDownloaderCLI.exe : les VOD Twitch passent par yt-dlp puis, si nécessaire, par un secours HLS public. Le réglage par défaut est 1080p maximum ; Auto sans limite et 4K restent des choix manuels.
 - Pause/Reprise utilise des signaux de processus Linux; Annuler termine les processus de téléchargement. Certains services peuvent exiger un accès authentifié.
-- Certaines vidéos YouTube demandent Deno; le placer dans Donnees/bin/deno si nécessaire. Il n'est pas embarqué dans la première archive.
+- Le moteur utilise le Deno local pour les vidéos YouTube qui le demandent.
 - Pas encore d'installateur .deb/.rpm ni de mises à jour Linux automatiques. Le contrôle des Releases est manuel ; les APK Android et ZIP Windows restent indépendants.
 - Linux nécessite une session graphique (X11/Wayland) et les bibliothèques Qt6 nécessaires. Les contenus protégés par DRM ne sont pas pris en charge.
 

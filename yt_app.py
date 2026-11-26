@@ -3978,6 +3978,8 @@ class DownloaderAPI:
                         "-P", target_dir,
                         "-o", f"{sanitize_filename(item.get('title', 'Media'))}.%(ext)s" if "v.pinimg.com" in url else "%(title)s.%(ext)s"
                     ] + self._get_cookie_args() + youtube_js_args(url)
+                    if is_youtube_url(url):
+                        cmd.append("--check-formats")
 
                     if "twitter.com" in url or "x.com" in url:
                         cmd.extend(["--extractor-args", "twitter:api=syndication"])

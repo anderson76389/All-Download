@@ -15,12 +15,13 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from urllib.parse import urlsplit
 
 CASES = (
     ("youtube", "YouTube public video (app Android fixture)",
      "https://www.youtube.com/watch?v=DTi8wZ1a1TA"),
-    ("youtube_alt", "YouTube public extractor test video",
-     "https://www.youtube.com/watch?v=BaW_jenozKc"),
+    ("youtube_alt", "YouTube public short reference video",
+     "https://www.youtube.com/watch?v=jNQXAC9IVRw"),
     ("twitch_clip", "Twitch public clip",
      "https://www.twitch.tv/aminematue/clip/ResoluteYummyDaikonBibleThump-2TAOvt5En3sdDMZm"),
     ("twitch_vod", "Twitch VOD (may expire or require authentication)",
@@ -28,7 +29,7 @@ CASES = (
 )
 REMOTE_BLOCKERS = (
     "sign in to confirm", "not a bot", "login required", "sign in to",
-    "subscriber-only", "subscriber only", "http error 403", "http error 404",
+    "server returned 403", "subscriber-only", "subscriber only", "http error 403", "http error 404",
     "http error 429", "video unavailable", "not available", "private video",
     "this video is not available", "no video formats found",
     "requested format is not available", "unsupported url",
@@ -44,7 +45,7 @@ def run(command: list[str], timeout: int) -> tuple[int, str, str]:
     try:
         p = subprocess.run(command, text=True, capture_output=True, timeout=timeout,
                            errors="replace", stdin=subprocess.DEVNULL)
-        return p.returncode, p.stdout[-10000:], p.stderr[-9000:]
+        return p.returncode, p.stdout, p.stderr
     except subprocess.TimeoutExpired:
         return 124, "", f"Timeout after {timeout}s"
     except OSError as error:
@@ -60,12 +61,18 @@ def classify(error: str) -> str:
     return "ERROR"
 
 
+def failure(output: str) -> tuple[None, str, str]:
+    # Classify the whole error before shortening it for public CI logs.
+    detail = re.sub(r"https?://\S+", "[URL]", output)
+    return None, classify(output), detail.strip()[-450:]
+
+
 def metadata(binary: str, url: str) -> tuple[dict | None, str, str]:
     base = [binary, "--ignore-config", "--no-playlist", "--no-warnings",
             "--socket-timeout", "15", "--retries", "1", "--extractor-retries", "1"]
     code, stdout, stderr = run(base + ["--dump-single-json", "--skip-download", url], 85)
     if code != 0:
-        return None, classify(stderr or stdout), (stderr or stdout)[-450:]
+        return failure(stderr or stdout)
     try:
         info = json.loads(stdout)
         if not isinstance(info, dict) or not info.get("id"):
@@ -81,14 +88,18 @@ def download(binary: str, url: str, folder: Path, max_height: int = 720) -> tupl
         binary, "--ignore-config", "--no-playlist", "--no-warnings",
         "--socket-timeout", "15", "--retries", "1", "--fragment-retries", "1",
         "--extractor-retries", "1", "--no-overwrites",
-        "--max-filesize", "80M", "--download-sections", "*0-5",
+        "--max-filesize", "80M",
         "--format", f"bv*[height<={max_height}]+ba/b[height<={max_height}]/best",
         "--merge-output-format", "mp4", "-o", output, url,
     ]
+    if urlsplit(url).hostname == "www.youtube.com":
+        # Both YouTube fixtures are short. Use the native downloader, like the app.
+        command.insert(1, "--check-formats")
+    else:
+        command[1:1] = ["--download-sections", "*0-5"]
     code, stdout, stderr = run(command, 130)
     if code:
-        detail = (stderr or stdout)[-450:]
-        return None, classify(detail), detail
+        return failure(stderr or stdout)
     videos = [
         f for f in folder.rglob("*") if f.is_file()
         and f.suffix.lower() in (".mp4", ".mkv", ".webm", ".mov", ".ts")
