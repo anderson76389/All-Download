@@ -1049,12 +1049,17 @@ class MainActivity : Activity() {
                 button.setCompoundDrawablesRelative(null, icon, null, null)
                 button.gravity = Gravity.CENTER
                 button.text = shortNames[index]
-                button.textSize = 11f
-                button.setPadding(0, dp(6), 0, dp(6))
-                button.compoundDrawablePadding = dp(5)
+                button.textSize = 12f
+                button.setPadding(dp(2), dp(7), dp(2), dp(7))
+                button.compoundDrawablePadding = dp(3)
             }
             button.backgroundTintList = null
-            button.background = navigationPill(index == selectedTab)
+            button.isSelected = index == selectedTab
+            val pill = navigationPill(button.isSelected)
+            button.background = if (wide) pill else android.graphics.drawable.RippleDrawable(
+                ColorStateList.valueOf(if (themeChoice() == 1 && !button.isSelected)
+                    Color.argb(32, 80, 40, 130) else Color.argb(46, 255, 255, 255)),
+                pill, rounded(Color.WHITE, Color.WHITE, 22))
             button.setTextColor(foreground)
             button.isAllCaps = false
             button.setSingleLine(true)
@@ -1063,7 +1068,7 @@ class MainActivity : Activity() {
             button.stateListAnimator = null
             button.elevation = 0f
             button.minWidth = 0
-            button.minHeight = 0
+            button.minHeight = if (wide) 0 else dp(52)
             button.contentDescription = fullNames[index]
         }
     }
@@ -1438,19 +1443,19 @@ class MainActivity : Activity() {
         menu.orientation = LinearLayout.HORIZONTAL
         menu.setBackgroundColor(Color.TRANSPARENT)
         tabs.forEach { button ->
-            button.layoutParams = LinearLayout.LayoutParams(0, dp(64), 1f).apply {
+            button.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
                 marginStart = dp(1)
                 marginEnd = dp(1)
             }
         }
         navDock.addView(menu, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, dp(64)))
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         shell.addView(navDock, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             marginStart = dp(12)
             marginEnd = dp(12)
-            bottomMargin = dp(10)
+            bottomMargin = dp(4)
         })
         host.addView(shell, ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
