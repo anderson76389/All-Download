@@ -46,6 +46,9 @@ jobs:
           python -m compileall -q linux
           python linux/extract_ui.py --output linux/ui.html
           python -m unittest discover -s linux/tests -p 'test_*.py' -v
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
       - name: Bundle official Linux yt-dlp and FFmpeg executables
         shell: bash
         run: |
@@ -62,6 +65,8 @@ jobs:
           cp "$FFMPEG" stage/All-Download/Donnees/bin/ffmpeg
           cp "$FFPROBE" stage/All-Download/Donnees/bin/ffprobe
           chmod +x stage/All-Download/Donnees/bin/{yt-dlp,ffmpeg,ffprobe}
+          install -m 0755 "$(command -v deno)" stage/All-Download/Donnees/bin/deno
+          stage/All-Download/Donnees/bin/deno --version
           stage/All-Download/Donnees/bin/yt-dlp --version
           stage/All-Download/Donnees/bin/ffmpeg -version | head -n 1
       - name: Real localhost audio download and FFmpeg conversion
@@ -191,7 +196,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG="linux-v1.0.3"
+          TAG="linux-v1.0.4"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Linux $TAG already exists; keeping verified assets intact."
             exit 0
@@ -204,6 +209,6 @@ jobs:
             All-Download-Linux-x86_64.tar.xz \
             All-Download-Linux-x86_64.tar.xz.sha256 \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "All-Download Linux 1.0.3 (x86_64)" \
-            --notes "Linux 1.0.3 : sélection native des Reels Instagram verticaux 1080 x 1920 et normalisation des liens /reels/ individuels. Les contenus exigeant une connexion nécessitent toujours une session autorisée. Reprise après erreur réseau, archives SHA-256, tests Ubuntu 22.04/24.04 et formats Twitch préservés." \
+            --title "All-Download Linux 1.0.4 (x86_64)" \
+            --notes "Linux 1.0.4 inclut Deno et vérifie la disponibilité des formats YouTube avant transfert." \
             --latest=false
