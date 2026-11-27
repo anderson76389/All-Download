@@ -1,6 +1,6 @@
 <div align="center">
 
-**Version 1.0.3 :** Reels Instagram verticaux 1080 × 1920 et liens partagés mieux reconnus, tout en conservant les réglages vidéo, le plafond 1080p habituel et le secours Twitch HLS. Les contenus protégés peuvent toujours nécessiter une session.
+**Nouvelle barre Liquid Glass** sur Windows, Android et Linux, avec un rendu adapté aux thèmes clair, sombre et OLED. Sur téléphone, le flou du contenu sous la barre est disponible à partir d’Android 12. Sur tablette, la navigation reste visible sur le côté.
 
 <img src="./logo.jpg" alt="Logo All-Download" width="132">
 
@@ -11,8 +11,8 @@
 Windows 10/11 · Android 7+ · Linux x86_64 · Interface en français · Thèmes clair, sombre et OLED
 
 [![Windows](https://img.shields.io/badge/Windows-Portable%20%26%20Classique-2563EB?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/anderson76389/All-Download/releases/latest)
-[![Android](https://img.shields.io/badge/Android-APK%20stable-16A34A?style=for-the-badge&logo=android&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/android-v1.0.3)
-[![Linux](https://img.shields.io/badge/Linux-x86__64%20stable-6D28D9?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/linux-v1.0.3)
+[![Android](https://img.shields.io/badge/Android-APK%20stable-16A34A?style=for-the-badge&logo=android&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/android-v1.0.5)
+[![Linux](https://img.shields.io/badge/Linux-x86__64%20stable-6D28D9?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/linux-v1.0.5)
 
 </div>
 
@@ -24,10 +24,10 @@ Windows 10/11 · Android 7+ · Linux x86_64 · Interface en français · Thèmes
 |:--|:--|:--|
 | 🖥️ **Windows 10/11 (x64)** | **Portable** · Sans installation | **[⬇️ Télécharger le ZIP Portable](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Portable-Windows.zip)** |
 | 🖥️ **Windows 10/11 (x64)** | **Classique** · Avec installateur | **[⬇️ Télécharger le ZIP Classique](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Classique-Windows.zip)** |
-| 📱 **Android 7+** | **APK officielle — 1.0.3** | **[⬇️ Télécharger l’APK Android](https://github.com/anderson76389/All-Download/releases/download/android-v1.0.3/All-Download-Android-1.0.3.apk)** |
-| 🐧 **Linux x86_64 (glibc)** | **Portable — 1.0.3** | **[⬇️ Télécharger Linux (archive .tar.xz)](https://github.com/anderson76389/All-Download/releases/download/linux-v1.0.3/All-Download-Linux-x86_64.tar.xz)** |
+| 📱 **Android 7+** | **APK officielle — 1.0.5** | **[⬇️ Télécharger l’APK Android](https://github.com/anderson76389/All-Download/releases/download/android-v1.0.5/All-Download-Android-1.0.5.apk)** |
+| 🐧 **Linux x86_64 (glibc)** | **Portable — 1.0.5** | **[⬇️ Télécharger Linux (archive .tar.xz)](https://github.com/anderson76389/All-Download/releases/download/linux-v1.0.5/All-Download-Linux-x86_64.tar.xz)** |
 
-**[Release Android et notes de version](https://github.com/anderson76389/All-Download/releases/tag/android-v1.0.3)** · [Empreinte SHA-256 de l’APK](https://github.com/anderson76389/All-Download/releases/download/android-v1.0.3/All-Download-Android-1.0.3.apk.sha256) · [Dernière Release stable Windows](https://github.com/anderson76389/All-Download/releases/latest)
+**[Release Android et notes de version](https://github.com/anderson76389/All-Download/releases/tag/android-v1.0.5)** · [Empreinte SHA-256 de l’APK](https://github.com/anderson76389/All-Download/releases/download/android-v1.0.5/All-Download-Android-1.0.5.apk.sha256) · [Dernière Release stable Windows](https://github.com/anderson76389/All-Download/releases/latest)
 
 > **Important :** Windows, Android et Linux sont trois éditions distinctes. Installez uniquement le format correspondant à votre appareil (ZIP Windows, APK Android, archive Linux). Les fichiers officiels sont ceux des [Releases GitHub](https://github.com/anderson76389/All-Download/releases). Linux est une distribution portable stable, non un .deb/.rpm.
 
@@ -161,7 +161,7 @@ Les **sept catégories de médias** sont créées automatiquement. `Donnees/` re
 
 **L'interface HTML/CSS/JavaScript reste basée sur Windows** (extraite de `yt_app.py`). Seuls les boutons Linux de mise à jour et de raccourci sont ajoutés à l'onglet Appli. Le moteur Qt WebEngine, yt-dlp et FFmpeg est natif Linux, sans WebView2 ni exécutable Windows.
 
-1. Télécharger **[Linux x86_64 1.0.3 (.tar.xz)](https://github.com/anderson76389/All-Download/releases/download/linux-v1.0.3/All-Download-Linux-x86_64.tar.xz)**, ou l'**[archive .tar.gz](https://github.com/anderson76389/All-Download/releases/download/linux-v1.0.3/All-Download-Linux-x86_64.tar.gz)**.
+1. Télécharger **[Linux x86_64 1.0.5 (.tar.xz)](https://github.com/anderson76389/All-Download/releases/download/linux-v1.0.5/All-Download-Linux-x86_64.tar.xz)**, ou l'**[archive .tar.gz](https://github.com/anderson76389/All-Download/releases/download/linux-v1.0.5/All-Download-Linux-x86_64.tar.gz)**.
 2. Extraire le dossier **All-Download/** dans un emplacement modifiable, puis lancer **All-Download-Linux** (sans sudo).
 3. Pour obtenir un raccourci de menu, ouvrir **Paramètres → Appli → Linux → Ajouter au menu des applications**. Il est possible de le retirer depuis l'application.
 4. Pour vérifier une nouvelle version, choisir **Vérifier les mises à jour Linux**. Le navigateur n'ouvre la Release que sur demande ; l'installation reste manuelle.
@@ -170,7 +170,7 @@ Les téléchargements et les données restent dans le dossier All-Download/ (cat
 
 Les VOD Twitch sont gérées par yt-dlp avec un secours HLS public, sans le moteur spécialisé TwitchDownloaderCLI de Windows. Debian, Fedora et les environnements Wayland variés nécessitent encore des validations réelles.
 
-**[Documentation Linux détaillée](https://github.com/anderson76389/All-Download/blob/main/linux/README.md)** · [SHA-256 de l'archive .tar.xz](https://github.com/anderson76389/All-Download/releases/download/linux-v1.0.3/All-Download-Linux-x86_64.tar.xz.sha256)
+**[Documentation Linux détaillée](https://github.com/anderson76389/All-Download/blob/main/linux/README.md)** · [SHA-256 de l'archive .tar.xz](https://github.com/anderson76389/All-Download/releases/download/linux-v1.0.5/All-Download-Linux-x86_64.tar.xz.sha256)
 
 ---
 
