@@ -186,6 +186,10 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Read the release version from the source revision
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Download validated Linux archives
         uses: actions/download-artifact@v4
         with:
@@ -196,7 +200,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG="linux-v1.0.4"
+          VERSION="$(python3 -c 'from linux.update_check import CURRENT_LINUX_VERSION; print(CURRENT_LINUX_VERSION)')"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid stable Linux version: $VERSION"
+            exit 1
+          fi
+          TAG="linux-v$VERSION"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Linux $TAG already exists; keeping verified assets intact."
             exit 0
@@ -209,6 +218,6 @@ jobs:
             All-Download-Linux-x86_64.tar.xz \
             All-Download-Linux-x86_64.tar.xz.sha256 \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "All-Download Linux 1.0.4 (x86_64)" \
-            --notes "Linux 1.0.4 inclut Deno et vérifie la disponibilité des formats YouTube avant transfert." \
+            --title "All-Download Linux $VERSION (x86_64)" \
+            --notes "Version stable Linux x86_64. Les fichiers SHA-256 permettent de vérifier les deux archives publiées." \
             --latest=false
