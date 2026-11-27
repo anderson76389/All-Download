@@ -394,8 +394,12 @@ class AndroidSmokeTest {
                 assertNotSame("La barre d'état ne doit pas scroller sur téléphone",
                     home, footer.parent)
                 assertEquals(LinearLayout.HORIZONTAL, nav.orientation)
-                assertTrue("Le contenu doit rester affiché au-dessus de la navigation",
-                    activity.findViewById<View>(R.id.scroll).parent === footer.parent)
+                val page = activity.findViewById<View>(R.id.scroll)
+                val bottomControls = footer.parent as View
+                assertSame("La navigation se superpose au contenu défilant.",
+                    page.parent, bottomControls.parent)
+                assertEquals("Le dernier élément doit pouvoir défiler au-dessus de la barre.",
+                    bottomControls.height, page.paddingBottom)
             }
             instrumentation.runOnMainSync {
                 activity.findViewById<Button>(R.id.quickAudioButton).performClick()
@@ -498,7 +502,10 @@ class AndroidSmokeTest {
                 }
             } else {
                 assertEquals(LinearLayout.VERTICAL, nav.orientation)
-                assertNotNull("Barre latérale transparente absente.", nav.parent?.parent)
+                val scroll = activity.findViewById<View>(R.id.scroll)
+                val rail = bar.parent as View
+                assertSame("La navigation reste fixe pendant le défilement du contenu.",
+                    scroll.parent, rail.parent)
             }
             for (id in actions) {
                 instrumentation.runOnMainSync { activity.findViewById<Button>(id).performClick() }
@@ -819,8 +826,14 @@ class AndroidSmokeTest {
                 download.parent, enqueue.parent)
             assertTrue(download.isClickable && enqueue.isClickable)
             val navigation = activity.findViewById<LinearLayout>(R.id.navigation)
-            assertTrue("La navigation utilise le verre natif à double couche.",
-                (navigation.parent as View).background is android.graphics.drawable.LayerDrawable)
+            val dock = navigation.parent as View
+            assertTrue("La navigation utilise une surface de verre arrondie.",
+                dock.background is android.graphics.drawable.GradientDrawable)
+            if (activity.resources.configuration.screenWidthDp < 600 &&
+                Build.VERSION.SDK_INT >= 31) {
+                assertTrue("Le téléphone compatible doit utiliser le flou natif.",
+                    dock is GlassNavigation)
+            }
             val links = listOf(R.id.navHome, R.id.navQueue, R.id.navFiles, R.id.navSettings)
             assertTrue(links.all { activity.findViewById<Button>(it).isClickable })
             val shortcuts = listOf(R.id.quickVideoButton, R.id.quickAudioButton,

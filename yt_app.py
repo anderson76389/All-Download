@@ -756,7 +756,6 @@ HTML_PAGE = """<!DOCTYPE html>
   body.theme-light .card-title, body.theme-light .setting-sec-title, body.theme-light .setting-label, body.theme-light .section-title, body.theme-light .logs-title { color: #0f172a; }
   body.theme-light .pill-dropdown { background: #ffffff; color: #0f172a; border-color: #cbd5e1; }
   body.theme-light .pill-dropdown:hover, body.theme-light .pill-dropdown.active { border-color: #7c3aed; background: #f5f3ff; }
-  body.theme-light .footer { background: #ffffff; border-color: #e2e8f0; }
   body.theme-light .tools-cluster, body.theme-light .trash-group { background: #f1f5f9; border-color: #cbd5e1; }
   body.theme-light .trash-main, body.theme-light .trash-arrow, body.theme-light .tool-cluster-btn { color: #475569; }
   body.theme-light .terminal-box { background: #ffffff; color: #1e293b; border-color: #e2e8f0; }
@@ -785,7 +784,6 @@ HTML_PAGE = """<!DOCTYPE html>
   body.theme-dark { background: #141414; color: #f3f4f6; }
   body.theme-dark .media-card, body.theme-dark .input-wrapper, body.theme-dark .card-adv, body.theme-dark .log-banner, body.theme-dark .btn-settings { background: #212121; border-color: #2e2e2e; color: #f3f4f6; }
   body.theme-dark .setting-input, body.theme-dark .setting-textarea, body.theme-dark .range-input { background: #212121; border-color: #2e2e2e; color: #f3f4f6; }
-  body.theme-dark .footer { background: #1c1c1c; border-color: #282828; }
   body.theme-dark .url-input { color: #f3f4f6; }
   body.theme-dark .card-title, body.theme-dark .setting-sec-title, body.theme-dark .setting-label, body.theme-dark .section-title, body.theme-dark .logs-title { color: #f3f4f6; }
   body.theme-dark .pill-dropdown { background: #181818; border-color: #333333; color: #f3f4f6; }
@@ -815,7 +813,6 @@ HTML_PAGE = """<!DOCTYPE html>
   body.theme-dark_pure { background: #000000; color: #f3f4f6; }
   body.theme-dark_pure .media-card, body.theme-dark_pure .input-wrapper, body.theme-dark_pure .card-adv, body.theme-dark_pure .log-banner, body.theme-dark_pure .btn-settings { background: #0d0d0d; border-color: #1f1f1f; color: #f3f4f6; }
   body.theme-dark_pure .setting-input, body.theme-dark_pure .setting-textarea, body.theme-dark_pure .range-input { background: #0d0d0d; border-color: #1f1f1f; color: #f3f4f6; }
-  body.theme-dark_pure .footer { background: #080808; border-color: #1a1a1a; }
   body.theme-dark_pure .url-input { color: #f3f4f6; }
   body.theme-dark_pure .card-title, body.theme-dark_pure .setting-sec-title, body.theme-dark_pure .setting-label, body.theme-dark_pure .section-title, body.theme-dark_pure .logs-title { color: #f3f4f6; }
   body.theme-dark_pure .pill-dropdown { background: #080808; border-color: #1f1f1f; color: #f3f4f6; }
@@ -1052,7 +1049,44 @@ HTML_PAGE = """<!DOCTYPE html>
   .skeleton-fill { width: 40%; height: 100%; border-radius: 999px; animation: pulse 1.2s infinite ease-in-out; }
   @keyframes pulse { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
 
-  .footer { border-top-width: 1px; border-top-style: solid; display: flex; flex-direction: column; position: relative; z-index: 100; width: 100%; flex-shrink: 0; }
+  #viewMain { position: relative; --dock-space: 110px; }
+  #mainContent {
+    padding-bottom: calc(16px + var(--dock-space));
+    scroll-padding-bottom: calc(16px + var(--dock-space));
+  }
+  .footer {
+    display: flex; flex-direction: column; position: absolute; z-index: 100;
+    inset-inline: clamp(8px, 1.5vw, 24px); bottom: 8px; margin-inline: auto; max-width: 1800px;
+    border-radius: 24px; pointer-events: none;
+    background: linear-gradient(var(--glass-top), var(--glass-base));
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.22);
+  }
+  body.theme-light { --glass-top: #fff; --glass-base: #f1f5f9; --glass-hover: #0f172a12; }
+  body.theme-dark { --glass-top: #343434; --glass-base: #222; --glass-hover: #ffffff18; }
+  body.theme-dark_pure { --glass-top: #252525; --glass-base: #090909; --glass-hover: #ffffff19; }
+  @supports (backdrop-filter: blur(1px)) {
+    .footer {
+      background: linear-gradient(var(--glass-top-alpha), var(--glass-base-alpha));
+      backdrop-filter: blur(28px) saturate(1.35);
+    }
+    body.theme-light { --glass-top-alpha: #ffffffd9; --glass-base-alpha: #f1f5f9ba; }
+    body.theme-dark { --glass-top-alpha: #343434d6; --glass-base-alpha: #222222ba; }
+    body.theme-dark_pure { --glass-top-alpha: #252525d6; --glass-base-alpha: #090909ba; }
+  }
+  @media (prefers-reduced-transparency: reduce), (forced-colors: active) {
+    .footer {
+      background: linear-gradient(var(--glass-top), var(--glass-base));
+      backdrop-filter: none;
+    }
+  }
+  .footer :is(button, .pill-dropdown, .extra-quick-wrap, .dropdown-popover, .popover-menu) {
+    pointer-events: auto;
+  }
+  .footer button:focus-visible {
+    outline: 2px solid currentColor; outline-offset: 2px;
+  }
+  .footer .progress-line { width: calc(100% - 32px); margin-inline: auto; }
+  .footer .progress-fill { border-radius: 999px; }
   .status-bar { font-size: 12.5px; font-weight: 600; padding: 6px 20px; text-align: center; }
   .progress-line { height: 3px; background: transparent; width: 100%; position: relative; }
 
@@ -1158,14 +1192,6 @@ HTML_PAGE = """<!DOCTYPE html>
     text-align: center;
     padding: 0 18px clamp(18px, 3vh, 30px);
   }
-  body.theme-light .footer,
-  body.theme-dark .footer,
-  body.theme-dark_pure .footer {
-    border-top-color: var(--ui-divider);
-  }
-  .status-bar {
-    border-bottom: 1px solid var(--ui-divider);
-  }
   .settings-header, .logs-header, .auth-header {
     border-bottom-color: var(--ui-divider);
   }
@@ -1213,7 +1239,6 @@ HTML_PAGE = """<!DOCTYPE html>
   body.theme-dark .setting-sec-desc { color: #9ca3af; }
 
   body.theme-dark_pure,
-  body.theme-dark_pure .footer,
   body.theme-dark_pure .status-bar,
   body.theme-dark_pure .center-cluster,
   body.theme-dark_pure .tools-cluster,
@@ -1436,6 +1461,35 @@ HTML_PAGE = """<!DOCTYPE html>
     .settings-header { display:flex; flex-wrap:wrap; }
     .settings-nav { order:3; flex-basis:100%; justify-content:center; }
   }
+  body[class] .footer :is(.status-bar, .tools-cluster, .center-cluster, .trash-group, .center-cluster > .pill-dropdown) {
+    background: transparent; border-color: transparent;
+  }
+  body[class] .footer :is(.tool-cluster-btn, .trash-arrow, .center-cluster > .pill-dropdown):hover {
+    background: var(--glass-hover);
+  }
+  .footer .bottom-v-separator { display: none; }
+  .footer .dock-trigger, .footer .dropdown-item {
+    background: transparent; border: 0; color: inherit; font: inherit;
+  }
+  .footer .dock-trigger {
+    display: inline-flex; align-items: center; gap: 8px; height: 100%;
+    padding: 2px 0; border-radius: 8px; white-space: nowrap;
+  }
+  .footer .dropdown-item:hover { background: var(--glass-hover); }
+  .footer .dropdown-popover { max-width: calc(100vw - 28px); }
+  .footer .status-bar { color: inherit; }
+  .footer .actions-center :is(.dock-trigger, .dropdown-item) svg { flex-shrink: 0; }
+  @media (max-width: 490px) {
+    .footer .actions-bar { gap: 6px; padding: 6px 8px; }
+    .footer .actions-left, .footer .actions-right { flex: 0 0 auto; gap: 4px; }
+    .footer .tool-cluster-btn, .footer .trash-main, .footer .trash-arrow { width: 34px; padding: 0; justify-content: center; }
+    .footer .btn-download-all { padding-inline: 9px; }
+    .footer .center-cluster .pill-dropdown { padding-inline: 7px; }
+    #popoverMenu { right: auto; left: 0; max-width: calc(100vw - 28px); }
+  }
+  @media (max-width: 370px) {
+    .footer .actions-bar { justify-content: center; }
+  }
 </style>
 </head>
 <body class="theme-light" id="appBody">
@@ -1478,7 +1532,7 @@ HTML_PAGE = """<!DOCTYPE html>
       <div class="status-bar" id="statusBar">Prêt à télécharger ! 0 élément en file d'attente.</div>
       <div class="progress-line"><div class="progress-fill" id="progressFill"></div></div>
       
-      <div class="actions-bar">
+      <div class="actions-bar" role="group" aria-label="Commandes de téléchargement">
         <div class="actions-left">
           <div class="tools-cluster">
             <button class="tool-cluster-btn" onclick="openFolderSafe()" title="Ouvrir le dossier">
@@ -1496,20 +1550,24 @@ HTML_PAGE = """<!DOCTYPE html>
         <div class="actions-center">
           <div class="center-cluster">
             <div class="pill-dropdown" id="globalModePill" onclick="toggleDropdown('globalModePopover', event)">
-              <span id="globalModeText">Vidéo</span>
-              <svg class="svg-icon" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+              <button type="button" class="dock-trigger" aria-controls="globalModePopover" aria-expanded="false" aria-label="Format" aria-describedby="globalModeText">
+                <span id="globalModeText">Vidéo</span>
+                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+              </button>
               <div class="dropdown-popover upward" id="globalModePopover">
-                <div class="dropdown-item selected" onclick="selectGlobalMode('Vidéo', event)"><span class="check">✓</span>Vidéo</div>
-                <div class="dropdown-item" onclick="selectGlobalMode('Audio', event)"><span class="check"></span>Audio</div>
-                <div class="dropdown-item" onclick="selectGlobalMode('GIF', event)"><span class="check"></span>GIF</div>
+                <button type="button" class="dropdown-item selected" onclick="selectGlobalMode('Vidéo', event)"><span class="check">✓</span>Vidéo</button>
+                <button type="button" class="dropdown-item" onclick="selectGlobalMode('Audio', event)"><span class="check"></span>Audio</button>
+                <button type="button" class="dropdown-item" onclick="selectGlobalMode('GIF', event)"><span class="check"></span>GIF</button>
               </div>
             </div>
 
             <div class="bottom-v-separator"></div>
 
             <div class="pill-dropdown" id="globalQualPill" onclick="toggleDropdown('globalQualPopover', event)">
-              <span id="globalQualText">1080p (Full HD)</span>
-              <svg class="svg-icon" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+              <button type="button" class="dock-trigger" aria-controls="globalQualPopover" aria-expanded="false" aria-label="Qualité" aria-describedby="globalQualText">
+                <span id="globalQualText">1080p (Full HD)</span>
+                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+              </button>
               <div class="dropdown-popover upward" id="globalQualPopover"></div>
             </div>
           </div>
@@ -1524,7 +1582,7 @@ HTML_PAGE = """<!DOCTYPE html>
             <button class="trash-main" onclick="clearQueue()" title="Tout supprimer">
               <svg class="svg-icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
             </button>
-            <button class="trash-arrow" onclick="toggleTrashPopover(event)">
+            <button class="trash-arrow" aria-label="Options de la file" aria-controls="popoverMenu" aria-expanded="false" onclick="toggleTrashPopover(event)">
               <svg class="svg-icon" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
             </button>
             
@@ -1917,6 +1975,15 @@ HTML_PAGE = """<!DOCTYPE html>
   let currentQuickSettings = {};
   let toastHideTimer = null;
 
+  // The queue scrolls behind the glass. Reserve room for its last item at any width.
+  if ('ResizeObserver' in window) {
+    const mainView = document.getElementById('viewMain');
+    const dock = mainView.querySelector('.footer');
+    new ResizeObserver(() => {
+      if (dock.offsetHeight) mainView.style.setProperty('--dock-space', `${dock.offsetHeight + 8}px`);
+    }).observe(dock);
+  }
+
   function showAppToast(message) {
     const toast = document.getElementById('appToast');
     if (!toast || !message) return;
@@ -1992,6 +2059,8 @@ HTML_PAGE = """<!DOCTYPE html>
     document.querySelectorAll('.pill-dropdown').forEach(p => p.classList.remove('active'));
     const trashPop = document.getElementById('popoverMenu');
     if (trashPop) trashPop.classList.remove('open');
+    document.querySelectorAll('.footer [aria-expanded="true"]')
+      .forEach(button => button.setAttribute('aria-expanded', 'false'));
     hideContextMenu();
   }
 
@@ -2005,6 +2074,7 @@ HTML_PAGE = """<!DOCTYPE html>
       pop.classList.add('open');
       if (pop.parentElement && pop.parentElement.classList.contains('pill-dropdown')) {
         pop.parentElement.classList.add('active');
+        pop.parentElement.querySelector('.dock-trigger')?.setAttribute('aria-expanded', 'true');
       }
     }
   }
@@ -2017,8 +2087,18 @@ HTML_PAGE = """<!DOCTYPE html>
     closeAllPopovers();
     if (!wasOpen) {
       p.classList.add('open');
+      p.parentElement.querySelector('.trash-arrow').setAttribute('aria-expanded', 'true');
     }
   }
+
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    const trigger = document.querySelector('.footer [aria-expanded="true"]');
+    if (trigger) {
+      closeAllPopovers();
+      trigger.focus();
+    }
+  });
 
   function showContextMenu(e) {
     e.preventDefault();
@@ -2137,23 +2217,23 @@ HTML_PAGE = """<!DOCTYPE html>
 
     if (currentGlobalMode === 'Audio') {
       pop.innerHTML = `
-        <div class="dropdown-item ${currentGlobalQuality==='FLAC'?'selected':''}" onclick="selectGlobalQual('FLAC', 'FLAC (selon la source)', event)"><span class="check">${currentGlobalQuality==='FLAC'?'✓':''}</span>FLAC (selon la source)</div>
-        <div class="dropdown-item ${currentGlobalQuality==='M4A'?'selected':''}" onclick="selectGlobalQual('M4A', 'M4A (selon la source)', event)"><span class="check">${currentGlobalQuality==='M4A'?'✓':''}</span>M4A (selon la source)</div>
-        <div class="dropdown-item ${currentGlobalQuality==='MP3_320'?'selected':''}" onclick="selectGlobalQual('MP3_320', 'MP3 (320 kbps)', event)"><span class="check">${currentGlobalQuality==='MP3_320'?'✓':''}</span>MP3 (320 kbps)</div>
+        <button type="button" class="dropdown-item ${currentGlobalQuality==='FLAC'?'selected':''}" onclick="selectGlobalQual('FLAC', 'FLAC (selon la source)', event)"><span class="check">${currentGlobalQuality==='FLAC'?'✓':''}</span>FLAC (selon la source)</button>
+        <button type="button" class="dropdown-item ${currentGlobalQuality==='M4A'?'selected':''}" onclick="selectGlobalQual('M4A', 'M4A (selon la source)', event)"><span class="check">${currentGlobalQuality==='M4A'?'✓':''}</span>M4A (selon la source)</button>
+        <button type="button" class="dropdown-item ${currentGlobalQuality==='MP3_320'?'selected':''}" onclick="selectGlobalQual('MP3_320', 'MP3 (320 kbps)', event)"><span class="check">${currentGlobalQuality==='MP3_320'?'✓':''}</span>MP3 (320 kbps)</button>
       `;
     } else if (currentGlobalMode === 'GIF') {
       pop.innerHTML = `
-        <div class="dropdown-item ${currentGlobalQuality==='GIF'?'selected':''}" onclick="selectGlobalQual('GIF', 'GIF (Haute Qualité)', event)"><span class="check">${currentGlobalQuality==='GIF'?'✓':''}</span>GIF (Haute Qualité)</div>
-        <div class="dropdown-item ${currentGlobalQuality==='GIF_30'?'selected':''}" onclick="selectGlobalQual('GIF_30', 'GIF (Fluide 30fps)', event)"><span class="check">${currentGlobalQuality==='GIF_30'?'✓':''}</span>GIF (Fluide 30fps)</div>
+        <button type="button" class="dropdown-item ${currentGlobalQuality==='GIF'?'selected':''}" onclick="selectGlobalQual('GIF', 'GIF (Haute Qualité)', event)"><span class="check">${currentGlobalQuality==='GIF'?'✓':''}</span>GIF (Haute Qualité)</button>
+        <button type="button" class="dropdown-item ${currentGlobalQuality==='GIF_30'?'selected':''}" onclick="selectGlobalQual('GIF_30', 'GIF (Fluide 30fps)', event)"><span class="check">${currentGlobalQuality==='GIF_30'?'✓':''}</span>GIF (Fluide 30fps)</button>
       `;
     } else {
       pop.innerHTML = `
-        <div class="dropdown-item ${currentGlobalQuality==='Meilleure qualité (Auto)'?'selected':''}" onclick="selectGlobalQual('Meilleure qualité (Auto)', 'Meilleure qualité (Auto)', event)"><span class="check">${currentGlobalQuality==='Meilleure qualité (Auto)'?'✓':''}</span>Meilleure qualité (Auto)</div>
-        <div class="dropdown-item ${currentGlobalQuality==='2160p (4K UHD)'?'selected':''}" onclick="selectGlobalQual('2160p (4K UHD)', '2160p (4K UHD)', event)"><span class="check">${currentGlobalQuality==='2160p (4K UHD)'?'✓':''}</span>2160p (4K UHD)</div>
-        <div class="dropdown-item ${currentGlobalQuality==='1440p (2K QHD)'?'selected':''}" onclick="selectGlobalQual('1440p (2K QHD)', '1440p (2K QHD)', event)"><span class="check">${currentGlobalQuality==='1440p (2K QHD)'?'✓':''}</span>1440p (2K QHD)</div>
-        <div class="dropdown-item ${currentGlobalQuality==='1080p (Full HD)'?'selected':''}" onclick="selectGlobalQual('1080p (Full HD)', '1080p (Full HD)', event)"><span class="check">${currentGlobalQuality==='1080p (Full HD)'?'✓':''}</span>1080p (Full HD)</div>
-        <div class="dropdown-item ${currentGlobalQuality==='720p (HD)'?'selected':''}" onclick="selectGlobalQual('720p (HD)', '720p (HD)', event)"><span class="check">${currentGlobalQuality==='720p (HD)'?'✓':''}</span>720p (HD)</div>
-        <div class="dropdown-item ${currentGlobalQuality==='480p (SD)'?'selected':''}" onclick="selectGlobalQual('480p (SD)', '480p (SD)', event)"><span class="check">${currentGlobalQuality==='480p (SD)'?'✓':''}</span>480p (SD)</div>
+        <button type="button" class="dropdown-item ${currentGlobalQuality==='Meilleure qualité (Auto)'?'selected':''}" onclick="selectGlobalQual('Meilleure qualité (Auto)', 'Meilleure qualité (Auto)', event)"><span class="check">${currentGlobalQuality==='Meilleure qualité (Auto)'?'✓':''}</span>Meilleure qualité (Auto)</button>
+        <button type="button" class="dropdown-item ${currentGlobalQuality==='2160p (4K UHD)'?'selected':''}" onclick="selectGlobalQual('2160p (4K UHD)', '2160p (4K UHD)', event)"><span class="check">${currentGlobalQuality==='2160p (4K UHD)'?'✓':''}</span>2160p (4K UHD)</button>
+        <button type="button" class="dropdown-item ${currentGlobalQuality==='1440p (2K QHD)'?'selected':''}" onclick="selectGlobalQual('1440p (2K QHD)', '1440p (2K QHD)', event)"><span class="check">${currentGlobalQuality==='1440p (2K QHD)'?'✓':''}</span>1440p (2K QHD)</button>
+        <button type="button" class="dropdown-item ${currentGlobalQuality==='1080p (Full HD)'?'selected':''}" onclick="selectGlobalQual('1080p (Full HD)', '1080p (Full HD)', event)"><span class="check">${currentGlobalQuality==='1080p (Full HD)'?'✓':''}</span>1080p (Full HD)</button>
+        <button type="button" class="dropdown-item ${currentGlobalQuality==='720p (HD)'?'selected':''}" onclick="selectGlobalQual('720p (HD)', '720p (HD)', event)"><span class="check">${currentGlobalQuality==='720p (HD)'?'✓':''}</span>720p (HD)</button>
+        <button type="button" class="dropdown-item ${currentGlobalQuality==='480p (SD)'?'selected':''}" onclick="selectGlobalQual('480p (SD)', '480p (SD)', event)"><span class="check">${currentGlobalQuality==='480p (SD)'?'✓':''}</span>480p (SD)</button>
       `;
     }
   }
@@ -2168,7 +2248,10 @@ HTML_PAGE = """<!DOCTYPE html>
   }
 
   function selectGlobalMode(mode, e) {
-    if (e) { e.stopPropagation(); }
+    if (e) {
+      e.stopPropagation();
+      if (e.detail === 0) document.querySelector('#globalModePill .dock-trigger').focus();
+    }
     currentGlobalMode = mode;
     document.getElementById('globalModeText').innerText = mode;
     
@@ -2208,7 +2291,10 @@ HTML_PAGE = """<!DOCTYPE html>
   }
 
   function selectGlobalQual(val, label, e) {
-    if (e) { e.stopPropagation(); }
+    if (e) {
+      e.stopPropagation();
+      if (e.detail === 0) document.querySelector('#globalQualPill .dock-trigger').focus();
+    }
     currentGlobalQuality = val;
     document.getElementById('globalQualText').innerText = label;
     updateGlobalQualityDropdown();

@@ -3,23 +3,25 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
+const { pathToFileURL } = require('node:url');
 const { chromium } = require('playwright-core');
 
 const edgeCandidates = [
+  process.env.ALL_DOWNLOAD_TEST_BROWSER,
   'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
   'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
   process.env.PROGRAMFILES && path.join(process.env.PROGRAMFILES, 'Microsoft/Edge/Application/msedge.exe'),
   process.env['PROGRAMFILES(X86)'] && path.join(process.env['PROGRAMFILES(X86)'], 'Microsoft/Edge/Application/msedge.exe')
 ].filter(Boolean);
 const executablePath = edgeCandidates.find(p => fs.existsSync(p));
-assert.ok(executablePath, 'Microsoft Edge x64 introuvable sur le runner Windows');
+assert.ok(executablePath, 'Navigateur Chromium introuvable pour le test de rendu');
 
 (async () => {
   const browser = await chromium.launch({ executablePath, headless: true,
     args: ['--no-sandbox', '--disable-gpu'] });
   try {
     const page = await browser.newPage({viewport:{width:1050,height:800}});
-    await page.goto('file:///' + path.resolve('tests/ui-test.html').replaceAll('\\','/'));
+    await page.goto(pathToFileURL(path.resolve('tests/ui-test.html')).href);
     await page.evaluate(() => {
       const data = {title:'Vidéo de démonstration',duration:'03:20',thumbnail:'',url:'https://example.com/video',
         mode:'Vidéo', formats:['Meilleure qualité (Auto)','1080p'], selectedQuality:'1080p',
@@ -180,40 +182,22 @@ assert.ok(executablePath, 'Microsoft Edge x64 introuvable sur le runner Windows'
         controls: mid(document.querySelector('.actions-center')),
         viewport: innerWidth / 2,
         headerLine: getComputedStyle(document.querySelector('.header')).borderBottomColor,
-        footerLine: getComputedStyle(document.querySelector('.footer')).borderTopColor,
-        statusLine: getComputedStyle(document.querySelector('.status-bar')).borderBottomColor,
-        verticalDivider: getComputedStyle(document.querySelector('.bottom-v-separator')).backgroundColor,
         overflow: document.documentElement.scrollWidth > innerWidth
       };
     });
     assert.ok(Math.abs(balance.main-balance.viewport)<2, 'L etat vide n est pas centre');
     assert.ok(Math.abs(balance.controls-balance.viewport)<2, 'La barre de formats n est pas centree');
     assert.equal(balance.headerLine,'rgb(203, 213, 225)','Separateur haut light pas assez visible');
-    assert.equal(balance.footerLine,'rgb(203, 213, 225)','Separateur bas light incorrect');
-    assert.equal(balance.statusLine,'rgb(203, 213, 225)','Separateur de statut manquant');
-    assert.equal(balance.verticalDivider,'rgb(203, 213, 225)','Trait entre formats incorrect');
     assert.equal(balance.overflow,false,'Debordement horizontal dans l interface normale');
-    for (const [theme,color] of [['theme-dark','rgb(59, 59, 59)'],['theme-dark_pure','rgb(45, 45, 45)']]) {
-      await page.evaluate(t => { document.body.className = t; }, theme);
-      const themeLines = await page.evaluate(() => ({
-        head:getComputedStyle(document.querySelector('.header')).borderBottomColor,
-        footer:getComputedStyle(document.querySelector('.footer')).borderTopColor,
-        divider:getComputedStyle(document.querySelector('.bottom-v-separator')).backgroundColor
-      }));
-      assert.equal(themeLines.head,color,'Trait de separation haut incorrect : '+theme);
-      assert.equal(themeLines.footer,color,'Trait de separation bas incorrect : '+theme);
-      assert.equal(themeLines.divider,color,'Trait de separation des boutons incorrect : '+theme);
-    }
-    console.log('OK centrage et traits de separation verifies dans Edge (1334 px, 3 themes)');
 
     // Audit des 3 themes en situation reelle, y compris toutes les lignes fines.
     // Les elements restent dans le DOM quel que soit l'ecran affiché.
     const themes = [
-      {id:'light',name:'theme-light',body:'rgb(248, 250, 252)',footer:'rgb(255, 255, 255)',
+      {id:'light',name:'theme-light',body:'rgb(248, 250, 252)',glass:'#ffffffd9',
        divider:'rgb(203, 213, 225)',accent:'rgb(124, 58, 237)',card:'rgb(255, 255, 255)'},
-      {id:'dark',name:'theme-dark',body:'rgb(20, 20, 20)',footer:'rgb(28, 28, 28)',
+      {id:'dark',name:'theme-dark',body:'rgb(20, 20, 20)',glass:'#343434d6',
        divider:'rgb(59, 59, 59)',accent:'rgb(124, 58, 237)',card:'rgb(33, 33, 33)'},
-      {id:'dark_pure',name:'theme-dark_pure',body:'rgb(0, 0, 0)',footer:'rgb(0, 0, 0)',
+      {id:'dark_pure',name:'theme-dark_pure',body:'rgb(0, 0, 0)',glass:'#252525d6',
        divider:'rgb(45, 45, 45)',accent:'rgb(124, 58, 237)',card:'rgb(0, 0, 0)'}
     ];
     // La carte de configuration avancee est creee dynamiquement ;
@@ -233,7 +217,8 @@ assert.ok(executablePath, 'Microsoft Edge x64 introuvable sur le runner Windows'
         return {
           theme:document.body.className,
           body:rule('body','background-color'),
-          footer:rule('.footer','background-color'),
+          glassColor:rule('body','--glass-top-alpha'),
+          blur:getComputedStyle(document.querySelector('.footer')).backdropFilter,
           status:rule('.status-bar','background-color'),
           card:rule('.media-card','background-color'),
           form:rule('.setting-input','background-color'),
@@ -244,9 +229,6 @@ assert.ok(executablePath, 'Microsoft Edge x64 introuvable sur le runner Windows'
           log:rule('.terminal-box','background-color'),
           secret:rule('.secret-box','background-color'),
           headLine:rule('.header','border-bottom-color'),
-          footLine:rule('.footer','border-top-color'),
-          statusLine:rule('.status-bar','border-bottom-color'),
-          smallDivider:rule('.bottom-v-separator','background-color'),
           cardDivider:rule('.v-separator','background-color'),
           settingsLine:rule('.settings-header','border-bottom-color'),
           authLine:rule('.auth-header','border-bottom-color'),
@@ -254,7 +236,6 @@ assert.ok(executablePath, 'Microsoft Edge x64 introuvable sur le runner Windows'
           headerWidth:rule('.header','border-bottom-width'),
           footerWidth:rule('.footer','border-top-width'),
           statusWidth:rule('.status-bar','border-bottom-width'),
-          smallDividerWidth:rule('.bottom-v-separator','width'),
           mainButton:rule('.btn-add','background-color'),
           secondaryButton:rule('.btn-logs-card','background-color'),
           secondaryColor:rule('.btn-logs-card','color')
@@ -262,12 +243,16 @@ assert.ok(executablePath, 'Microsoft Edge x64 introuvable sur le runner Windows'
       });
       assert.equal(colors.theme,theme.name,'Classe theme non synchronisee');
       assert.equal(colors.body,theme.body,'Fond de la fenetre incorrect : '+theme.id);
-      assert.equal(colors.footer,theme.footer,'Bas de la fenetre incorrect : '+theme.id);
+      assert.equal(colors.glassColor,theme.glass,'Teinte du verre : '+theme.id);
+      assert.match(colors.blur, /blur\(28px\)/);
+      for (const k of ['status','controls','tools'])
+        assert.equal(colors[k],'rgba(0, 0, 0, 0)','Surface imbriquée opaque : '+k);
       assert.equal(colors.card,theme.card,'Cartes de medias non harmonisees : '+theme.id);
-      for (const k of ['headLine','footLine','statusLine','smallDivider','cardDivider','settingsLine','authLine','trashLine'])
+      for (const k of ['headLine','cardDivider','settingsLine','authLine','trashLine'])
         assert.equal(colors[k],theme.divider,'Trait gris incoherent ('+k+') : '+theme.id);
-      for (const k of ['headerWidth','footerWidth','statusWidth','smallDividerWidth'])
-        assert.equal(colors[k],'1px','Epaisseur de ligne differente de 1px ('+k+')');
+      assert.equal(colors.headerWidth,'1px');
+      assert.equal(colors.footerWidth,'0px');
+      assert.equal(colors.statusWidth,'0px');
       assert.equal(colors.mainButton,theme.accent,'Accent du bouton Ajouter incorrect : '+theme.id);
       // Même violet dans les trois thèmes, mais fond sombre/OLED inchangé.
       const accents = await page.evaluate(() => {
@@ -288,7 +273,7 @@ assert.ok(executablePath, 'Microsoft Edge x64 introuvable sur le runner Windows'
       assert.equal(accents.add,'rgb(124, 58, 237)','Ajouter doit être violet : '+theme.id);
       assert.equal(accents.download,'rgb(124, 58, 237)','Télécharger doit être violet : '+theme.id);
       assert.equal(accents.progress,'rgb(124, 58, 237)','Barre de progression non violette : '+theme.id);
-      assert.equal(accents.center,'rgb(124, 58, 237)','Cadre Vidéo/Qualité non violet : '+theme.id);
+      assert.equal(accents.center,'rgba(0, 0, 0, 0)','Contour superposé : '+theme.id);
       if(theme.id !== 'light') {
         assert.equal(accents.activeText,'rgb(196, 181, 253)','Onglet actif non lisible : '+theme.id);
         assert.notEqual(accents.statusBg,'rgb(0, 230, 118)','Fond vert interdit : '+theme.id);
@@ -297,7 +282,7 @@ assert.ok(executablePath, 'Microsoft Edge x64 introuvable sur le runner Windows'
       assert.notEqual(colors.secondaryButton,'rgb(56, 49, 51)',
         'Bouton secondaire conserve un fond gris-rose hors theme : '+theme.id);
       if (theme.id==='dark_pure') {
-        for (const k of ['status','form','controls','tools','popup','contextMenu','log','secret'])
+        for (const k of ['form','popup','contextMenu','log','secret'])
           assert.equal(colors[k],'rgb(0, 0, 0)','OLED pas completement noir ('+k+')');
         assert.equal(colors.secondaryButton,'rgb(0, 0, 0)','Bouton secondaire non OLED');
       }
@@ -317,9 +302,84 @@ assert.ok(executablePath, 'Microsoft Edge x64 introuvable sur le runner Windows'
       const actual = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
       assert.equal(actual,themes.find(x=>x.id===id).body,'Changement de thème glitché : '+id);
     }
-    console.log('OK audit des 3 themes dans Edge : vrai OLED #000, menus, 1px de séparateurs, boutons et transitions');
+    console.log('OK audit des 3 thèmes : OLED #000, palettes du verre, menus, boutons et transitions');
 
-    console.log('OK interface responsive Edge : plein écran 1920, fenêtre 1050, 2 colonnes de cartes et paramètres');
+    await page.evaluate(() => {
+      queue = Array.from({length: 16}, (_, i) => ({
+        title:'Média ' + i, duration:'03:20', thumbnail:'', url:'https://example.com/video/' + i,
+        mode:'Vidéo', formats:['1080p'], selectedQuality:'1080p', selectedQualityLabel:'1080p'
+      }));
+      renderCards();
+      updateView();
+    });
+
+    for (const width of [320, 375, 680, 920, 1050, 1920]) {
+      await page.setViewportSize({width, height:620});
+      await page.waitForFunction(() => {
+        const dock = document.querySelector('.footer');
+        return parseFloat(getComputedStyle(dock).getPropertyValue('--dock-space')) === dock.offsetHeight + 8;
+      });
+      const layout = await page.evaluate(() => {
+        const dock = document.querySelector('.footer').getBoundingClientRect();
+        const scroll = document.querySelector('.main-content');
+        scroll.scrollTop = scroll.scrollHeight;
+        return {
+          dockTop:dock.top, viewportBottom:scroll.getBoundingClientRect().bottom,
+          lastCardBottom:document.querySelector('.media-card:last-child').getBoundingClientRect().bottom,
+          controlsFit:[...document.querySelectorAll('.footer .dock-trigger, .footer .tool-cluster-btn, .footer .btn-download-all')].every(button => {
+            const rect = button.getBoundingClientRect();
+            return rect.left >= dock.left && rect.right <= dock.right;
+          })
+        };
+      });
+      assert.ok(layout.dockTop < layout.viewportBottom, 'Le contenu doit passer derrière le verre');
+      assert.ok(layout.lastCardBottom <= layout.dockTop, 'Dernier média masqué à '+width);
+      assert.ok(layout.controlsFit, 'Commande hors de la barre à '+width);
+    }
+
+    await page.setViewportSize({width:375, height:640});
+    const format = page.getByRole('button', {name:'Format', exact:true});
+    await format.focus();
+    await page.keyboard.press('Enter');
+    assert.equal(await format.getAttribute('aria-expanded'), 'true');
+    await page.keyboard.press('Tab');
+    assert.match(await page.evaluate(() => document.activeElement.textContent), /Vidéo/);
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Enter');
+    assert.equal(await format.getAttribute('aria-expanded'), 'false');
+    assert.equal(await page.evaluate(() => currentGlobalMode), 'Audio');
+    const quality = page.getByRole('button', {name:'Qualité', exact:true});
+    await quality.click();
+    await page.locator('#globalQualPopover').getByRole('button', {name:'MP3 (320 kbps)'}).click();
+    assert.equal(await page.evaluate(() => currentGlobalQuality), 'MP3_320');
+    const trash = page.getByRole('button', {name:'Options de la file'});
+    await trash.click();
+    assert.equal(await trash.getAttribute('aria-expanded'), 'true');
+    await page.keyboard.press('Escape');
+    assert.equal(await trash.getAttribute('aria-expanded'), 'false');
+    assert.ok(await trash.evaluate(button => document.activeElement === button));
+
+    await page.setViewportSize({width:1050, height:620});
+    await page.evaluate(() => {
+      queue = [];
+      updateView();
+    });
+    const sample = await page.locator('.footer').evaluate(dock => {
+      const {x, y} = dock.getBoundingClientRect();
+      return {x: Math.round(x + 25), y: Math.round(y + 12), width: 12, height: 12};
+    });
+    const paintBehindDock = color => page.locator('.main-content').evaluate((scroll, background) => {
+      scroll.style.background = background;
+    }, color);
+    await paintBehindDock('#ff0000');
+    const redBackdrop = await page.screenshot({clip:sample});
+    await paintBehindDock('#0000ff');
+    const blueBackdrop = await page.screenshot({clip:sample});
+    assert.notDeepEqual(redBackdrop, blueBackdrop, 'Le contenu derrière le verre doit modifier son rendu');
+
+    await page.emulateMedia({forcedColors:'active'});
+    assert.equal(await page.locator('.footer').evaluate(dock => getComputedStyle(dock).backdropFilter), 'none');
+    console.log('OK dock Liquid Glass : trois thèmes, 320 à 1920 px, file défilante, menus, clavier, rendu du fond et contraste forcé');
     await page.close();
   } finally {
     await browser.close();
