@@ -63,7 +63,7 @@
 - Les titres de sections sont alignés verticalement avec leur pictogramme ; les grandes commandes de file d'attente et de cookies gardent leur alignement à gauche.
 - La correction conserve les mêmes boutons, gestes et écouteurs, et ne modifie pas les moteurs de téléchargement.
 - Validation GitHub : compilation signée, **42 tests Android instrumentés** par profil (Android 9/14/15 et tablette Android 14), tests de téléchargements publics et réseaux sociaux. Les médias bloqués par leur plateforme sont notés **non vérifiés / ignorés**, jamais comptés comme téléchargements réussis.
-- APK officielle : [Android 0.6.17-beta](https://github.com/anderson76389/All-Download/releases/tag/android-v0.6.17-beta) · [SHA-256](https://github.com/anderson76389/All-Download/releases/download/android-v0.6.17-beta/All-Download-Android-0.6.17-beta.apk.sha256).
+- [Télécharger l’APK stable et son empreinte SHA-256](../README.md).
 
 # All-Download Android — bêta 0.6.15
 
@@ -246,7 +246,7 @@ Sur tablette et sur pliable ouvert (largeur Android d'au moins 720 dp), l'interf
 - Modes vidéo, audio MP3/M4A/FLAC, GIF (conversion), playlists et chaînes ; URL partagée depuis d'autres applis, annulation, progression et notification de téléchargement.
 - Téléchargement **dans l'espace privé temporaire** de l'appli, puis export (streaming) dans `Téléchargements/All-Download/<catégorie>/` via MediaStore sur Android 10+, et accès direct sur Android 7-9 (permission de stockage).
 - Répertoires catégorisés : `VIDÉOS`, `AUDIOS`, `TWITCH`, `GIFS`, `CHAÎNES`, `PLAYLIST`, `AUTRES`.
-- La qualité **1080p** est sélectionnée par défaut pour les vidéos, y compris Twitch : meilleure source native disponible, avec un plafond de 1080p par défaut ni agrandissement artificiel. Les limites de résolution restent sélectionnables manuellement. En cas d’échec de l’extracteur Twitch, un secours HLS utilise le flux public disponible.
+- La qualité **1080p** est sélectionnée par défaut pour les vidéos, y compris Twitch : meilleure source native disponible, jusqu’à 1080p sans agrandissement artificiel. Les limites de résolution restent sélectionnables manuellement. En cas d’échec de l’extracteur Twitch, un secours HLS utilise le flux public disponible.
 
 ## Liens sociaux et comptes (bêta 0.4.0)
 
