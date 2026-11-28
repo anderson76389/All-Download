@@ -1,4 +1,4 @@
-name: Build and test Android (beta)
+name: Build and test Android
 on:
   push:
     paths:

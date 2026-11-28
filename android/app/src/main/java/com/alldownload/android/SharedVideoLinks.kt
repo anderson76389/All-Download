@@ -17,10 +17,14 @@ internal object SharedVideoLinks {
         fun add(text: CharSequence?) {
             if (!text.isNullOrBlank() && samples.size < 20) samples.add(text.take(16384))
         }
-        if (intent.action == Intent.ACTION_SEND_MULTIPLE) {
-            intent.getCharSequenceArrayListExtra(Intent.EXTRA_TEXT)?.take(MAX_LINKS)?.forEach { add(it) }
+        @Suppress("DEPRECATION")
+        val sharedText = intent.extras?.get(Intent.EXTRA_TEXT)
+        when (sharedText) {
+            is CharSequence -> add(sharedText)
+            is List<*> -> if (intent.action == Intent.ACTION_SEND_MULTIPLE) {
+                sharedText.take(MAX_LINKS).forEach { add(it as? CharSequence) }
+            }
         }
-        add(intent.getCharSequenceExtra(Intent.EXTRA_TEXT))
         add(intent.getCharSequenceExtra(Intent.EXTRA_SUBJECT))
         add(intent.getCharSequenceExtra(Intent.EXTRA_TITLE))
         val clip = intent.clipData

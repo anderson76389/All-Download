@@ -1,5 +1,6 @@
 package com.alldownload.android
 
+import java.io.File
 import java.net.URI
 
 /** Règles pures, testables sur JVM (sans Android ni réseau). */
@@ -10,6 +11,14 @@ internal object DownloadRules {
                 !it.host.isNullOrBlank()
         }
     } catch (_: Exception) { null }
+
+    private val partialFragment = Regex("""\.part-Frag\d+(?:\.part)?$""")
+
+    fun exportableFiles(directory: File): List<File> =
+        directory.listFiles().orEmpty().filter { file ->
+            file.isFile && !file.name.endsWith(".part") && !file.name.endsWith(".ytdl") &&
+                !partialFragment.containsMatchIn(file.name)
+        }
 
     /** Reject malformed URLs and embedded credentials before they enter the queue. */
     fun isValidVideoUrl(url: String): Boolean =

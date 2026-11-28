@@ -337,8 +337,7 @@ class DownloadService : Service() {
             }
             check(!paused && !cancelled) { "Interrompu." }
             val category = DownloadRules.categoryFor(task.url, task.mode)
-            val files = exportRoot.listFiles().orEmpty().filter { it.isFile &&
-                !it.name.contains(".part-Frag") && !it.name.endsWith(".part") && !it.name.endsWith(".ytdl") }.toList()
+            val files = DownloadRules.exportableFiles(exportRoot)
             check(files.isNotEmpty()) { "Aucun fichier final créé par le moteur." }
             for ((index, file) in files.withIndex()) {
                 check(!paused && !cancelled) { "Interrompu." }
