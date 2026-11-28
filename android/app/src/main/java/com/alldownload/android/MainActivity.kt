@@ -299,6 +299,7 @@ class MainActivity : Activity() {
             } catch (_: SecurityException) { "" }
             val age = android.os.SystemClock.elapsedRealtime() - recentCopiedAt
             val value = if (DownloadRules.isValidVideoUrl(systemValue)) systemValue
+                else if (systemValue.isNotBlank()) SharedVideoLinks.linksInText(systemValue).firstOrNull().orEmpty()
                 else if (age in 0..60_000L && DownloadRules.isValidVideoUrl(recentCopiedUrl))
                     recentCopiedUrl else ""
             if (DownloadRules.isValidVideoUrl(value)) {
@@ -1253,7 +1254,7 @@ class MainActivity : Activity() {
 
     /**
      * Keep all five Windows-style shortcuts simultaneously visible on narrow
-     * phones and medium foldables: 3 equal cells + 2 equal cells.
+     * phones and medium foldables, with fewer columns for enlarged text.
      * Reparent the original Buttons, preserving all actual download listeners.
      * Wide tablets retain the single compact row from the XML layout.
      */
@@ -1293,8 +1294,13 @@ class MainActivity : Activity() {
                 row.addView(button)
             }
         }
-        addRow(items.take(3), false)
-        addRow(items.drop(3), true)
+        val config = resources.configuration
+        val columns = when {
+            config.fontScale > 1.7f && config.screenWidthDp < 400 -> 1
+            config.fontScale > 1.2f || config.screenWidthDp < 360 -> 2
+            else -> 3
+        }
+        items.chunked(columns).forEachIndexed { index, buttons -> addRow(buttons, index > 0) }
     }
 
     /** Compact Windows option pair on tablets/foldables; stacked, readable on phones. */

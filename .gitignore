@@ -22,3 +22,10 @@ cookies.txt
 /ffmpeg.exe
 /ffprobe.exe
 /ffmpeg.zip
+
+# Sorties locales Android et banc de test HTML
+/android/.gradle/
+/android/build/
+/android/app/build/
+/android/local.properties
+/tests/ui-test.html

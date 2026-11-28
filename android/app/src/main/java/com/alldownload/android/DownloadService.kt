@@ -337,8 +337,8 @@ class DownloadService : Service() {
             }
             check(!paused && !cancelled) { "Interrompu." }
             val category = DownloadRules.categoryFor(task.url, task.mode)
-            val files = exportRoot.walkTopDown().filter { it.isFile &&
-                !it.name.endsWith(".part") && !it.name.endsWith(".ytdl") }.toList()
+            val files = exportRoot.listFiles().orEmpty().filter { it.isFile &&
+                !it.name.contains(".part-Frag") && !it.name.endsWith(".part") && !it.name.endsWith(".ytdl") }.toList()
             check(files.isNotEmpty()) { "Aucun fichier final créé par le moteur." }
             for ((index, file) in files.withIndex()) {
                 check(!paused && !cancelled) { "Interrompu." }
@@ -459,11 +459,11 @@ class DownloadService : Service() {
                 request.addOption("--audio-quality", qualitySetting)
             }
             4 -> {
-                request.addOption("--format", DownloadRules.videoFormat(url, 0))
+                request.addOption("--format", DownloadRules.videoFormat(url, 0, mediaUrl != url))
                 request.addOption("--recode-video", "gif")
             }
             else -> {
-                request.addOption("--format", DownloadRules.videoFormat(url, quality))
+                request.addOption("--format", DownloadRules.videoFormat(url, quality, mediaUrl != url))
                 val container = if (DownloadOptions.get(this)
                         .getString("video_format", "MP4") == "MKV") "mkv" else "mp4"
                 request.addOption("--merge-output-format", container)

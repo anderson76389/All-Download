@@ -124,7 +124,10 @@ internal object DownloadRules {
      * Pour les liens directs non-Twitch, autoriser les résolutions inconnues,
      * sinon les flux MP4 bruts (sans métadonnées hauteur) ne peuvent pas télécharger.
      */
-    fun videoFormat(url: String, quality: Int): String {
+    fun videoFormat(url: String, quality: Int, resolvedTwitchVariant: Boolean = false): String {
+        // A resolved Twitch media playlist already represents one native rendition.
+        // The generic extractor may not report a height on its single format.
+        if (resolvedTwitchVariant) return "bestvideo+bestaudio/best"
         if (isTwitchVod(url)) return when (quality) {
             3 -> "bestvideo+bestaudio/best"
             4 -> "bestvideo[height<=2160]+bestaudio/best[height<=?2160]"

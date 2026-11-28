@@ -122,6 +122,10 @@ class AndroidSmokeTest {
             clipData = android.content.ClipData.newPlainText("URLs", "$u1, $u2")
         }
         assertEquals(listOf(u1, u2), SharedVideoLinks.extractAll(shared))
+        val textList = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+            putCharSequenceArrayListExtra(Intent.EXTRA_TEXT, arrayListOf<CharSequence>("Vidéo : $u2.", u1, u2))
+        }
+        assertEquals(listOf(u2, u1), SharedVideoLinks.extractAll(textList))
         val first = android.net.Uri.parse("content://example.gallery/videos/1")
         val second = android.net.Uri.parse("content://example.gallery/videos/2")
         val files = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
@@ -628,11 +632,10 @@ class AndroidSmokeTest {
             if (activity.resources.configuration.screenWidthDp < 900) {
                 assertEquals("Cinq raccourcis doivent former deux lignes",
                     LinearLayout.VERTICAL, grid.orientation)
-                assertEquals(2, grid.childCount)
-                val firstRow = grid.getChildAt(0) as LinearLayout
-                val secondRow = grid.getChildAt(1) as LinearLayout
-                assertEquals(3, firstRow.childCount)
-                assertEquals(2, secondRow.childCount)
+                val rows = (0 until grid.childCount).map { grid.getChildAt(it) as LinearLayout }
+                assertEquals(ids.size, rows.sumOf { it.childCount })
+                if (activity.resources.configuration.fontScale > 1.2f)
+                    assertTrue(rows.all { it.childCount <= 2 })
                 val screenDp = activity.resources.displayMetrics.density
                 ids.forEach { id ->
                     val button = activity.findViewById<Button>(id)

@@ -17,6 +17,9 @@ internal object SharedVideoLinks {
         fun add(text: CharSequence?) {
             if (!text.isNullOrBlank() && samples.size < 20) samples.add(text.take(16384))
         }
+        if (intent.action == Intent.ACTION_SEND_MULTIPLE) {
+            intent.getCharSequenceArrayListExtra(Intent.EXTRA_TEXT)?.take(MAX_LINKS)?.forEach { add(it) }
+        }
         add(intent.getCharSequenceExtra(Intent.EXTRA_TEXT))
         add(intent.getCharSequenceExtra(Intent.EXTRA_SUBJECT))
         add(intent.getCharSequenceExtra(Intent.EXTRA_TITLE))
@@ -32,12 +35,16 @@ internal object SharedVideoLinks {
         add(intent.dataString)
         val urls = LinkedHashSet<String>()
         for (sample in samples) {
-            for (candidate in urlPattern.findAll(sample)) {
-                val url = candidate.value.trimEnd('.', ',', ';', '!', ')', ']', '}', '»')
-                if (DownloadRules.isValidVideoUrl(url)) urls.add(url)
+            for (url in linksInText(sample)) {
+                urls.add(url)
                 if (urls.size >= MAX_LINKS) return urls.toList()
             }
         }
         return urls.toList()
     }
+
+    fun linksInText(sample: CharSequence): Sequence<String> =
+        urlPattern.findAll(sample.take(16384)).map { candidate ->
+            candidate.value.trimEnd('.', ',', ';', '!', ')', ']', '}', '»')
+        }.filter(DownloadRules::isValidVideoUrl)
 }
