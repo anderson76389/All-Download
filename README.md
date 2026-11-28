@@ -58,7 +58,7 @@ La disponibilité des formats et des plateformes dépend des sites, de leur auth
 
 ### Instagram : Reels et authentification
 
-La version 1.0.3 améliore la sélection de la qualité **native** des Reels verticaux (1080 × 1920), normalise les liens `/reels/IDENTIFIANT/` en `/reel/IDENTIFIANT/` uniquement pour un véritable domaine Instagram, et affiche sur Android un message explicite lorsque l'accès anonyme est refusé. **Cela ne débloque ni les médias privés ni les restrictions Instagram.**
+All-Download prend en compte l’orientation pour la sélection de la qualité **native** des Reels verticaux (1080 × 1920), normalise les liens `/reels/IDENTIFIANT/` en `/reel/IDENTIFIANT/` uniquement pour un véritable domaine Instagram, et affiche sur Android un message explicite lorsque l'accès anonyme est refusé. **Cela ne débloque ni les médias privés ni les restrictions Instagram.**
 
 Sur Android, depuis **Paramètres → Cookies**, il est possible d'importer un fichier `cookies.txt` Netscape issu de sa propre session Instagram si le contenu est accessible à ce compte. Sur Windows/Linux, utiliser **Authentification → Cookies**. Ne partagez jamais ces fichiers (ils donnent accès à votre session). Les nouvelles versions conservent les réglages et ne modifient pas les téléchargements des autres plateformes.
 
@@ -97,7 +97,7 @@ ne peuvent pas devenir téléchargeables par ce seul bouton.
 3. Appuyer sur **Installer** : l’APK est téléchargée dans le cache privé, avec progression, contrôle SHA-256 et vérification de la signature.
 4. Confirmer l’installation dans **Android**. Le navigateur n’est pas ouvert.
 
-La recherche manuelle et l’activation des alertes se trouvent dans **Paramètres → Appli → Mises à jour Android**. La version **1.0.3** conserve la signature permanente et supprime les anciennes APK du cache privé après installation : les futures APK signées avec cette même clé pourront être installées par-dessus. Une ancienne bêta signée avec une autre clé peut nécessiter une désinstallation préalable, susceptible d’effacer les données privées de l’application. **Sauvegardez vos réglages et cookies si nécessaire.**
+La recherche manuelle et l’activation des alertes se trouvent dans **Paramètres → Appli → Mises à jour Android**. L’application conserve la signature permanente et supprime les anciennes APK du cache privé après installation : les futures APK signées avec cette même clé pourront être installées par-dessus. Une ancienne bêta signée avec une autre clé peut nécessiter une désinstallation préalable, susceptible d’effacer les données privées de l’application. **Sauvegardez vos réglages et cookies si nécessaire.**
 
 **Compatibilité testée en CI :** Android 9, 14 et 15, avec un profil tablette Android 14. Les tests de liens vidéo publics et de certains réseaux sociaux réussissent ; l’accès à toutes les vidéos de chaque service n’est pas garanti.
 

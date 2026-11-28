@@ -6,7 +6,7 @@
 
 Toutes les icônes sont des **VectorDrawable natifs originaux** au format `24 × 24`, avec des formes pleines ou des contours nets monochromes et une couleur appliquée par le thème. Pas d'emoji, de police spéciale, de chargement réseau ou de filtres GPU. Le même glyphe est réutilisé partout où la fonction est identique.
 
-## Paramètres Android 0.6.11 : règles de cohérence
+## Paramètres Android
 
 - Aucun bandeau « ALL-DOWNLOAD » persistant : l'icône et le nom restent dans le lanceur, le splash et les dialogues système.
 - Chaque carte de Paramètres possède une icône vectorielle **38 dp** sur une tuile arrondie à fond violet discret ; le dessin central est de **20 dp**.
@@ -104,11 +104,3 @@ Les sept dossiers utilisent des pictogrammes autonomes plus lisibles (lecture, c
 ### Contrôle de visibilité
 
 Les pictogrammes de dossiers sont **distincts, contrastés et assez grands** pour éviter les détails illisibles ; ils suivent la teinte du thème. Le test d'instrumentation `sevenFolderGlyphsRenderAsDistinctVisibleShapes` dessine réellement les sept vecteurs et vérifie qu'ils ont des pixels visibles et des silhouettes différentes.
-
-## Correctifs d'alignement mobile (novembre 2026)
-
-- Navigation quatre onglets à largeur égale dans un conteneur fixe sans défilement horizontal ; aucun libellé ne doit sortir du bord gauche/droit.
-- En-tête de marque et bannière toujours épinglés ; changement d'onglet ramené en haut immédiatement pour ne pas cacher le titre.
-- État de téléchargement épinglé **uniquement pendant un transfert actif** sur téléphone, masqué à l'arrêt et dans Dossiers/Réglages.
-- Actions de la file : icône et texte alignés au début du bouton pour ne pas les séparer visuellement.
-- Version Windows et moteurs Android inchangés.

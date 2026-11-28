@@ -9,7 +9,7 @@ on:
     workflows:
       - Build All-Download (Windows)
       - Publish All-Download Android beta
-      - Build and test Linux (beta)
+      - Build and test Linux (stable)
     types: [completed]
   workflow_dispatch:
     inputs:
@@ -110,20 +110,6 @@ jobs:
           with open("/tmp/releases-to-prune.json", "w") as f:
               json.dump(targets, f)
           PY
-      - name: Rewrite latest Release notes with clear APK and Windows links
-        if: env.DRY_RUN != 'true'
-        env:
-          WINDOWS_TAG: ${{ steps.plan.outputs.windows_tag }}
-          ANDROID_TAG: ${{ steps.plan.outputs.android_tag }}
-        run: |
-          # Preserve the new stable Windows tag while displaying its correct build number.
-          if [[ "$WINDOWS_TAG" == build-* ]]; then
-            sed "s/Build 171/Build ${WINDOWS_TAG#build-}/" .github/release-notes/windows.md > "$RUNNER_TEMP/windows-release-notes.md"
-            gh release edit "$WINDOWS_TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$RUNNER_TEMP/windows-release-notes.md"
-          fi
-          if [ "$ANDROID_TAG" = "android-v0.6.9-beta" ]; then
-            gh release edit "$ANDROID_TAG" --repo "$GITHUB_REPOSITORY" --notes-file .github/release-notes/android.md
-          fi
       - name: Remove obsolete published Releases and their tags
         if: env.DRY_RUN != 'true'
         run: |

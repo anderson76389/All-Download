@@ -42,7 +42,7 @@ Collez-la directement dans le champ du secret `ANDROID_KEYSTORE_BASE64`, enregis
 ## 3. Publier
 
 Après la configuration, exécutez à nouveau le workflow
-`Publish All-Download Android beta` pour la branche `feature/android-app`.
+`Publish All-Download Android beta` pour la branche `main`.
 L'APK final doit avoir la signature privée permanente ; GitHub Actions la vérifie via `apksigner`, puis publie l'APK et son SHA-256.
 
 **Transition :** les anciennes bêta jusqu'à 0.6.4 étaient signées avec une clé debug non persistante ; un désinstall / réinstall de l'application pourra être nécessaire **une dernière fois**. Les données privées (cookies, paramètres, file d'attente) peuvent être perdues en désinstallant ; les médias exportés dans Téléchargements restent. Ensuite, réutilisez absolument la même clé pour chaque nouvelle version.

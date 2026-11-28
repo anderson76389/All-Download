@@ -1,31 +1,4 @@
-## Linux 1.0.4
-
-Deno est inclus dans Donnees/bin. Le moteur teste les formats YouTube avant le transfert.
-
-# All-Download Linux 1.0.3 — compatibilité Instagram
-
-- Sur un Reel vertical 1080 × 1920, une qualité manuelle 1080p sélectionne maintenant sa résolution **native** à partir de la largeur de 1080 pixels (plutôt que de rejeter sa hauteur de 1920).
-- Les liens vers un Reel individuel `/reels/IDENTIFIANT/` sont normalisés en `/reel/IDENTIFIANT/` avant extraction ; la validation du véritable domaine Instagram évite les redirections vers des domaines ressemblants.
-- Les autres sites et leurs réglages de qualité sont inchangés. Certains Reels exigent une session connectée, un extracteur yt-dlp récent ou bloquent les téléchargements. **Authentification → Cookies** reste disponible. Ne communiquez jamais votre fichier de session.
-- Cette modification ne garantit pas l'accès à tous les contenus Instagram ; les restrictions de la plateforme demeurent applicables.
-
-# All-Download Linux 1.0.2 — édition stable
-
-**Version 1.0.2 :** 1080p maximum par défaut, secours Twitch HLS sur les trois plateformes et réglages Android plus compacts.
-
-La 1.0 conserve l'interface Windows adaptée à Linux, la gestion native yt-dlp/FFmpeg, les données dans All-Download/ et les fragments .part après échec réseau. Mises à jour Linux volontairement manuelles, avec archive officielle et SHA-256. Les limitations de formats dépendent des sites externes ; Debian/Fedora et les tests physiques ne sont pas certifiés par la CI Ubuntu.
-
-**Version 0.1.6-beta :** reprise des fragments yt-dlp après erreur réseau : un même lien et les mêmes options réutilisent leur dossier temporaire privé. Les fragments restent disponibles après échec ; ils sont nettoyés après réussite/annulation et les anciens espaces temporaires sont purgés avec prudence après sept jours. La reprise dépend du site et de la compatibilité des fragments ; elle n'est pas garantie pour les liens expirés ou les flux protégés.
-
-# All-Download Linux x86_64 — historique des bêtas
-
-**Version 0.1.5-beta :** fermeture de la fenêtre Qt suivie de l'arrêt des téléchargements et de leurs sous-processus, reprise réseau yt-dlp best-effort (`--continue` et réessais limités), compression xz choisie après comparaison des tailles réelles dans GitHub Actions. La reprise après arrêt complet de Linux n'est pas garantie : les fichiers temporaires d'une tâche en cours peuvent être supprimés.
-
-**Version 0.1.4-beta :** les domaines qui ressemblent à YouTube mais n'en sont pas ne déclenchent plus SponsorBlock. L'interface et les fichiers Linux restent identiques.
-
-**Version 0.1.3-beta :** les VOD Twitch dont la qualité préférée est 1080p retombent sur le **720p natif** si le 1080p n'existe pas (sans upscaling). Les dossiers temporaires d'une exécution interrompue depuis plus de sept jours sont nettoyés prudemment au démarrage : 16 dossiers maximum et uniquement dans `Donnees/temporaires/`. La recherche manuelle de mises à jour privilégie désormais l'archive `.tar.xz` si son SHA-256 est fourni. Le raccourci Linux et les fonctions 0.1.2 restent disponibles.
-
-La version Linux reprend le **HTML/CSS/JS Windows à l'identique** (extrait automatiquement de yt_app.py), mais utilise une fenêtre native Qt WebEngine et des binaires Linux yt-dlp/FFmpeg. **Aucun EXE Windows n'est exécuté.**
+# All-Download pour Linux x86_64
 
 ## Installer et démarrer
 
@@ -63,4 +36,4 @@ Sous Linux, avec Python 3.10+, yt-dlp et FFmpeg dans le PATH et une session grap
 
 Le script linux/extract_ui.py extrait exactement l'interface HTML de yt_app.py, **sans exécuter** les instructions Windows. Les binaires peuvent également être placés sous Donnees/bin/. Le projet doit rester dans un dossier modifiable afin de préserver toutes les données en local.
 
-Le workflow Build and test Linux (beta) vérifie l'extraction HTML, la syntaxe et les tests de logique Linux, fabrique un paquet PyInstaller et crée une Release préliminaire distincte uniquement en cas de réussite. La compatibilité avec toutes les distributions et plateformes vidéo nécessite encore des essais réels.
+Le workflow Linux teste la logique, construit le paquet portable et vérifie son lancement avant publication.
