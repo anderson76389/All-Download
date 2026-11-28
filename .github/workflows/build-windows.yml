@@ -6,6 +6,7 @@ on:
     # Documentation and Release maintenance must not waste a Windows build.
     paths-ignore:
       - "README.md"
+      - ".gitignore"
       - ".github/release-notes/**"
       - ".github/workflows/release-retention.yml"
       - ".github/workflows/build-windows.yml"
