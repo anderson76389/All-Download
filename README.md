@@ -11,7 +11,7 @@
 Windows 10/11 · Android 7+ · Linux x86_64 · Interface en français · Thèmes clair, sombre et OLED
 
 [![Windows](https://img.shields.io/badge/Windows-Portable%20%26%20Classique-2563EB?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/anderson76389/All-Download/releases/latest)
-[![Android](https://img.shields.io/badge/Android-APK%20stable-16A34A?style=for-the-badge&logo=android&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/android-v1.0.5)
+[![Android](https://img.shields.io/badge/Android-APK%20stable-16A34A?style=for-the-badge&logo=android&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/android-v1.0.6)
 [![Linux](https://img.shields.io/badge/Linux-x86__64%20stable-6D28D9?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/anderson76389/All-Download/releases/tag/linux-v1.0.5)
 
 </div>
@@ -24,10 +24,10 @@ Windows 10/11 · Android 7+ · Linux x86_64 · Interface en français · Thèmes
 |:--|:--|:--|
 | 🖥️ **Windows 10/11 (x64)** | **Portable** · Sans installation | **[⬇️ Télécharger le ZIP Portable](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Portable-Windows.zip)** |
 | 🖥️ **Windows 10/11 (x64)** | **Classique** · Avec installateur | **[⬇️ Télécharger le ZIP Classique](https://github.com/anderson76389/All-Download/releases/latest/download/All-Download-Classique-Windows.zip)** |
-| 📱 **Android 7+** | **APK officielle — 1.0.5** | **[⬇️ Télécharger l’APK Android](https://github.com/anderson76389/All-Download/releases/download/android-v1.0.5/All-Download-Android-1.0.5.apk)** |
+| 📱 **Android 7+** | **APK officielle — 1.0.6** | **[⬇️ Télécharger l’APK Android](https://github.com/anderson76389/All-Download/releases/download/android-v1.0.6/All-Download-Android-1.0.6.apk)** |
 | 🐧 **Linux x86_64 (glibc)** | **Portable — 1.0.5** | **[⬇️ Télécharger Linux (archive .tar.xz)](https://github.com/anderson76389/All-Download/releases/download/linux-v1.0.5/All-Download-Linux-x86_64.tar.xz)** |
 
-**[Release Android et notes de version](https://github.com/anderson76389/All-Download/releases/tag/android-v1.0.5)** · [Empreinte SHA-256 de l’APK](https://github.com/anderson76389/All-Download/releases/download/android-v1.0.5/All-Download-Android-1.0.5.apk.sha256) · [Dernière Release stable Windows](https://github.com/anderson76389/All-Download/releases/latest)
+**[Release Android et notes de version](https://github.com/anderson76389/All-Download/releases/tag/android-v1.0.6)** · [Empreinte SHA-256 de l’APK](https://github.com/anderson76389/All-Download/releases/download/android-v1.0.6/All-Download-Android-1.0.6.apk.sha256) · [Dernière Release stable Windows](https://github.com/anderson76389/All-Download/releases/latest)
 
 > **Important :** Windows, Android et Linux sont trois éditions distinctes. Installez uniquement le format correspondant à votre appareil (ZIP Windows, APK Android, archive Linux). Les fichiers officiels sont ceux des [Releases GitHub](https://github.com/anderson76389/All-Download/releases). Linux est une distribution portable stable, non un .deb/.rpm.
 
