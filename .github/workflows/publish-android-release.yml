@@ -1,4 +1,4 @@
-name: Publish All-Download Android beta
+name: Publish All-Download Android APK
 
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
-      - name: Checkout Android beta branch
+      - name: Checkout Android release source
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -53,7 +53,7 @@ jobs:
             fi
             runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?per_page=100")"
             validated=0
-            for name in "Build and test Android (beta)" "Android public video download checks" "Android social media video checks"; do
+            for name in "Build and test Android" "Android public video download checks" "Android social media video checks"; do
               state="$(printf '%s' "$runs" | jq -r --arg name "$name" --arg sha "$TESTED_SHA" \
                 '[.workflow_runs[] | select(.name==$name and .head_sha==$sha)] | .[0].conclusion // "pending"')"
               if [ "$state" = "failure" ] || [ "$state" = "cancelled" ]; then
@@ -147,15 +147,10 @@ jobs:
           cat > android-release-notes.md <<'EOF'
           ## All-Download Android {{VERSION}} — édition stable
 
-          **Version Android 1.0 :** partage natif depuis YouTube, Twitch, TikTok, Reddit, Instagram,
-          navigateurs et autres applications proposant une URL HTTP(S), avec lien prérempli
-          et démarrage volontaire du téléchargement. Partage multiple de liens : ajout à la file.
-          **Partage de fichiers vidéo locaux :** via Galerie/Fichiers/Partager, transfert en streaming
-          de un à douze fichiers vers Téléchargements/All-Download/VIDÉOS sans supprimer les originaux.
-          Import conservateur : formats vidéo reconnus, sources content:// uniquement,
-          copie en blocs de 64 Kio, nettoyage du fichier de sortie en cas d’échec.
+          Le bouton Coller accepte un lien entouré de texte. Le partage multiple ajoute les liens à la file dans leur ordre de réception. Sur les téléphones étroits et en gros caractères, les raccourcis se répartissent sur davantage de lignes.
 
-          - Windows et Linux inchangés par ce code Android.
+          Le téléchargement de secours Twitch conserve la variante native sélectionnée. Les fragments temporaires et les résultats d’une ancienne tentative de secours sont exclus de l’export.
+
           - Qualité par défaut : 1080p maximum, source native sans agrandissement artificiel. Les résolutions supérieures restent un choix manuel.
           - Twitch : secours HLS natif après un échec du moteur principal.
           - Réglages mobiles : logos et textes regroupés, menus de choix arrondis.

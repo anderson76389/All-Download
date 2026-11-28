@@ -4,6 +4,20 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class DownloadRulesTest {
+    @Test fun exportsCurrentOutputsAndSelectedSidecarsOnly() {
+        val dir = java.nio.file.Files.createTempDirectory("android-export").toFile()
+        try {
+            val complete = setOf("Video.part-Frag story.mp4", "Video.en.vtt", "Video.webp")
+            (complete + listOf("Video.mp4.part", "Video.mp4.ytdl", "Video.mp4.part-Frag32"))
+                .forEach { dir.resolve(it).writeText("data") }
+            dir.resolve("twitch-source").mkdir()
+            dir.resolve("twitch-source/older.mp4").writeText("old")
+            assertEquals(complete, DownloadRules.exportableFiles(dir).map { it.name }.toSet())
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
     @Test fun recognizesOnlyGenuineTwitchVod() {
         assertTrue(DownloadRules.isTwitchVod("https://www.twitch.tv/videos/2919531847"))
         assertTrue(DownloadRules.isTwitchVod("https://m.twitch.tv/videos/2919531847/"))

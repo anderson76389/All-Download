@@ -8,7 +8,7 @@ on:
   workflow_run:
     workflows:
       - Build All-Download (Windows)
-      - Publish All-Download Android beta
+      - Publish All-Download Android APK
       - Build and test Linux (stable)
     types: [completed]
   workflow_dispatch:

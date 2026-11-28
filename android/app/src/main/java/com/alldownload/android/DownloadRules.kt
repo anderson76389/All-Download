@@ -1,5 +1,6 @@
 package com.alldownload.android
 
+import java.io.File
 import java.net.URI
 
 /** Règles pures, testables sur JVM (sans Android ni réseau). */
@@ -10,6 +11,14 @@ internal object DownloadRules {
                 !it.host.isNullOrBlank()
         }
     } catch (_: Exception) { null }
+
+    private val partialFragment = Regex("""\.part-Frag\d+(?:\.part)?$""")
+
+    fun exportableFiles(directory: File): List<File> =
+        directory.listFiles().orEmpty().filter { file ->
+            file.isFile && !file.name.endsWith(".part") && !file.name.endsWith(".ytdl") &&
+                !partialFragment.containsMatchIn(file.name)
+        }
 
     /** Reject malformed URLs and embedded credentials before they enter the queue. */
     fun isValidVideoUrl(url: String): Boolean =
@@ -124,7 +133,10 @@ internal object DownloadRules {
      * Pour les liens directs non-Twitch, autoriser les résolutions inconnues,
      * sinon les flux MP4 bruts (sans métadonnées hauteur) ne peuvent pas télécharger.
      */
-    fun videoFormat(url: String, quality: Int): String {
+    fun videoFormat(url: String, quality: Int, resolvedTwitchVariant: Boolean = false): String {
+        // A resolved Twitch media playlist already represents one native rendition.
+        // The generic extractor may not report a height on its single format.
+        if (resolvedTwitchVariant) return "bestvideo+bestaudio/best"
         if (isTwitchVod(url)) return when (quality) {
             3 -> "bestvideo+bestaudio/best"
             4 -> "bestvideo[height<=2160]+bestaudio/best[height<=?2160]"

@@ -131,8 +131,8 @@ class PublicVideoDownloadTest {
                         sourceHeightProbe = { TwitchHls.probeHeight(context, it) { false } }) { false }
                     val nativeHeight = TwitchHls.probeHeight(context, manifest) { false }
                     assertTrue("Le secours Twitch doit vérifier une source native ≤ 1080p : $nativeHeight",
-                        nativeHeight != null && nativeHeight in 144..1080)
-                    downloadShortExtractedVideo("Twitch HLS source", manifest, "bestvideo+bestaudio/best")
+                        nativeHeight in setOf(720, 1080))
+                    downloadShortExtractedVideo("Twitch HLS source", manifest, DownloadRules.videoFormat(url, 0, resolvedTwitchVariant = true))
                     return
                 }
                 fail("$label : téléchargement d'un extrait réel impossible : $details")
